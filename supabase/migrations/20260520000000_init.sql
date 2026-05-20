@@ -1,6 +1,6 @@
 -- Padel Pulse — esquema inicial
--- Tablas: profiles, communities, community_members, clubs, tournaments,
--- tournament_pairs, matches. RLS activado en todas.
+-- Estructura: extensions → enums → tablas → indexes → functions/triggers → policies → views
+-- (las policies van al final para evitar forward references)
 
 create extension if not exists "pgcrypto";
 
@@ -15,7 +15,7 @@ create type tournament_gender as enum ('mixed', 'male', 'female');
 create type match_status as enum ('scheduled', 'in_progress', 'completed', 'disputed');
 
 -- ============================================================
--- PROFILES — extiende auth.users
+-- TABLES
 -- ============================================================
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -27,34 +27,6 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
-alter table public.profiles enable row level security;
-
-create policy "profiles are public read"
-  on public.profiles for select using (true);
-
-create policy "users can update their own profile"
-  on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
-
-create policy "users can insert their own profile"
-  on public.profiles for insert with check (auth.uid() = id);
-
--- Trigger: crear profile automáticamente al sign-up
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql security definer set search_path = public as $$
-begin
-  insert into public.profiles (id, display_name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)));
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_created
-  after insert on auth.users for each row execute procedure public.handle_new_user();
-
--- ============================================================
--- COMMUNITIES
--- ============================================================
 create table public.communities (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -68,32 +40,6 @@ create table public.communities (
   created_at timestamptz not null default now()
 );
 
-create index communities_city_idx on public.communities (city);
-create index communities_rating_idx on public.communities (rating desc);
-
-alter table public.communities enable row level security;
-
-create policy "communities are public read"
-  on public.communities for select using (true);
-
-create policy "authenticated users can create communities"
-  on public.communities for insert with check (auth.uid() = owner_id);
-
-create policy "owners and admins can update community"
-  on public.communities for update using (
-    auth.uid() = owner_id
-    or exists (
-      select 1 from public.community_members
-      where community_id = communities.id and profile_id = auth.uid() and role = 'admin'
-    )
-  );
-
-create policy "owners can delete community"
-  on public.communities for delete using (auth.uid() = owner_id);
-
--- ============================================================
--- COMMUNITY MEMBERS
--- ============================================================
 create table public.community_members (
   community_id uuid not null references public.communities(id) on delete cascade,
   profile_id uuid not null references public.profiles(id) on delete cascade,
@@ -102,46 +48,6 @@ create table public.community_members (
   primary key (community_id, profile_id)
 );
 
-create index community_members_profile_idx on public.community_members (profile_id);
-
-alter table public.community_members enable row level security;
-
-create policy "members are public read"
-  on public.community_members for select using (true);
-
-create policy "users can join communities"
-  on public.community_members for insert with check (auth.uid() = profile_id);
-
-create policy "users can leave communities"
-  on public.community_members for delete using (auth.uid() = profile_id);
-
-create policy "admins can manage members"
-  on public.community_members for update using (
-    exists (
-      select 1 from public.community_members me
-      where me.community_id = community_members.community_id
-        and me.profile_id = auth.uid()
-        and me.role in ('owner', 'admin')
-    )
-  );
-
--- Auto-añadir al creador como owner-member
-create or replace function public.add_owner_as_member()
-returns trigger
-language plpgsql security definer set search_path = public as $$
-begin
-  insert into public.community_members (community_id, profile_id, role)
-  values (new.id, new.owner_id, 'owner');
-  return new;
-end;
-$$;
-
-create trigger on_community_created
-  after insert on public.communities for each row execute procedure public.add_owner_as_member();
-
--- ============================================================
--- CLUBS
--- ============================================================
 create table public.clubs (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -153,20 +59,6 @@ create table public.clubs (
   created_at timestamptz not null default now()
 );
 
-alter table public.clubs enable row level security;
-
-create policy "clubs are public read"
-  on public.clubs for select using (true);
-
-create policy "users can create clubs"
-  on public.clubs for insert with check (auth.uid() = owner_id);
-
-create policy "owners can update clubs"
-  on public.clubs for update using (auth.uid() = owner_id);
-
--- ============================================================
--- TOURNAMENTS
--- ============================================================
 create table public.tournaments (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -190,11 +82,152 @@ create table public.tournaments (
   constraint valid_max_pairs check (max_pairs >= 4 and max_pairs % 2 = 0)
 );
 
+create table public.tournament_pairs (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  community_id uuid not null references public.communities(id) on delete restrict,
+  player_one_id uuid not null references public.profiles(id) on delete restrict,
+  player_two_id uuid not null references public.profiles(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  constraint distinct_players check (player_one_id <> player_two_id),
+  unique (tournament_id, player_one_id, player_two_id)
+);
+
+create table public.matches (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  round_number int not null,
+  court_number int not null,
+  pair_one_id uuid not null references public.tournament_pairs(id) on delete cascade,
+  pair_two_id uuid not null references public.tournament_pairs(id) on delete cascade,
+  score_pair_one int,
+  score_pair_two int,
+  status match_status not null default 'scheduled',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint distinct_pairs check (pair_one_id <> pair_two_id)
+);
+
+-- ============================================================
+-- INDEXES
+-- ============================================================
+create index communities_city_idx on public.communities (city);
+create index communities_rating_idx on public.communities (rating desc);
+create index community_members_profile_idx on public.community_members (profile_id);
 create index tournaments_status_idx on public.tournaments (status, starts_at desc);
 create index tournaments_club_idx on public.tournaments (club_id);
+create index tournament_pairs_tournament_idx on public.tournament_pairs (tournament_id);
+create index tournament_pairs_community_idx on public.tournament_pairs (community_id);
+create index matches_tournament_idx on public.matches (tournament_id, round_number);
 
+-- ============================================================
+-- FUNCTIONS & TRIGGERS
+-- ============================================================
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id, display_name)
+  values (new.id, coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)));
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users for each row execute procedure public.handle_new_user();
+
+create or replace function public.add_owner_as_member()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.community_members (community_id, profile_id, role)
+  values (new.id, new.owner_id, 'owner');
+  return new;
+end;
+$$;
+
+create trigger on_community_created
+  after insert on public.communities for each row execute procedure public.add_owner_as_member();
+
+create or replace function public.touch_updated_at()
+returns trigger language plpgsql as $$
+begin new.updated_at = now(); return new; end;
+$$;
+
+create trigger matches_touch_updated_at
+  before update on public.matches for each row execute procedure public.touch_updated_at();
+
+-- ============================================================
+-- ROW LEVEL SECURITY
+-- ============================================================
+alter table public.profiles enable row level security;
+alter table public.communities enable row level security;
+alter table public.community_members enable row level security;
+alter table public.clubs enable row level security;
 alter table public.tournaments enable row level security;
+alter table public.tournament_pairs enable row level security;
+alter table public.matches enable row level security;
 
+-- profiles
+create policy "profiles are public read"
+  on public.profiles for select using (true);
+
+create policy "users can insert their own profile"
+  on public.profiles for insert with check (auth.uid() = id);
+
+create policy "users can update their own profile"
+  on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
+
+-- communities
+create policy "communities are public read"
+  on public.communities for select using (true);
+
+create policy "authenticated users can create communities"
+  on public.communities for insert with check (auth.uid() = owner_id);
+
+create policy "owners and admins can update community"
+  on public.communities for update using (
+    auth.uid() = owner_id
+    or exists (
+      select 1 from public.community_members
+      where community_id = communities.id and profile_id = auth.uid() and role = 'admin'
+    )
+  );
+
+create policy "owners can delete community"
+  on public.communities for delete using (auth.uid() = owner_id);
+
+-- community_members
+create policy "members are public read"
+  on public.community_members for select using (true);
+
+create policy "users can join communities"
+  on public.community_members for insert with check (auth.uid() = profile_id);
+
+create policy "users can leave communities"
+  on public.community_members for delete using (auth.uid() = profile_id);
+
+create policy "admins can manage members"
+  on public.community_members for update using (
+    exists (
+      select 1 from public.community_members me
+      where me.community_id = community_members.community_id
+        and me.profile_id = auth.uid()
+        and me.role in ('owner', 'admin')
+    )
+  );
+
+-- clubs
+create policy "clubs are public read"
+  on public.clubs for select using (true);
+
+create policy "users can create clubs"
+  on public.clubs for insert with check (auth.uid() = owner_id);
+
+create policy "owners can update clubs"
+  on public.clubs for update using (auth.uid() = owner_id);
+
+-- tournaments
 create policy "tournaments are public read"
   on public.tournaments for select using (true);
 
@@ -211,25 +244,7 @@ create policy "club owners can manage tournaments"
     )
   );
 
--- ============================================================
--- TOURNAMENT PAIRS — inscripciones por comunidad
--- ============================================================
-create table public.tournament_pairs (
-  id uuid primary key default gen_random_uuid(),
-  tournament_id uuid not null references public.tournaments(id) on delete cascade,
-  community_id uuid not null references public.communities(id) on delete restrict,
-  player_one_id uuid not null references public.profiles(id) on delete restrict,
-  player_two_id uuid not null references public.profiles(id) on delete restrict,
-  created_at timestamptz not null default now(),
-  constraint distinct_players check (player_one_id <> player_two_id),
-  unique (tournament_id, player_one_id, player_two_id)
-);
-
-create index tournament_pairs_tournament_idx on public.tournament_pairs (tournament_id);
-create index tournament_pairs_community_idx on public.tournament_pairs (community_id);
-
-alter table public.tournament_pairs enable row level security;
-
+-- tournament_pairs
 create policy "pairs are public read"
   on public.tournament_pairs for select using (true);
 
@@ -251,28 +266,7 @@ create policy "community admins can delete pairs"
     )
   );
 
--- ============================================================
--- MATCHES
--- ============================================================
-create table public.matches (
-  id uuid primary key default gen_random_uuid(),
-  tournament_id uuid not null references public.tournaments(id) on delete cascade,
-  round_number int not null,
-  court_number int not null,
-  pair_one_id uuid not null references public.tournament_pairs(id) on delete cascade,
-  pair_two_id uuid not null references public.tournament_pairs(id) on delete cascade,
-  score_pair_one int,
-  score_pair_two int,
-  status match_status not null default 'scheduled',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint distinct_pairs check (pair_one_id <> pair_two_id)
-);
-
-create index matches_tournament_idx on public.matches (tournament_id, round_number);
-
-alter table public.matches enable row level security;
-
+-- matches
 create policy "matches are public read"
   on public.matches for select using (true);
 
@@ -290,19 +284,8 @@ create policy "club owners and players can update match scores"
     )
   );
 
--- Trigger updated_at
-create or replace function public.touch_updated_at()
-returns trigger language plpgsql as $$
-begin new.updated_at = now(); return new; end;
-$$;
-
-create trigger matches_touch_updated_at
-  before update on public.matches for each row execute procedure public.touch_updated_at();
-
 -- ============================================================
--- VIEW: ranking de comunidades por periodo
--- Suma victorias y diferencial de puntos en torneos finalizados.
--- El cliente filtra por rango de fechas (mes/trim/sem/año).
+-- VIEW: ranking de comunidades por torneo (cliente filtra por fechas)
 -- ============================================================
 create view public.community_ranking_stats as
 select
