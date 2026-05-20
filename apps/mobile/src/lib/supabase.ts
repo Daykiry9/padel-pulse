@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 
-import type { Database } from '@padel-pulse/supabase';
+import type { Database } from '@padelking/supabase';
 
 const url = Constants.expoConfig?.extra?.supabaseUrl as string | undefined;
 const anonKey = Constants.expoConfig?.extra?.supabaseAnonKey as string | undefined;

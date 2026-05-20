@@ -14,9 +14,9 @@
     "clean": "rm -rf .expo .turbo"
   },
   "dependencies": {
-    "@padel-pulse/domain": "workspace:*",
-    "@padel-pulse/supabase": "workspace:*",
-    "@padel-pulse/ui": "workspace:*",
+    "@padelking/domain": "workspace:*",
+    "@padelking/supabase": "workspace:*",
+    "@padelking/ui": "workspace:*",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "^2.46.1",
     "expo": "~53.0.0",
@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@padel-pulse/tsconfig": "workspace:*",
+    "@padelking/tsconfig": "workspace:*",
     "@types/node": "^22.9.0",
     "@types/react": "~18.3.12",
     "typescript": "^5.6.3"

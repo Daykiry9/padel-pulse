@@ -1,4 +1,4 @@
--- Padel Pulse — esquema inicial
+-- PadelKing — esquema inicial
 -- Estructura: extensions → enums → tablas → indexes → functions/triggers → policies → views
 -- (las policies van al final para evitar forward references)
 

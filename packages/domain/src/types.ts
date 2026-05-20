@@ -1,19 +1,65 @@
 export type UUID = string;
 export type ISODate = string;
 
-export type TournamentFormat = 'americano' | 'mexicano' | 'league';
+export type TeamCategory =
+  | 'primera'
+  | 'segunda'
+  | 'tercera'
+  | 'cuarta'
+  | 'quinta'
+  | 'mixto'
+  | 'queens_1'
+  | 'queens_2'
+  | 'queens_3'
+  | 'queens_4'
+  | 'queens_5';
+
+export type TournamentFormat = 'americano' | 'express' | 'league' | 'elimination';
 export type TournamentStatus = 'draft' | 'open' | 'in_progress' | 'finished' | 'cancelled';
 export type MatchStatus = 'scheduled' | 'in_progress' | 'completed' | 'disputed';
-export type Gender = 'mixed' | 'male' | 'female';
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'pro';
+export type MemberRole = 'owner' | 'admin' | 'member';
+export type RegistrationStatus = 'pending_payment' | 'confirmed' | 'waitlist' | 'cancelled';
+export type SponsorTier = 'platform' | 'community' | 'tournament';
+export type SponsorSlot = 'title' | 'official' | 'partner';
 
-export interface Player {
+export const KING_CATEGORIES: TeamCategory[] = [
+  'primera',
+  'segunda',
+  'tercera',
+  'cuarta',
+  'quinta',
+  'mixto',
+];
+
+export const QUEENS_CATEGORIES: TeamCategory[] = [
+  'queens_1',
+  'queens_2',
+  'queens_3',
+  'queens_4',
+  'queens_5',
+];
+
+export const ALL_CATEGORIES: TeamCategory[] = [...KING_CATEGORIES, ...QUEENS_CATEGORIES];
+
+export function isQueensCategory(category: TeamCategory): boolean {
+  return QUEENS_CATEGORIES.includes(category);
+}
+
+export interface Profile {
   id: UUID;
-  userId: UUID;
   displayName: string;
   avatarUrl?: string | null;
+  city?: string | null;
   skillLevel: SkillLevel;
   rating: number;
+}
+
+export interface City {
+  id: UUID;
+  slug: string;
+  name: string;
+  region?: string | null;
 }
 
 export interface Community {
@@ -23,11 +69,11 @@ export interface Community {
   description?: string | null;
   logoUrl?: string | null;
   city: string;
+  cityId?: UUID | null;
   country: string;
   ownerId: UUID;
-  createdAt: ISODate;
-  memberCount: number;
   rating: number;
+  createdAt: ISODate;
 }
 
 export interface Club {
@@ -35,9 +81,33 @@ export interface Club {
   slug: string;
   name: string;
   city: string;
+  cityId?: UUID | null;
   country: string;
   logoUrl?: string | null;
   ownerId: UUID;
+}
+
+export interface Team {
+  id: UUID;
+  slug: string;
+  name: string;
+  logoUrl?: string | null;
+  primaryCommunityId: UUID;
+  category: TeamCategory;
+  rating: number;
+  isActive: boolean;
+  createdAt: ISODate;
+  dissolvedAt?: ISODate | null;
+}
+
+export interface TeamMember {
+  id: UUID;
+  teamId: UUID;
+  profileId: UUID;
+  isActive: boolean;
+  joinedAt: ISODate;
+  leftAt?: ISODate | null;
+  invitedBy?: UUID | null;
 }
 
 export interface Tournament {
@@ -46,26 +116,50 @@ export interface Tournament {
   name: string;
   format: TournamentFormat;
   status: TournamentStatus;
-  gender: Gender;
+  category?: TeamCategory | null;
   clubId: UUID;
+  cityId?: UUID | null;
   startsAt: ISODate;
   endsAt: ISODate;
   registrationDeadline: ISODate;
-  pricePerPair: number;
-  maxPairs: number;
+  pricePerTeam: number;
+  maxTeams: number;
+  minTeams: number;
   rotationGames: number;
+  allowsPro: boolean;
   description?: string | null;
   bannerUrl?: string | null;
-  sponsorName?: string | null;
-  sponsorLogoUrl?: string | null;
 }
 
-export interface Pair {
+export interface TournamentRegistration {
   id: UUID;
   tournamentId: UUID;
-  communityId: UUID;
+  teamId: UUID;
   playerOneId: UUID;
   playerTwoId: UUID;
+  registeredBy: UUID;
+  status: RegistrationStatus;
+  paymentAmount: number;
+  paymentProviderRef?: string | null;
+  registeredAt: ISODate;
+  confirmedAt?: ISODate | null;
+}
+
+export interface Match {
+  id: UUID;
+  tournamentId: UUID;
+  roundNumber: number;
+  courtNumber: number;
+  registrationOneId: UUID;
+  registrationTwoId: UUID;
+  scoreOne?: number | null;
+  scoreTwo?: number | null;
+  status: MatchStatus;
+  scheduledAt?: ISODate | null;
+  startedAt?: ISODate | null;
+  endedAt?: ISODate | null;
+  confirmedByOne: boolean;
+  confirmedByTwo: boolean;
 }
 
 export interface AmericanoRound {
@@ -90,30 +184,38 @@ export interface PairSnapshot {
 }
 
 export type RankingPeriod = 'monthly' | 'quarterly' | 'semestral' | 'annual' | 'all_time';
+export type RankingScope = 'community' | 'city' | 'national';
+
+export interface TeamPointsEntry {
+  teamId: UUID;
+  tournamentId: UUID;
+  communityId: UUID;
+  category: TeamCategory;
+  position: number;
+  points: number;
+  awardedAt: ISODate;
+}
+
+export interface TeamRankingEntry {
+  rank: number;
+  teamId: UUID;
+  teamName: string;
+  teamLogoUrl?: string | null;
+  category: TeamCategory;
+  communityId: UUID;
+  communityName: string;
+  cityName?: string | null;
+  eloRating: number;
+  absolutePoints: number;
+  tournamentsPlayed: number;
+}
 
 export interface CommunityRankingEntry {
   rank: number;
   communityId: UUID;
   communityName: string;
-  communityLogoUrl?: string | null;
-  city: string;
-  points: number;
-  rating: number;
-  tournamentsPlayed: number;
-  tournamentsWon: number;
-  matchesWon: number;
-  matchesPlayed: number;
-}
-
-export interface PlayerRankingEntry {
-  rank: number;
-  playerId: UUID;
-  displayName: string;
-  avatarUrl?: string | null;
-  communityId?: UUID;
-  communityName?: string;
-  rating: number;
-  matchesPlayed: number;
-  matchesWon: number;
-  winRate: number;
+  cityName?: string | null;
+  communityPoints: number;
+  avgEloTop5: number;
+  activeTeams: number;
 }

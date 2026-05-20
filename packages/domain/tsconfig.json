@@ -1,4 +1,4 @@
 {
-  "extends": "@padel-pulse/tsconfig/node.json",
+  "extends": "@padelking/tsconfig/node.json",
   "include": ["src"]
 }

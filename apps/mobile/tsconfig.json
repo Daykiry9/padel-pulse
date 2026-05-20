@@ -1,5 +1,5 @@
 {
-  "extends": "@padel-pulse/tsconfig/react-native.json",
+  "extends": "@padelking/tsconfig/react-native.json",
   "compilerOptions": {
     "baseUrl": ".",
     "types": ["nativewind/types", "node"],

@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowRight, Crown, Flame, Trophy } from 'lucide-react-native';
 
-import { getPeriodRange } from '@padel-pulse/domain';
+import { getPeriodRange } from '@padelking/domain';
 
 const featuredCommunities = [
   { rank: 1, name: 'La Pala', city: 'Bogotá', pts: 2148, badge: '🏆' },
@@ -82,7 +82,7 @@ export default function HomeScreen() {
               <Text className="text-xs uppercase tracking-widest text-pulse">Próximo torneo</Text>
             </View>
             <Text className="font-display mt-3 text-2xl font-bold text-white">
-              Copa Padel Pulse{'\n'}Bogotá · Junio 2026
+              Copa PadelKing{'\n'}Bogotá · Junio 2026
             </Text>
             <Text className="mt-2 text-white/60">
               Sáb 14 · Club La Pala · Americano 16 parejas

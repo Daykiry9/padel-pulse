@@ -1,72 +1,90 @@
 /**
- * Padel Pulse — design tokens compartidos entre web (Tailwind v4) y mobile (NativeWind).
+ * PadelKing — design tokens compartidos entre web (Tailwind v4) y mobile (NativeWind).
  *
- * Filosofía visual:
- * - Court Teal: profundidad, profesionalismo (color de pista de pádel sintética).
- * - Pulse Magenta: energía, comunidad, gen-z friendly. Acento/CTAs.
- * - Lime Smash: secundario para datos positivos (rankings, wins).
- * - Dark surfaces: el dashboard de torneos lee como una consola en vivo.
+ * Dos universos de marca con paridad estructural:
+ * - PadelKing (masculino + mixto): negro + dorado real (corona del rey)
+ * - PadelQueens (femenino): negro + magenta premium (no rosa cliché)
+ *
+ * Surfaces oscuras: la plataforma es premium deportivo, no app pastel.
+ * Inspiración: Kings League + ATP/WTA broadcast graphics.
  */
+
+const ink = {
+  50: '#F1EFEA',
+  100: '#D6D4CD',
+  200: '#A8A6A0',
+  300: '#7B7976',
+  400: '#52514F',
+  500: '#3A3937',
+  600: '#26262A',
+  700: '#1B1D22',
+  800: '#15171B',
+  900: '#0F1115',
+  950: '#0A0A0A',
+} as const;
+
+const gold = {
+  50: '#FFF9E5',
+  100: '#FFEFB8',
+  200: '#FFE286',
+  300: '#FFD55A',
+  400: '#FFC53D',
+  500: '#FBB217',
+  600: '#D78F0A',
+  700: '#A86C07',
+  800: '#7C4F05',
+  900: '#523503',
+  950: '#2A1B01',
+} as const;
+
+const magenta = {
+  50: '#FDF2F8',
+  100: '#FCE7F3',
+  200: '#FBCFE8',
+  300: '#F9A8D4',
+  400: '#F472B6',
+  500: '#EC4899',
+  600: '#DB2777',
+  700: '#BE185D',
+  800: '#9D174D',
+  900: '#831843',
+  950: '#500724',
+} as const;
+
+const data = {
+  cyan: '#5EEAD4',
+  cyanDeep: '#0EA5A5',
+  cream: '#F1EFEA',
+  success: '#4ADE80',
+  warning: '#FB7185',
+  live: '#FB7185',
+} as const;
+
 export const tokens = {
+  brand: {
+    king: {
+      accent: gold[400],
+      accentMuted: gold[200],
+      accentDeep: gold[600],
+    },
+    queens: {
+      accent: magenta[500],
+      accentMuted: magenta[300],
+      accentDeep: magenta[700],
+    },
+  },
   color: {
-    courtTeal: {
-      50: '#eafdf8',
-      100: '#cef9ee',
-      200: '#9ef1dc',
-      300: '#5fe1c3',
-      400: '#2dcaa6',
-      500: '#13b18d',
-      600: '#0a8e73',
-      700: '#0a715c',
-      800: '#0c5a4b',
-      900: '#0b4a3f',
-      950: '#042a24',
-    },
-    pulseMagenta: {
-      50: '#fdf2f8',
-      100: '#fce7f3',
-      200: '#fbcfe8',
-      300: '#f9a8d4',
-      400: '#f472b6',
-      500: '#ec4899',
-      600: '#db2777',
-      700: '#be185d',
-      800: '#9d174d',
-      900: '#831843',
-      950: '#500724',
-    },
-    limeSmash: {
-      50: '#f7fee7',
-      100: '#ecfccb',
-      200: '#d9f99d',
-      300: '#bef264',
-      400: '#a3e635',
-      500: '#84cc16',
-      600: '#65a30d',
-      700: '#4d7c0f',
-      800: '#3f6212',
-      900: '#365314',
-      950: '#1a2e05',
-    },
-    ink: {
-      50: '#f6f7f9',
-      100: '#eceef2',
-      200: '#d5dae3',
-      300: '#b0b9c9',
-      400: '#8590a8',
-      500: '#67738d',
-      600: '#525c74',
-      700: '#444c5e',
-      800: '#3b414f',
-      900: '#343844',
-      950: '#0f1117',
-    },
+    ink,
+    gold,
+    magenta,
+    data,
   },
   radius: {
     sm: 6,
     md: 10,
     lg: 16,
     xl: 24,
+    '2xl': 32,
     full: 9999,
   },
   spacing: {
@@ -76,12 +94,14 @@ export const tokens = {
     lg: 24,
     xl: 32,
     '2xl': 48,
+    '3xl': 64,
   },
   font: {
-    display: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
-    body: '"Inter", system-ui, -apple-system, sans-serif',
+    display: '"Archivo Black", "Anton", "Bebas Neue", system-ui, sans-serif',
+    body: '"Manrope", "Inter", system-ui, -apple-system, sans-serif',
     mono: '"JetBrains Mono", ui-monospace, SFMono-Regular, monospace',
   },
 } as const;
 
 export type Tokens = typeof tokens;
+export type BrandKey = keyof typeof tokens.brand;

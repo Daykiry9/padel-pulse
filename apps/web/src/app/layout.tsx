@@ -1,17 +1,18 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Archivo_Black, JetBrains_Mono, Manrope } from 'next/font/google';
 
 import './globals.css';
 
-const inter = Inter({
+const archivoBlack = Archivo_Black({
   subsets: ['latin'],
-  variable: '--font-inter',
+  weight: '400',
+  variable: '--font-archivo-black',
   display: 'swap',
 });
 
-const spaceGrotesk = Space_Grotesk({
+const manrope = Manrope({
   subsets: ['latin'],
-  variable: '--font-space-grotesk',
+  variable: '--font-manrope',
   display: 'swap',
 });
 
@@ -23,46 +24,46 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Padel Pulse — Comunidades y torneos americanos de pádel en Colombia',
-    template: '%s · Padel Pulse',
+    default: 'PadelKing — comunidades, torneos y rankings del pádel colombiano',
+    template: '%s · PadelKing',
   },
   description:
-    'Crea tu parche, inscríbelo a torneos americanos, sube en el ranking de comunidades y lleva el pádel colombiano al siguiente nivel.',
-  metadataBase: new URL('https://padelpulse.co'),
+    'PadelKing & PadelQueens: la liga amateur del pádel colombiano. Crea tu equipo, juega torneos americanos y de eliminación, sube en el ranking por categoría.',
+  metadataBase: new URL('https://padelking.co'),
   keywords: [
     'pádel',
     'padel colombia',
-    'torneos americanos',
-    'comunidades pádel',
+    'padel king',
+    'padel queens',
+    'torneos pádel',
+    'liga pádel',
     'ranking pádel bogotá',
+    'comunidades pádel',
   ],
   openGraph: {
-    title: 'Padel Pulse — el pulso del pádel en Colombia',
+    title: 'PadelKing — la liga amateur del pádel colombiano',
     description:
-      'Crea tu parche, inscríbelo a torneos americanos y compite por el ranking nacional de comunidades.',
+      'Equipos, comunidades, clubes y rankings. PadelKing para masculino y mixto, PadelQueens para femenino. Inspiración Kings League, identidad propia.',
     type: 'website',
     locale: 'es_CO',
-    siteName: 'Padel Pulse',
+    siteName: 'PadelKing',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Padel Pulse',
-    description: 'El pulso del pádel colombiano.',
+    title: 'PadelKing',
+    description: 'La liga amateur del pádel colombiano.',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#0a715c' },
-    { media: '(prefers-color-scheme: dark)', color: '#042a24' },
-  ],
+  themeColor: '#0a0a0a',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${archivoBlack.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {children}
       </body>

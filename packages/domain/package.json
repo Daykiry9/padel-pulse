@@ -1,5 +1,5 @@
 {
-  "name": "@padel-pulse/domain",
+  "name": "@padelking/domain",
   "version": "0.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -10,7 +10,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "devDependencies": {
-    "@padel-pulse/tsconfig": "workspace:*",
+    "@padelking/tsconfig": "workspace:*",
     "typescript": "^5.6.3"
   }
 }

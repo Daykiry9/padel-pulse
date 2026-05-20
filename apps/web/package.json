@@ -11,9 +11,9 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
-    "@padel-pulse/domain": "workspace:*",
-    "@padel-pulse/supabase": "workspace:*",
-    "@padel-pulse/ui": "workspace:*",
+    "@padelking/domain": "workspace:*",
+    "@padelking/supabase": "workspace:*",
+    "@padelking/ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-dropdown-menu": "^2.1.4",
     "@radix-ui/react-label": "^2.1.1",
@@ -30,7 +30,7 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
-    "@padel-pulse/tsconfig": "workspace:*",
+    "@padelking/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.9.0",
     "@types/react": "19.0.0",

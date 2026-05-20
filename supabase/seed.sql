@@ -1,4 +1,4 @@
--- Padel Pulse — datos demo para desarrollo local
+-- PadelKing — datos demo para desarrollo local
 -- NOTA: ejecutar después de crear usuarios de prueba en auth.users.
 -- Para fines de seed local, insertamos comunidades sin owner real;
 -- en prod los crea el flow de signup.

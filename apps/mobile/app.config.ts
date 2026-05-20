@@ -1,9 +1,9 @@
 import type { ExpoConfig } from 'expo/config';
 
 const config: ExpoConfig = {
-  name: 'Padel Pulse',
-  slug: 'padel-pulse',
-  scheme: 'padelpulse',
+  name: 'PadelKing',
+  slug: 'padelking',
+  scheme: 'padelking',
   version: '0.1.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
@@ -16,10 +16,10 @@ const config: ExpoConfig = {
   },
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'co.padelpulse.app',
+    bundleIdentifier: 'co.padelking.app',
   },
   android: {
-    package: 'co.padelpulse.app',
+    package: 'co.padelking.app',
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#042a24',

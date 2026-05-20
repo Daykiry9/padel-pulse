@@ -27,13 +27,13 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@padel-pulse/domain':
+      '@padelking/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@padel-pulse/supabase':
+      '@padelking/supabase':
         specifier: workspace:*
         version: link:../../packages/supabase
-      '@padel-pulse/ui':
+      '@padelking/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@react-native-async-storage/async-storage':
@@ -109,7 +109,7 @@ importers:
       '@babel/core':
         specifier: ^7.25.2
         version: 7.29.0
-      '@padel-pulse/tsconfig':
+      '@padelking/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
@@ -124,13 +124,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@padel-pulse/domain':
+      '@padelking/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@padel-pulse/supabase':
+      '@padelking/supabase':
         specifier: workspace:*
         version: link:../../packages/supabase
-      '@padel-pulse/ui':
+      '@padelking/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@radix-ui/react-dialog':
@@ -176,7 +176,7 @@ importers:
         specifier: ^2.5.4
         version: 2.6.1
     devDependencies:
-      '@padel-pulse/tsconfig':
+      '@padelking/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@tailwindcss/postcss':
@@ -212,7 +212,7 @@ importers:
 
   packages/domain:
     devDependencies:
-      '@padel-pulse/tsconfig':
+      '@padelking/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       typescript:
@@ -228,7 +228,7 @@ importers:
         specifier: ^2.46.1
         version: 2.106.1
     devDependencies:
-      '@padel-pulse/tsconfig':
+      '@padelking/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       typescript:
@@ -239,7 +239,7 @@ importers:
 
   packages/ui:
     devDependencies:
-      '@padel-pulse/tsconfig':
+      '@padelking/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       typescript:
