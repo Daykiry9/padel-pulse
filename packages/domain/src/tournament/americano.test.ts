@@ -1,21 +1,20 @@
 /**
- * Tests manuales del generador americano.
- * Cuando agreguemos vitest, mover a `.spec.ts`.
+ * Suite manual del generador americano.
+ * Cuando agreguemos vitest, mover a `.spec.ts` con `expect`.
  *
- * Verificación: con 8 jugadores deben generarse 7 rondas y cada jugador
- * debe jugar al menos 1 partido por ronda.
+ * Llamar manualmente desde un script: `node --import=tsx -e "import('./americano.test.ts').then(m => m.run())"`
  */
 import { generateAmericano } from './americano';
 
-function assert(cond: boolean, msg: string): asserts cond {
-  if (!cond) throw new Error(`Assert failed: ${msg}`);
+function assertEq(actual: number, expected: number, label: string) {
+  if (actual !== expected) throw new Error(`${label}: esperaba ${expected}, obtuvo ${actual}`);
 }
 
-function run() {
+export function run() {
   const players = Array.from({ length: 8 }, (_, i) => `p${i + 1}`);
   const rounds = generateAmericano({ playerIds: players, courts: 2 });
 
-  assert(rounds.length === 7, `esperaba 7 rondas, obtuvo ${rounds.length}`);
+  assertEq(rounds.length, 7, 'cantidad de rondas');
 
   for (const r of rounds) {
     const ids = new Set<string>();
@@ -25,11 +24,8 @@ function run() {
       ids.add(m.pairTwo.playerOneId);
       ids.add(m.pairTwo.playerTwoId);
     }
-    assert(ids.size === 8, `ronda ${r.roundNumber} no incluye los 8 jugadores`);
+    assertEq(ids.size, 8, `ronda ${r.roundNumber} con todos los jugadores`);
   }
 
-  // eslint-disable-next-line no-console
-  console.log(`OK ${rounds.length} rondas generadas, todas las parejas distintas.`);
+  return rounds;
 }
-
-if (require.main === module) run();

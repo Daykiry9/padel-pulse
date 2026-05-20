@@ -10,7 +10,8 @@ export function createServerClient(url: string, anonKey: string, cookies: Cookie
   return createSsrServerClient<Database>(url, anonKey, {
     cookies: {
       getAll: () => cookies.getAll(),
-      setAll: (toSet) => cookies.setAll(toSet),
+      setAll: (toSet: { name: string; value: string; options?: Record<string, unknown> }[]) =>
+        cookies.setAll(toSet),
     },
   });
 }
