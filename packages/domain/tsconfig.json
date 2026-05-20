@@ -1,0 +1,4 @@
+{
+  "extends": "@padel-pulse/tsconfig/node.json",
+  "include": ["src"]
+}

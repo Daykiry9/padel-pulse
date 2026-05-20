@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Expo
+.expo/
+.expo-shared/
+expo-env.d.ts
+ios/Pods/
+
+# Misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local env files
+.env
+.env*.local
+.env.development
+.env.production
+!.env.example
+
+# Turbo
+.turbo/
+
+# IDEs
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# OS
+*.swp
+*.swo
+
+# Supabase
+.branches/
+.temp/
+supabase/.branches
+supabase/.temp
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

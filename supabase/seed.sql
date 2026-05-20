@@ -1,0 +1,12 @@
+-- Padel Pulse — datos demo para desarrollo local
+-- NOTA: ejecutar después de crear usuarios de prueba en auth.users.
+-- Para fines de seed local, insertamos comunidades sin owner real;
+-- en prod los crea el flow de signup.
+
+-- Comunidades demo (necesitan owner_id de un profile real)
+-- insert into public.communities (slug, name, city, owner_id, rating) values
+--   ('la-pala', 'La Pala', 'Bogotá', '<profile-uuid>', 1850),
+--   ('spimpad', 'Spimpad', 'Bogotá', '<profile-uuid>', 1820),
+--   ('valkiria', 'Valkiria', 'Bogotá', '<profile-uuid>', 1760),
+--   ('globo-crew', 'Globo Crew', 'Bogotá', '<profile-uuid>', 1690),
+--   ('el-parche', 'El Parche', 'Medellín', '<profile-uuid>', 1650);
