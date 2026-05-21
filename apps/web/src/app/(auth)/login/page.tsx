@@ -1,9 +1,8 @@
 import Link from 'next/link';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
-import { Form } from '@/components/forms/form';
+import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { signIn } from '@/lib/auth-actions';
 
 export default async function LoginPage({
@@ -26,37 +25,34 @@ export default async function LoginPage({
         </p>
       </div>
 
-      <Form action={signIn}>
-        {({ isPending }) => (
-          <>
-            {next && <input type="hidden" name="next" value={next} />}
-            <FormField label="Email" htmlFor="email">
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                placeholder="tu@email.com"
-              />
-            </FormField>
+      <ActionForm action={signIn}>
+        {next && <input type="hidden" name="next" value={next} />}
 
-            <FormField label="Contraseña" htmlFor="password">
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-              />
-            </FormField>
+        <FormField label="Email" htmlFor="email">
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="tu@email.com"
+          />
+        </FormField>
 
-            <Button type="submit" variant="crown" size="lg" disabled={isPending} className="w-full">
-              {isPending ? 'Ingresando…' : 'Ingresar'}
-            </Button>
-          </>
-        )}
-      </Form>
+        <FormField label="Contraseña" htmlFor="password">
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </FormField>
+
+        <SubmitButton variant="crown" size="lg" className="w-full" pendingLabel="Ingresando…">
+          Ingresar
+        </SubmitButton>
+      </ActionForm>
     </div>
   );
 }

@@ -2,21 +2,23 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type FormEvent, type ReactNode } from 'react';
+import { useFormStatus } from 'react-dom';
 
 import { cn } from '@/lib/utils';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import type { ActionResult } from '@/lib/auth-actions';
 
 interface FormProps {
   action: (formData: FormData) => Promise<ActionResult>;
   className?: string;
-  children: ReactNode | ((state: { isPending: boolean; error?: string }) => ReactNode);
+  children: ReactNode;
   onSuccess?: () => void;
 }
 
 export function Form({ action, className, children, onSuccess }: FormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | undefined>();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,8 +38,25 @@ export function Form({ action, className, children, onSuccess }: FormProps) {
 
   return (
     <form onSubmit={handleSubmit} className={cn('space-y-4', className)}>
-      {typeof children === 'function' ? children({ isPending, error }) : children}
+      {children}
       {error && <p className="text-destructive text-sm">{error}</p>}
     </form>
+  );
+}
+
+interface SubmitProps extends Omit<ButtonProps, 'type'> {
+  pendingLabel?: string;
+}
+
+/**
+ * Botón submit que muestra estado pending automáticamente.
+ * Usar dentro de <Form>.
+ */
+export function SubmitButton({ children, pendingLabel, disabled, ...props }: SubmitProps) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={disabled || pending} {...props}>
+      {pending ? (pendingLabel ?? 'Procesando…') : children}
+    </Button>
   );
 }

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
-import { Form } from '@/components/forms/form';
+import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { Card } from '@/components/ui/card';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { createTeam } from '@/lib/team-actions';
@@ -15,12 +15,14 @@ export default async function NewTeamPage() {
   if (!user) redirect('/login');
 
   const supabase = await getSupabaseServerClient();
-  const { data: communities } = await supabase
+  const communitiesRes = await supabase
     .from('community_members')
     .select('community_id, communities(name)')
     .eq('profile_id', user.id);
 
-  const myCommunities = (communities ?? []).filter((c) => c.communities);
+  type CommunityMembership = { community_id: string; communities: { name: string } | null };
+  const rows = (communitiesRes.data ?? []) as unknown as CommunityMembership[];
+  const myCommunities = rows.filter((c) => c.communities);
 
   if (myCommunities.length === 0) {
     return (
@@ -47,36 +49,32 @@ export default async function NewTeamPage() {
         </p>
       </div>
 
-      <Form action={createTeam}>
-        {({ isPending }) => (
-          <>
-            <FormField label="Nombre del equipo" hint="Ej: Mejía / Rodríguez">
-              <Input name="name" required minLength={3} placeholder="Mi Equipo" />
-            </FormField>
+      <ActionForm action={createTeam}>
+        <FormField label="Nombre del equipo" hint="Ej: Mejía / Rodríguez">
+          <Input name="name" required minLength={3} placeholder="Mi Equipo" />
+        </FormField>
 
-            <FormField label="Comunidad principal">
-              <Select name="community_id" required>
-                {myCommunities.map((c) => (
-                  <option key={c.community_id} value={c.community_id}>
-                    {c.communities!.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+        <FormField label="Comunidad principal">
+          <Select name="community_id" required>
+            {myCommunities.map((c) => (
+              <option key={c.community_id} value={c.community_id}>
+                {c.communities!.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
-            <FormField
-              label="Compañero"
-              hint="Nombre exacto con el que tu compañero se registró en PadelKing"
-            >
-              <Input name="partner_email" required placeholder="Nombre del compañero" />
-            </FormField>
+        <FormField
+          label="Compañero"
+          hint="Nombre exacto con el que tu compañero se registró en PadelKing"
+        >
+          <Input name="partner_email" required placeholder="Nombre del compañero" />
+        </FormField>
 
-            <Button type="submit" variant="crown" size="lg" disabled={isPending}>
-              {isPending ? 'Creando…' : 'Crear equipo'}
-            </Button>
-          </>
-        )}
-      </Form>
+        <SubmitButton variant="crown" size="lg" pendingLabel="Creando…">
+          Crear equipo
+        </SubmitButton>
+      </ActionForm>
     </div>
   );
 }

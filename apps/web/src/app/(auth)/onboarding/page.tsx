@@ -1,12 +1,11 @@
 import { redirect } from 'next/navigation';
 
-import { ALL_CATEGORIES, KING_CATEGORIES, QUEENS_CATEGORIES } from '@padelking/domain';
+import { KING_CATEGORIES, QUEENS_CATEGORIES } from '@padelking/domain';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
-import { Form } from '@/components/forms/form';
+import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { updateProfile } from '@/lib/auth-actions';
 
@@ -32,9 +31,9 @@ export default async function OnboardingPage() {
   if (!user) redirect('/login');
 
   const supabase = await getSupabaseServerClient();
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  const profileRes = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  const profile = profileRes.data as { skill_category: string | null } | null;
 
-  // Si ya tiene categoría, saltar al dashboard
   if (profile?.skill_category) {
     redirect('/app');
   }
@@ -49,53 +48,46 @@ export default async function OnboardingPage() {
         </p>
       </div>
 
-      <Form action={updateProfile}>
-        {({ isPending }) => (
-          <>
-            <FormField label="Género">
-              <Select name="gender" defaultValue="male" required>
-                <option value="male">Masculino</option>
-                <option value="female">Femenino</option>
-                <option value="nonbinary">No-binario</option>
-                <option value="prefer_not_to_say">Prefiero no decir</option>
-              </Select>
-            </FormField>
+      <ActionForm action={updateProfile}>
+        <FormField label="Género">
+          <Select name="gender" defaultValue="male" required>
+            <option value="male">Masculino</option>
+            <option value="female">Femenino</option>
+            <option value="nonbinary">No-binario</option>
+            <option value="prefer_not_to_say">Prefiero no decir</option>
+          </Select>
+        </FormField>
 
-            <FormField
-              label="Tu categoría actual"
-              hint="Si no sabes, elige una baja conservadora. El organizador puede ajustarla."
-            >
-              <Select name="skill_category" defaultValue="quinta" required>
-                <optgroup label="Masculino">
-                  {KING_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {CATEGORY_LABELS[c]}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Femenino (Queens)">
-                  {QUEENS_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {CATEGORY_LABELS[c]}
-                    </option>
-                  ))}
-                </optgroup>
-              </Select>
-            </FormField>
+        <FormField
+          label="Tu categoría actual"
+          hint="Si no sabes, elige una baja conservadora. El organizador puede ajustarla."
+        >
+          <Select name="skill_category" defaultValue="quinta" required>
+            <optgroup label="Masculino">
+              {KING_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Femenino (Queens)">
+              {QUEENS_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        </FormField>
 
-            <FormField label="Ciudad">
-              <Input name="city" defaultValue="Bogotá" required />
-            </FormField>
+        <FormField label="Ciudad">
+          <Input name="city" defaultValue="Bogotá" required />
+        </FormField>
 
-            <Button type="submit" variant="crown" size="lg" disabled={isPending} className="w-full">
-              {isPending ? 'Guardando…' : 'Continuar al dashboard'}
-            </Button>
-          </>
-        )}
-      </Form>
+        <SubmitButton variant="crown" size="lg" className="w-full" pendingLabel="Guardando…">
+          Continuar al dashboard
+        </SubmitButton>
+      </ActionForm>
     </div>
   );
 }
-
-// Suppress unused warning
-void ALL_CATEGORIES;

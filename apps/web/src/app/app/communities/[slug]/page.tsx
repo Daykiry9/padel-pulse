@@ -5,7 +5,7 @@ import { Crown, Globe, Plus, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form } from '@/components/forms/form';
+import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { joinCommunity } from '@/lib/community-actions';
 
@@ -81,16 +81,12 @@ export default async function CommunityDetailPage({
           </div>
         </div>
         {!isMember && (
-          <Form action={joinCommunity}>
-            {({ isPending }) => (
-              <>
-                <input type="hidden" name="community_id" value={community.id} />
-                <Button type="submit" variant="crown" disabled={isPending}>
-                  {isPending ? 'Uniéndome…' : 'Unirme'}
-                </Button>
-              </>
-            )}
-          </Form>
+          <ActionForm action={joinCommunity}>
+            <input type="hidden" name="community_id" value={community.id} />
+            <SubmitButton variant="crown" pendingLabel="Uniéndome…">
+              Unirme
+            </SubmitButton>
+          </ActionForm>
         )}
         {isMember && <Badge variant="success">Eres miembro</Badge>}
       </header>
