@@ -254,46 +254,66 @@ export default async function TournamentDetailPage({
                 {myProfile?.eligibility.ok ? (
                   <RegisterButton
                     tournamentId={tournament.id}
-                    asPlayer
+                    mode="individual"
                     label="Inscribirme como jugador"
                   />
                 ) : (
                   <p className="text-destructive text-sm">{myProfile?.eligibility.reason}</p>
                 )}
               </div>
-            ) : myTeams.length === 0 ? (
-              <div>
-                <p className="text-muted-foreground text-sm">
-                  Necesitas un equipo activo para inscribirte.{' '}
-                  <Link href="/app/teams/new" className="text-crown underline">
-                    Crea uno
-                  </Link>
-                  .
-                </p>
-              </div>
             ) : (
-              <div className="space-y-3">
-                {myTeams.map((t) => (
-                  <div
-                    key={t.id}
-                    className="border-border/40 flex items-center justify-between rounded-lg border bg-muted/30 p-4"
-                  >
-                    <div>
-                      <div className="font-display text-sm">{t.name}</div>
-                      <div className="text-muted-foreground text-xs uppercase tracking-widest">
-                        {t.category ? CATEGORY_LABELS[t.category] : 'Mixto'}
-                      </div>
-                      {!t.eligibility.ok && (
-                        <div className="text-destructive mt-2 text-xs">{t.eligibility.reason}</div>
-                      )}
+              <div className="space-y-4">
+                <p className="text-sm">
+                  Puedes inscribirte con un equipo registrado, o con un compañero ad-hoc solo
+                  para este torneo (lo más común en pádel amateur).
+                </p>
+
+                {/* Opción A: equipos registrados elegibles */}
+                {myTeams.filter((t) => t.eligibility.ok).length > 0 && (
+                  <div className="border-border/40 space-y-3 rounded-lg border bg-muted/30 p-4">
+                    <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                      Opción A — con equipo registrado
                     </div>
-                    {t.eligibility.ok ? (
-                      <RegisterButton tournamentId={tournament.id} teamId={t.id} />
-                    ) : (
-                      <Badge variant="muted">No elegible</Badge>
-                    )}
+                    {myTeams.map((t) => (
+                      <div key={t.id} className="flex items-center justify-between">
+                        <div>
+                          <div className="font-display text-sm">{t.name}</div>
+                          <div className="text-muted-foreground text-xs uppercase tracking-widest">
+                            {t.category ? CATEGORY_LABELS[t.category] : 'Mixto'}
+                          </div>
+                          {!t.eligibility.ok && (
+                            <div className="text-destructive mt-1 text-xs">
+                              {t.eligibility.reason}
+                            </div>
+                          )}
+                        </div>
+                        {!t.eligibility.ok && <Badge variant="muted">No elegible</Badge>}
+                      </div>
+                    ))}
+                    <RegisterButton
+                      tournamentId={tournament.id}
+                      mode="team"
+                      teams={myTeams
+                        .filter((t) => t.eligibility.ok)
+                        .map((t) => ({ id: t.id, name: t.name }))}
+                    />
                   </div>
-                ))}
+                )}
+
+                {/* Opción B: ad-hoc partner (siempre disponible para Tier 1) */}
+                <div className="border-border/40 space-y-3 rounded-lg border bg-muted/30 p-4">
+                  <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                    {myTeams.filter((t) => t.eligibility.ok).length > 0
+                      ? 'Opción B — con compañero ad-hoc'
+                      : 'Inscríbete con un compañero'}
+                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    Tu categoría:{' '}
+                    <strong className="text-foreground">{myProfile?.skillCategory ?? '—'}</strong>
+                    . La elegibilidad se valida cuando confirmes el compañero.
+                  </p>
+                  <RegisterButton tournamentId={tournament.id} mode="adhoc" />
+                </div>
               </div>
             )}
           </Card>

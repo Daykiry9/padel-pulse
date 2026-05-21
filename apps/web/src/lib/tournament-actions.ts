@@ -106,26 +106,25 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
   if (!user) return { ok: false, error: 'No autenticado' };
 
   const tournamentId = String(formData.get('tournament_id') ?? '');
-  const teamId = String(formData.get('team_id') ?? '') || null;
-  const asPlayer = formData.get('as_player') === '1';
+  const modality = String(formData.get('modality') ?? '') as 'team' | 'adhoc' | 'individual';
 
   if (!tournamentId) return { ok: false, error: 'Torneo inválido' };
 
   const supabase = await getSupabaseServerClient();
 
-  if (asPlayer) {
+  if (modality === 'individual') {
     const { error } = await supabase.from('tournament_registrations').insert({
       tournament_id: tournamentId,
       player_id: user.id,
       registered_by: user.id,
-      status: 'confirmed', // sin pagos en MVP
+      status: 'confirmed',
       payment_amount: 0,
     } as never);
     if (error) return { ok: false, error: error.message };
-  } else {
+  } else if (modality === 'team') {
+    const teamId = String(formData.get('team_id') ?? '');
     if (!teamId) return { ok: false, error: 'Selecciona tu equipo' };
 
-    // Obtener miembros activos del team
     const { data: members } = await supabase
       .from('team_members')
       .select('profile_id')
@@ -148,8 +147,38 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
       payment_amount: 0,
     } as never);
     if (error) return { ok: false, error: error.message };
+  } else if (modality === 'adhoc') {
+    const partnerSearch = String(formData.get('partner_search') ?? '').trim();
+    if (!partnerSearch) return { ok: false, error: 'Indica con quién te inscribes' };
+
+    // Buscar partner por display_name (MVP, idealmente por email)
+    const partnerRes = await supabase
+      .from('profiles')
+      .select('id, display_name, skill_category')
+      .ilike('display_name', `%${partnerSearch}%`)
+      .neq('id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    const partner = partnerRes.data as { id: string; display_name: string } | null;
+    if (!partner) {
+      return { ok: false, error: `No encontré a "${partnerSearch}". Asegúrate que esté registrado.` };
+    }
+
+    const { error } = await supabase.from('tournament_registrations').insert({
+      tournament_id: tournamentId,
+      team_id: null,
+      player_one_id: user.id,
+      player_two_id: partner.id,
+      registered_by: user.id,
+      status: 'confirmed',
+      payment_amount: 0,
+    } as never);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    return { ok: false, error: 'Modalidad de inscripción inválida' };
   }
 
-  revalidatePath(`/tournaments`);
+  revalidatePath('/tournaments');
   return { ok: true };
 }

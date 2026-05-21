@@ -130,6 +130,20 @@ export type Database = {
             foreignKeyName: "category_change_suggestions_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "category_change_suggestions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "category_change_suggestions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -138,6 +152,20 @@ export type Database = {
             columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "category_change_suggestions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "category_change_suggestions_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
             referencedColumns: ["profile_id"]
           },
           {
@@ -268,6 +296,20 @@ export type Database = {
             foreignKeyName: "clubs_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "clubs_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "clubs_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -332,6 +374,20 @@ export type Database = {
             foreignKeyName: "communities_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "communities_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "communities_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -369,6 +425,20 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
             referencedColumns: ["profile_id"]
           },
           {
@@ -502,6 +572,20 @@ export type Database = {
             foreignKeyName: "notifications_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -554,6 +638,20 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "player_points_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "player_points_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
             referencedColumns: ["profile_id"]
           },
           {
@@ -687,6 +785,20 @@ export type Database = {
             foreignKeyName: "team_members_invited_by_fkey"
             columns: ["invited_by"]
             isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "team_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "team_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -695,6 +807,20 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "team_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "team_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
             referencedColumns: ["profile_id"]
           },
           {
@@ -901,6 +1027,20 @@ export type Database = {
             foreignKeyName: "tournament_registrations_player_id_fkey"
             columns: ["player_id"]
             isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -915,6 +1055,20 @@ export type Database = {
             foreignKeyName: "tournament_registrations_player_one_id_fkey"
             columns: ["player_one_id"]
             isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_player_one_id_fkey"
+            columns: ["player_one_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_player_one_id_fkey"
+            columns: ["player_one_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -923,6 +1077,20 @@ export type Database = {
             columns: ["player_two_id"]
             isOneToOne: false
             referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_player_two_id_fkey"
+            columns: ["player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_player_two_id_fkey"
+            columns: ["player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
             referencedColumns: ["profile_id"]
           },
           {
@@ -937,6 +1105,20 @@ export type Database = {
             columns: ["registered_by"]
             isOneToOne: false
             referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_registered_by_fkey"
+            columns: ["registered_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_registered_by_fkey"
+            columns: ["registered_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
             referencedColumns: ["profile_id"]
           },
           {
@@ -1147,6 +1329,34 @@ export type Database = {
           gender: Database["public"]["Enums"]["gender_kind"] | null
           profile_id: string | null
           tournaments_played_12mo: number | null
+        }
+        Relationships: []
+      }
+      player_ranking_consolidated: {
+        Row: {
+          avatar_url: string | null
+          city: string | null
+          display_name: string | null
+          gender: Database["public"]["Enums"]["gender_kind"] | null
+          profile_id: string | null
+          raw_tier1_points: number | null
+          raw_tier2_points: number | null
+          skill_category: Database["public"]["Enums"]["team_category"] | null
+          total_points: number | null
+          tournaments_played: number | null
+        }
+        Relationships: []
+      }
+      player_ranking_official: {
+        Row: {
+          avatar_url: string | null
+          city: string | null
+          display_name: string | null
+          gender: Database["public"]["Enums"]["gender_kind"] | null
+          official_points: number | null
+          profile_id: string | null
+          skill_category: Database["public"]["Enums"]["team_category"] | null
+          tier1_tournaments: number | null
         }
         Relationships: []
       }
