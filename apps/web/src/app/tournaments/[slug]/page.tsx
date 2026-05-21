@@ -1,0 +1,351 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ArrowLeft, Calendar, Crown, MapPin, Trophy, Users } from 'lucide-react';
+
+import { checkEligibility } from '@padelking/domain';
+import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { KingLogo } from '@/components/marketing/king-logo';
+import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
+import { RegisterButton } from './register-button';
+
+const CATEGORY_LABELS: Record<string, string> = {
+  libre: 'Libre',
+  primera: '1ra',
+  segunda: '2da',
+  tercera: '3ra',
+  cuarta: '4ta',
+  quinta: '5ta',
+  sexta: '6ta',
+  septima: '7ma',
+  queens_libre: 'Queens Libre',
+  queens_a: 'Queens A',
+  queens_b: 'Queens B',
+  queens_c: 'Queens C',
+  queens_d: 'Queens D',
+  queens_e: 'Queens E',
+};
+
+export default async function TournamentDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const supabase = await getSupabaseServerClient();
+
+  type TournamentRow = {
+    id: string;
+    slug: string;
+    name: string;
+    format: string;
+    status: string;
+    tier: string;
+    starts_at: string;
+    ends_at: string;
+    category_kind: string;
+    category: TeamCategory | null;
+    min_sum: number | null;
+    max_player_category_value: number | null;
+    competition_unit: string;
+    pairing_mode: string | null;
+    max_teams: number;
+    price_per_team: number;
+    description: string | null;
+  };
+
+  const tournamentRes = await supabase
+    .from('tournaments')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  const tournament = tournamentRes.data as unknown as TournamentRow | null;
+  if (!tournament) notFound();
+
+  const user = await getSession();
+  let myTeams: { id: string; name: string; category: TeamCategory | null; eligibility: { ok: boolean; reason?: string } }[] = [];
+  let myProfile: { skillCategory: TeamCategory | null; gender: Gender | null; eligibility: { ok: boolean; reason?: string } } | null = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('skill_category, gender')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.skill_category) {
+      // Eligibility individual (para Tier 2 random)
+      const playerOne = {
+        skillCategory: profile.skill_category as TeamCategory,
+        gender: profile.gender as Gender | null,
+      };
+      const indResult = checkEligibility({
+        tournament: {
+          categoryKind: tournament.category_kind as CategoryKind,
+          category: tournament.category as TeamCategory | null,
+          minSum: tournament.min_sum,
+          maxPlayerCategoryValue: tournament.max_player_category_value,
+        },
+        playerOne,
+      });
+      myProfile = {
+        skillCategory: profile.skill_category as TeamCategory | null,
+        gender: profile.gender as Gender | null,
+        eligibility: indResult,
+      };
+    }
+
+    type MyTeamMembership = {
+      team_id: string;
+      teams: { id: string; name: string; category: TeamCategory | null } | null;
+    };
+    type PartnerProfile = { skill_category: TeamCategory | null; gender: Gender | null };
+    type MemberWithProfile = { profile_id: string; profiles: PartnerProfile | null };
+
+    const memsRes = await supabase
+      .from('team_members')
+      .select('team_id, teams(id, name, category)')
+      .eq('profile_id', user.id)
+      .eq('is_active', true);
+    const myMems = (memsRes.data ?? []) as unknown as MyTeamMembership[];
+
+    for (const m of myMems) {
+      if (!m.teams) continue;
+      const membersRes = await supabase
+        .from('team_members')
+        .select('profile_id, profiles:profile_id(skill_category, gender)')
+        .eq('team_id', m.team_id)
+        .eq('is_active', true)
+        .limit(2);
+      const members = (membersRes.data ?? []) as unknown as MemberWithProfile[];
+
+      const profiles = members.map((mm) => mm.profiles).filter(Boolean) as PartnerProfile[];
+      if (profiles.length !== 2) continue;
+      const p1 = profiles[0]!;
+      const p2 = profiles[1]!;
+      if (!p1.skill_category || !p2.skill_category) continue;
+
+      const result = checkEligibility({
+        tournament: {
+          categoryKind: tournament.category_kind as CategoryKind,
+          category: tournament.category as TeamCategory | null,
+          minSum: tournament.min_sum,
+          maxPlayerCategoryValue: tournament.max_player_category_value,
+        },
+        playerOne: { skillCategory: p1.skill_category as TeamCategory, gender: p1.gender as Gender | null },
+        playerTwo: { skillCategory: p2.skill_category as TeamCategory, gender: p2.gender as Gender | null },
+      });
+
+      myTeams.push({
+        id: m.teams.id,
+        name: m.teams.name,
+        category: m.teams.category as TeamCategory | null,
+        eligibility: result,
+      });
+    }
+  }
+
+  type RegistrationRow = {
+    id: string;
+    team_id: string | null;
+    player_id: string | null;
+    teams: { name: string } | null;
+  };
+
+  const regsRes = await supabase
+    .from('tournament_registrations')
+    .select('id, team_id, player_id, teams(name)')
+    .eq('tournament_id', tournament.id);
+  const registrations = (regsRes.data ?? []) as unknown as RegistrationRow[];
+
+  const isIndividual = tournament.competition_unit === 'player';
+
+  return (
+    <div className="bg-background min-h-screen">
+      <header className="border-border/40 bg-background/60 sticky top-0 z-40 border-b backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <Link href="/" className="flex items-center gap-2">
+            <KingLogo />
+            <span className="font-display text-base tracking-tight">
+              PADEL<span className="text-crown">KING</span>
+            </span>
+          </Link>
+          <Link href="/tournaments" className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest">
+            <ArrowLeft className="inline size-3 mr-1" />
+            Volver
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-12">
+        <div className="space-y-8">
+          <div>
+            <div className="flex items-center gap-2">
+              <Badge variant={tournament.tier === 'competitivo' ? 'crown' : 'data'}>
+                {tournament.format.replace('_', ' ')}
+              </Badge>
+              <Badge variant={tournament.status === 'open' ? 'success' : 'muted'}>{tournament.status}</Badge>
+            </div>
+            <h1 className="font-display mt-4 text-5xl tracking-tight md:text-7xl">
+              {tournament.name.toUpperCase()}
+            </h1>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <InfoCard
+              icon={Calendar}
+              label="Fecha"
+              value={new Date(tournament.starts_at).toLocaleString('es-CO', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            />
+            <InfoCard
+              icon={Crown}
+              label="Categoría"
+              value={
+                tournament.category_kind === 'suma' ||
+                tournament.category_kind === 'mixto_suma' ||
+                tournament.category_kind === 'queens_suma'
+                  ? `Suma ≥ ${tournament.min_sum}${tournament.max_player_category_value ? ` (tope val ${tournament.max_player_category_value})` : ''}`
+                  : tournament.category
+                    ? (CATEGORY_LABELS[tournament.category] ?? tournament.category)
+                    : 'Casual'
+              }
+            />
+            <InfoCard
+              icon={Users}
+              label="Inscritos"
+              value={`${registrations?.length ?? 0} / ${tournament.max_teams} ${isIndividual ? 'jugadores' : 'equipos'}`}
+            />
+          </div>
+
+          {tournament.description && (
+            <Card className="p-6">
+              <p className="text-foreground/80 whitespace-pre-wrap text-sm">
+                {tournament.description}
+              </p>
+            </Card>
+          )}
+
+          {/* Inscripción */}
+          <Card className="p-6">
+            <h2 className="font-display mb-4 text-2xl tracking-tight">INSCRIPCIÓN</h2>
+            {!user ? (
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground text-sm">Inicia sesión para inscribirte.</p>
+                <Button variant="crown" asChild>
+                  <Link href={`/login?next=/tournaments/${tournament.slug}`}>Ingresar</Link>
+                </Button>
+              </div>
+            ) : isIndividual ? (
+              <div className="space-y-3">
+                <p className="text-sm">
+                  Este torneo es individual. Tu categoría:{' '}
+                  <strong>{myProfile?.skillCategory ?? '—'}</strong>
+                </p>
+                {myProfile?.eligibility.ok ? (
+                  <RegisterButton
+                    tournamentId={tournament.id}
+                    asPlayer
+                    label="Inscribirme como jugador"
+                  />
+                ) : (
+                  <p className="text-destructive text-sm">{myProfile?.eligibility.reason}</p>
+                )}
+              </div>
+            ) : myTeams.length === 0 ? (
+              <div>
+                <p className="text-muted-foreground text-sm">
+                  Necesitas un equipo activo para inscribirte.{' '}
+                  <Link href="/app/teams/new" className="text-crown underline">
+                    Crea uno
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myTeams.map((t) => (
+                  <div
+                    key={t.id}
+                    className="border-border/40 flex items-center justify-between rounded-lg border bg-muted/30 p-4"
+                  >
+                    <div>
+                      <div className="font-display text-sm">{t.name}</div>
+                      <div className="text-muted-foreground text-xs uppercase tracking-widest">
+                        {t.category ? CATEGORY_LABELS[t.category] : 'Mixto'}
+                      </div>
+                      {!t.eligibility.ok && (
+                        <div className="text-destructive mt-2 text-xs">{t.eligibility.reason}</div>
+                      )}
+                    </div>
+                    {t.eligibility.ok ? (
+                      <RegisterButton tournamentId={tournament.id} teamId={t.id} />
+                    ) : (
+                      <Badge variant="muted">No elegible</Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Inscritos */}
+          <div>
+            <h2 className="font-display mb-3 text-2xl tracking-tight">INSCRITOS</h2>
+            {(registrations ?? []).length === 0 ? (
+              <Card className="p-6 text-center text-sm text-muted-foreground">
+                Aún no hay inscripciones. Sé el primero.
+              </Card>
+            ) : (
+              <Card className="divide-border/30 divide-y">
+                {registrations!.map((r) => (
+                  <div key={r.id} className="px-4 py-3 text-sm">
+                    {r.teams?.name ?? 'Jugador individual'}
+                  </div>
+                ))}
+              </Card>
+            )}
+          </div>
+
+          {tournament.format.startsWith('americano') && tournament.status === 'in_progress' && (
+            <Button variant="crown" size="lg" asChild>
+              <Link href={`/tournaments/${tournament.slug}/live`}>
+                <Trophy className="size-4" />
+                Ver torneo en vivo
+              </Link>
+            </Button>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function InfoCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+        <Icon className="size-3.5" />
+        {label}
+      </div>
+      <div className="font-display mt-1 text-sm capitalize">{value}</div>
+    </Card>
+  );
+}
