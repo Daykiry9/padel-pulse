@@ -1,20 +1,128 @@
 export type UUID = string;
 export type ISODate = string;
 
+// ============================================================
+// Categorías (v3 — expandidas + Queens estructural)
+// ============================================================
+
 export type TeamCategory =
+  // Masculino estándar (8 niveles)
+  | 'libre'
   | 'primera'
   | 'segunda'
   | 'tercera'
   | 'cuarta'
   | 'quinta'
-  | 'mixto'
-  | 'queens_1'
-  | 'queens_2'
-  | 'queens_3'
-  | 'queens_4'
-  | 'queens_5';
+  | 'sexta'
+  | 'septima'
+  // Queens estándar (6 niveles)
+  | 'queens_libre'
+  | 'queens_a'
+  | 'queens_b'
+  | 'queens_c'
+  | 'queens_d'
+  | 'queens_e';
 
-export type TournamentFormat = 'americano' | 'express' | 'league' | 'elimination';
+export type CategoryKind =
+  | 'estandar'
+  | 'suma'
+  | 'mixto_estandar'
+  | 'mixto_suma'
+  | 'queens_estandar'
+  | 'queens_suma'
+  | 'casual';
+
+export type CategoryValue = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+const CATEGORY_VALUES: Record<TeamCategory, CategoryValue> = {
+  libre: 1,
+  primera: 2,
+  segunda: 3,
+  tercera: 4,
+  cuarta: 5,
+  quinta: 6,
+  sexta: 7,
+  septima: 8,
+  queens_libre: 1,
+  queens_a: 2,
+  queens_b: 3,
+  queens_c: 4,
+  queens_d: 5,
+  queens_e: 6,
+};
+
+export function categoryValue(c: TeamCategory): CategoryValue {
+  return CATEGORY_VALUES[c];
+}
+
+export function isQueensCategory(c: TeamCategory): boolean {
+  return c.startsWith('queens_');
+}
+
+export const KING_CATEGORIES: TeamCategory[] = [
+  'libre',
+  'primera',
+  'segunda',
+  'tercera',
+  'cuarta',
+  'quinta',
+  'sexta',
+  'septima',
+];
+
+export const QUEENS_CATEGORIES: TeamCategory[] = [
+  'queens_libre',
+  'queens_a',
+  'queens_b',
+  'queens_c',
+  'queens_d',
+  'queens_e',
+];
+
+export const ALL_CATEGORIES: TeamCategory[] = [...KING_CATEGORIES, ...QUEENS_CATEGORIES];
+
+// ============================================================
+// Tier y formato
+// ============================================================
+
+export type TournamentTier = 'competitivo' | 'casual';
+export type TournamentFormat =
+  | 'americano_fijo'
+  | 'americano_random'
+  | 'liguilla_casual'
+  | 'liga'
+  | 'express'
+  | 'eliminacion';
+
+export type CompetitionUnit = 'team' | 'player';
+export type PairingMode = 'fixed' | 'random' | 'mixed';
+
+export const TIER_WEIGHT: Record<TournamentTier, number> = {
+  competitivo: 1.0,
+  casual: 0.4,
+};
+
+export const TIER_BY_FORMAT: Record<TournamentFormat, TournamentTier> = {
+  americano_fijo: 'competitivo',
+  liga: 'competitivo',
+  express: 'competitivo',
+  eliminacion: 'competitivo',
+  americano_random: 'casual',
+  liguilla_casual: 'casual',
+};
+
+export function tierOf(format: TournamentFormat): TournamentTier {
+  return TIER_BY_FORMAT[format];
+}
+
+export function weightOf(format: TournamentFormat): number {
+  return TIER_WEIGHT[tierOf(format)];
+}
+
+// ============================================================
+// Otros enums
+// ============================================================
+
 export type TournamentStatus = 'draft' | 'open' | 'in_progress' | 'finished' | 'cancelled';
 export type MatchStatus = 'scheduled' | 'in_progress' | 'completed' | 'disputed';
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'pro';
@@ -22,29 +130,12 @@ export type MemberRole = 'owner' | 'admin' | 'member';
 export type RegistrationStatus = 'pending_payment' | 'confirmed' | 'waitlist' | 'cancelled';
 export type SponsorTier = 'platform' | 'community' | 'tournament';
 export type SponsorSlot = 'title' | 'official' | 'partner';
+export type Gender = 'male' | 'female' | 'nonbinary' | 'prefer_not_to_say';
+export type CategoryChangeStatus = 'suggested' | 'approved' | 'rejected' | 'auto_applied';
 
-export const KING_CATEGORIES: TeamCategory[] = [
-  'primera',
-  'segunda',
-  'tercera',
-  'cuarta',
-  'quinta',
-  'mixto',
-];
-
-export const QUEENS_CATEGORIES: TeamCategory[] = [
-  'queens_1',
-  'queens_2',
-  'queens_3',
-  'queens_4',
-  'queens_5',
-];
-
-export const ALL_CATEGORIES: TeamCategory[] = [...KING_CATEGORIES, ...QUEENS_CATEGORIES];
-
-export function isQueensCategory(category: TeamCategory): boolean {
-  return QUEENS_CATEGORIES.includes(category);
-}
+// ============================================================
+// Entidades del dominio
+// ============================================================
 
 export interface Profile {
   id: UUID;
@@ -52,6 +143,8 @@ export interface Profile {
   avatarUrl?: string | null;
   city?: string | null;
   skillLevel: SkillLevel;
+  skillCategory?: TeamCategory | null;
+  gender?: Gender | null;
   rating: number;
 }
 
@@ -93,7 +186,7 @@ export interface Team {
   name: string;
   logoUrl?: string | null;
   primaryCommunityId: UUID;
-  category: TeamCategory;
+  category?: TeamCategory | null;
   rating: number;
   isActive: boolean;
   createdAt: ISODate;
@@ -107,7 +200,6 @@ export interface TeamMember {
   isActive: boolean;
   joinedAt: ISODate;
   leftAt?: ISODate | null;
-  invitedBy?: UUID | null;
 }
 
 export interface Tournament {
@@ -115,8 +207,15 @@ export interface Tournament {
   slug: string;
   name: string;
   format: TournamentFormat;
+  tier: TournamentTier;
+  weight: number;
   status: TournamentStatus;
+  categoryKind: CategoryKind;
   category?: TeamCategory | null;
+  minSum?: number | null;
+  maxPlayerCategoryValue?: number | null;
+  competitionUnit: CompetitionUnit;
+  pairingMode?: PairingMode | null;
   clubId: UUID;
   cityId?: UUID | null;
   startsAt: ISODate;
@@ -126,7 +225,6 @@ export interface Tournament {
   maxTeams: number;
   minTeams: number;
   rotationGames: number;
-  allowsPro: boolean;
   description?: string | null;
   bannerUrl?: string | null;
 }
@@ -134,13 +232,13 @@ export interface Tournament {
 export interface TournamentRegistration {
   id: UUID;
   tournamentId: UUID;
-  teamId: UUID;
-  playerOneId: UUID;
-  playerTwoId: UUID;
+  teamId?: UUID | null;
+  playerId?: UUID | null;
+  playerOneId?: UUID | null;
+  playerTwoId?: UUID | null;
   registeredBy: UUID;
   status: RegistrationStatus;
   paymentAmount: number;
-  paymentProviderRef?: string | null;
   registeredAt: ISODate;
   confirmedAt?: ISODate | null;
 }
@@ -162,13 +260,17 @@ export interface Match {
   confirmedByTwo: boolean;
 }
 
+// ============================================================
+// Americano (algoritmo)
+// ============================================================
+
 export interface AmericanoRound {
   roundNumber: number;
   matches: AmericanoMatch[];
+  resting: UUID[];
 }
 
 export interface AmericanoMatch {
-  id?: UUID;
   roundNumber: number;
   courtNumber: number;
   pairOne: PairSnapshot;
@@ -183,30 +285,45 @@ export interface PairSnapshot {
   playerTwoId: UUID;
 }
 
+// ============================================================
+// Ranking
+// ============================================================
+
 export type RankingPeriod = 'monthly' | 'quarterly' | 'semestral' | 'annual' | 'all_time';
 export type RankingScope = 'community' | 'city' | 'national';
+export type RankingKind = 'official' | 'by_sum' | 'casual';
 
-export interface TeamPointsEntry {
-  teamId: UUID;
-  tournamentId: UUID;
-  communityId: UUID;
-  category: TeamCategory;
-  position: number;
-  points: number;
-  awardedAt: ISODate;
-}
-
-export interface TeamRankingEntry {
+export interface TeamRankingOfficialEntry {
   rank: number;
   teamId: UUID;
   teamName: string;
   teamLogoUrl?: string | null;
-  category: TeamCategory;
+  category?: TeamCategory | null;
   communityId: UUID;
   communityName: string;
   cityName?: string | null;
   eloRating: number;
   absolutePoints: number;
+  tournamentsPlayed: number;
+}
+
+export interface TeamRankingBySumEntry {
+  rank: number;
+  teamId: UUID;
+  teamName: string;
+  teamSum: number;
+  communityId: UUID;
+  communityName: string;
+  eloRating: number;
+  absolutePoints: number;
+}
+
+export interface PlayerRankingCasualEntry {
+  rank: number;
+  profileId: UUID;
+  displayName: string;
+  category?: TeamCategory | null;
+  casualPoints: number;
   tournamentsPlayed: number;
 }
 
@@ -218,4 +335,18 @@ export interface CommunityRankingEntry {
   communityPoints: number;
   avgEloTop5: number;
   activeTeams: number;
+}
+
+export interface CategoryChangeSuggestion {
+  id: UUID;
+  profileId: UUID;
+  currentCategory?: TeamCategory | null;
+  suggestedCategory: TeamCategory;
+  reason: string;
+  evidencePoints?: number | null;
+  evidenceWinsVsHigher?: number | null;
+  status: CategoryChangeStatus;
+  reviewedBy?: UUID | null;
+  reviewedAt?: ISODate | null;
+  createdAt: ISODate;
 }

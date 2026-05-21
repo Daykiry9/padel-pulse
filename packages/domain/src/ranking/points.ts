@@ -21,10 +21,12 @@ const POSITION_POINTS: Record<number, number> = {
  * Calibrar con datos reales más adelante.
  */
 const FORMAT_MULTIPLIER: Record<TournamentFormat, number> = {
-  americano: 1.0,
+  americano_fijo: 1.0,
+  americano_random: 0.6,
+  liguilla_casual: 0.8,
+  liga: 1.5,
   express: 0.6,
-  league: 1.5,
-  elimination: 1.2,
+  eliminacion: 1.2,
 };
 
 export interface PointsForPositionInput {

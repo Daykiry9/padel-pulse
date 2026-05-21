@@ -1,4 +1,6 @@
-import type { TeamRankingEntry, CommunityRankingEntry, UUID } from '../types';
+import type { TeamRankingOfficialEntry, CommunityRankingEntry, UUID } from '../types';
+
+type TeamRankingEntry = TeamRankingOfficialEntry;
 
 export interface AggregateCommunityInput {
   teamEntries: TeamRankingEntry[];
