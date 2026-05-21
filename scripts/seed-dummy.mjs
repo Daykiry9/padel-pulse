@@ -27,14 +27,19 @@ async function api(path, opts = {}) {
 }
 
 const USERS = [
-  { email: 'mejia@padelking.test',   password: 'Padel2026!', display_name: 'Andrés Mejía',     skill_category: 'tercera', gender: 'male' },
-  { email: 'rodriguez@padelking.test', password: 'Padel2026!', display_name: 'Juanes Rodríguez', skill_category: 'cuarta',  gender: 'male' },
-  { email: 'ruiz@padelking.test',     password: 'Padel2026!', display_name: 'Carlos Ruiz',      skill_category: 'tercera', gender: 'male' },
-  { email: 'pena@padelking.test',     password: 'Padel2026!', display_name: 'Mario Peña',       skill_category: 'cuarta',  gender: 'male' },
-  { email: 'gomez@padelking.test',    password: 'Padel2026!', display_name: 'Valentina Gómez',  skill_category: 'queens_c', gender: 'female' },
-  { email: 'castro@padelking.test',   password: 'Padel2026!', display_name: 'Laura Castro',     skill_category: 'queens_c', gender: 'female' },
-  { email: 'lopez@padelking.test',    password: 'Padel2026!', display_name: 'Diego López',      skill_category: 'quinta',  gender: 'male' },
-  { email: 'admin@padelking.test',    password: 'Padel2026!', display_name: 'Comunidad Admin',  skill_category: 'segunda', gender: 'male' },
+  { email: 'mejia@padelking.test',     password: 'Padel2026!', display_name: 'Andrés Mejía',     skill_category: 'tercera',  gender: 'male' },
+  { email: 'rodriguez@padelking.test', password: 'Padel2026!', display_name: 'Juanes Rodríguez', skill_category: 'cuarta',   gender: 'male' },
+  { email: 'ruiz@padelking.test',      password: 'Padel2026!', display_name: 'Carlos Ruiz',      skill_category: 'tercera',  gender: 'male' },
+  { email: 'pena@padelking.test',      password: 'Padel2026!', display_name: 'Mario Peña',       skill_category: 'cuarta',   gender: 'male' },
+  { email: 'gomez@padelking.test',     password: 'Padel2026!', display_name: 'Valentina Gómez',  skill_category: 'queens_c', gender: 'female' },
+  { email: 'castro@padelking.test',    password: 'Padel2026!', display_name: 'Laura Castro',     skill_category: 'queens_c', gender: 'female' },
+  { email: 'lopez@padelking.test',     password: 'Padel2026!', display_name: 'Diego López',      skill_category: 'quinta',   gender: 'male' },
+  { email: 'admin@padelking.test',     password: 'Padel2026!', display_name: 'Comunidad Admin',  skill_category: 'segunda',  gender: 'male' },
+  // Específicos para equipos mixtos (no comparten con otros teams)
+  { email: 'silva@padelking.test',     password: 'Padel2026!', display_name: 'Daniel Silva',     skill_category: 'tercera',  gender: 'male' },
+  { email: 'ramirez@padelking.test',   password: 'Padel2026!', display_name: 'Camila Ramírez',   skill_category: 'queens_c', gender: 'female' },
+  { email: 'torres@padelking.test',    password: 'Padel2026!', display_name: 'Sergio Torres',    skill_category: 'cuarta',   gender: 'male' },
+  { email: 'morales@padelking.test',   password: 'Padel2026!', display_name: 'Isabel Morales',   skill_category: 'queens_d', gender: 'female' },
 ];
 
 async function ensureUser(u) {
@@ -176,6 +181,21 @@ async function main() {
     category: 'queens_c',
     rating: 1450,
   });
+  // Equipos MIXTOS (1H + 1F): category = null porque no comparten escala cross-género
+  const t4 = await getOrInsert('teams', 'slug', 'mixto-silva-ramirez', {
+    slug: 'mixto-silva-ramirez',
+    name: 'Silva / Ramírez',
+    primary_community_id: c1.id,
+    category: null,
+    rating: 1500,
+  });
+  const t5 = await getOrInsert('teams', 'slug', 'mixto-torres-morales', {
+    slug: 'mixto-torres-morales',
+    name: 'Torres / Morales',
+    primary_community_id: c1.id,
+    category: null,
+    rating: 1420,
+  });
 
   console.log('\n7) MIEMBROS DE EQUIPOS');
   async function ensureTeamMember(teamId, profileId) {
@@ -191,7 +211,17 @@ async function main() {
   await ensureTeamMember(t2.id, userIds['pena@padelking.test']);
   await ensureTeamMember(t3.id, userIds['gomez@padelking.test']);
   await ensureTeamMember(t3.id, userIds['castro@padelking.test']);
-  console.log('  ✓ team_members OK');
+  // Mixtos (jugadores dedicados, sin compartir con teams M+M o F+F)
+  await ensureTeamMember(t4.id, userIds['silva@padelking.test']);    // 3ra M, val 4
+  await ensureTeamMember(t4.id, userIds['ramirez@padelking.test']);  // Queens C F, val 4 → Suma 8
+  await ensureTeamMember(t5.id, userIds['torres@padelking.test']);   // 4ta M, val 5
+  await ensureTeamMember(t5.id, userIds['morales@padelking.test']);  // Queens D F, val 5 → Suma 10
+  console.log('  ✓ team_members OK (incl. 2 mixtos: Silva/Ramírez sum 8, Torres/Morales sum 10)');
+
+  // Añadir miembros mixtos a la comunidad principal
+  for (const slug of ['silva', 'ramirez', 'torres', 'morales']) {
+    await ensureMember(c1.id, userIds[`${slug}@padelking.test`]);
+  }
 
   console.log('\n8) TORNEOS');
   const now = new Date();
@@ -304,7 +334,74 @@ async function main() {
       max_teams: 12,
       min_teams: 4,
       rotation_games: 24,
-      description: '1 hombre + 1 mujer. Suma de categorías ≥ 10.',
+      description: '1 hombre + 1 mujer. Suma de categorías ≥ 10. Para parejas intermedias-altas.',
+      club_id: club.id,
+      city_id: bogota.id,
+    },
+    {
+      slug: 'mixto-suma-7',
+      name: 'Mixto Suma 7 — Open',
+      format: 'americano_fijo',
+      tier: 'competitivo',
+      weight: 1.0,
+      status: 'open',
+      category_kind: 'mixto_suma',
+      min_sum: 7,
+      pairing_mode: 'fixed',
+      competition_unit: 'team',
+      starts_at: inDays(10),
+      ends_at: inDaysEnd(10),
+      registration_deadline: inDays(9),
+      price_per_team: 70000,
+      max_teams: 16,
+      min_teams: 4,
+      rotation_games: 24,
+      description: '1 hombre + 1 mujer. Suma ≥ 7. Mas accesible, recomendado para parejas que recien empiezan a competir mixto.',
+      club_id: club.id,
+      city_id: bogota.id,
+    },
+    {
+      slug: 'mixto-suma-9-sponsor',
+      name: 'Mixto Suma 9 by Águila',
+      format: 'liga',
+      tier: 'competitivo',
+      weight: 1.0,
+      status: 'open',
+      category_kind: 'mixto_suma',
+      min_sum: 9,
+      pairing_mode: null,
+      competition_unit: 'team',
+      starts_at: inDays(20),
+      ends_at: inDaysEnd(60), // liga de 6 semanas
+      registration_deadline: inDays(18),
+      price_per_team: 150000,
+      max_teams: 12,
+      min_teams: 6,
+      rotation_games: 24,
+      description: 'Liga mixta a 6 fechas. Suma ≥ 9. Sponsor: Aguila Light. Premio: gift cards + paletas.',
+      club_id: club.id,
+      city_id: bogota.id,
+    },
+    {
+      slug: 'mixto-suma-8-tope',
+      name: 'Mixto Suma 8 (con tope)',
+      format: 'eliminacion',
+      tier: 'competitivo',
+      weight: 1.0,
+      status: 'open',
+      category_kind: 'mixto_suma',
+      min_sum: 8,
+      max_player_category_value: 4, // ningún jugador puede ser categoría más fuerte que valor 4 (3ra para hombres, Queens C para mujeres)
+      pairing_mode: null,
+      competition_unit: 'team',
+      starts_at: inDays(45),
+      ends_at: inDaysEnd(45),
+      registration_deadline: inDays(43),
+      price_per_team: 90000,
+      max_teams: 8,
+      min_teams: 4,
+      rotation_games: 24,
+      description: 'Mixto Suma 8 con tope individual valor 4: ningún jugador puede ser más fuerte que 3ra (M) o Queens C (F). Evita parejas Pro + 5ta.',
       club_id: club.id,
       city_id: bogota.id,
     },
