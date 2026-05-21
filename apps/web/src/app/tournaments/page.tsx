@@ -107,7 +107,7 @@ export default async function TournamentsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {tournaments.map((t) => (
               <Link key={t.id} href={`/tournaments/${t.slug}`}>
-                <Card className="hover:border-crown/40 h-full transition-all hover:-translate-y-1">
+                <Card className="hover:border-crown/40 h-full transition-[border-color,background-color] hover:border-foreground/20">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <Badge variant={t.tier === 'competitivo' ? 'crown' : 'data'}>

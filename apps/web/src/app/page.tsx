@@ -70,7 +70,7 @@ function SiteHeader() {
           <Link href="#ranking" className="hover:text-foreground transition-colors">
             Ranking
           </Link>
-          <Link href="/queens" className="text-queens hover:brightness-125 transition-all">
+          <Link href="/queens" className="text-queens hover:brightness-125 transition-[border-color,background-color]">
             Queens →
           </Link>
         </nav>
@@ -267,7 +267,7 @@ function HowItWorks() {
         {steps.map((step) => (
           <Card
             key={step.title}
-            className="hover:border-crown/40 transition-all hover:-translate-y-1"
+            className="hover:border-crown/40 transition-[border-color,background-color] hover:border-foreground/20"
           >
             <CardHeader>
               <div className="bg-crown/10 text-crown mb-3 flex size-10 items-center justify-center rounded-lg">

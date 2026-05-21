@@ -62,7 +62,7 @@ export default async function CommunitiesPage() {
             const isMine = myIds.has(c.id);
             return (
               <Link key={c.id} href={`/app/communities/${c.slug}`}>
-                <Card className="group hover:border-crown/40 h-full transition-all hover:-translate-y-1">
+                <Card className="group hover:border-crown/40 h-full transition-[border-color,background-color] hover:border-foreground/20">
                   <CardHeader>
                     <div className="flex items-start justify-between gap-2">
                       <div className="from-crown/30 to-background size-12 shrink-0 rounded-lg bg-gradient-to-br" />
