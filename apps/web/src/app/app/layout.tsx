@@ -77,9 +77,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </nav>
           <div className="flex items-center gap-3">
             <NotificationsBell notifications={notifications} unreadCount={unreadCount} />
-            <span className="text-muted-foreground hidden text-xs uppercase tracking-wider md:inline">
+            <Link
+              href="/app/profile"
+              className="text-muted-foreground hover:text-foreground hidden text-xs uppercase tracking-wider transition-colors md:inline"
+            >
               {profile.display_name}
-            </span>
+            </Link>
             <form action={signOut}>
               <button
                 type="submit"

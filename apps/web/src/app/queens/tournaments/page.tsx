@@ -4,7 +4,7 @@ import { Calendar, Crown, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { QueensLogo } from '@/components/marketing/queens-logo';
+import { PublicHeader } from '@/components/public-header';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -62,24 +62,7 @@ export default async function QueensTournamentsPage() {
   return (
     <div className="theme-queens">
       <div className="bg-background min-h-screen">
-        <header className="border-border/40 bg-background/60 sticky top-0 z-40 border-b backdrop-blur-xl">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-            <Link href="/queens" className="flex items-center gap-2">
-              <QueensLogo />
-              <span className="font-display text-base tracking-tight">
-                PADEL<span className="text-queens">QUEENS</span>
-              </span>
-            </Link>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Ingresar</Link>
-              </Button>
-              <Button variant="queens" size="sm" asChild>
-                <Link href="/signup">Únete</Link>
-              </Button>
-            </div>
-          </div>
-        </header>
+        <PublicHeader brand="queens" />
 
         <main className="mx-auto max-w-7xl px-6 py-12">
           <div className="mb-10">

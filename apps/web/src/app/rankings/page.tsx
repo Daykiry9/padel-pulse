@@ -4,7 +4,7 @@ import { ArrowLeft, Crown, Medal, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { KingLogo } from '@/components/marketing/king-logo';
+import { PublicHeader } from '@/components/public-header';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -78,24 +78,7 @@ export default async function RankingsPage({
 
   return (
     <div className="bg-background min-h-screen">
-      <header className="border-border/40 bg-background/60 sticky top-0 z-40 border-b backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <KingLogo />
-            <span className="font-display text-base tracking-tight">
-              PADEL<span className="text-crown">KING</span>
-            </span>
-          </Link>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/tournaments">Torneos</Link>
-            </Button>
-            <Button variant="crown" size="sm" asChild>
-              <Link href="/signup">Únete</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div>
@@ -170,14 +153,15 @@ export default async function RankingsPage({
         {rows.length > 0 && !category && !city && (
           <div className="mt-10 grid gap-3 md:grid-cols-3">
             {rows.slice(0, 3).map((r, i) => (
-              <Card
+              <Link
                 key={r.profile_id}
+                href={`/players/${r.profile_id}`}
                 className={
                   i === 0
-                    ? 'border-crown/40 bg-gradient-to-br from-crown/[0.08] to-transparent p-6'
+                    ? 'border-crown/40 bg-gradient-to-br from-crown/[0.08] to-transparent rounded-xl border p-6 transition-colors hover:border-crown/70 block'
                     : i === 1
-                      ? 'border-foreground/20 bg-muted/40 p-6'
-                      : 'border-foreground/10 p-6'
+                      ? 'border-foreground/20 bg-muted/40 rounded-xl border p-6 transition-colors hover:border-foreground/40 block'
+                      : 'border-foreground/10 rounded-xl border p-6 transition-colors hover:border-foreground/30 block'
                 }
               >
                 <div className="flex items-baseline justify-between">
@@ -207,7 +191,7 @@ export default async function RankingsPage({
                   {r[showField as keyof RankRow]?.toLocaleString('es-CO')}{' '}
                   <span className="text-muted-foreground text-xs normal-case">pts</span>
                 </div>
-              </Card>
+              </Link>
             ))}
           </div>
         )}
@@ -229,9 +213,10 @@ export default async function RankingsPage({
           ) : (
             <Card className="divide-border/30 divide-y overflow-hidden p-0">
               {rows.map((r, idx) => (
-                <div
+                <Link
                   key={r.profile_id}
-                  className="grid grid-cols-[2rem_1fr_auto_auto] items-center gap-3 px-4 py-3 text-sm"
+                  href={`/players/${r.profile_id}`}
+                  className="hover:bg-muted/30 grid grid-cols-[2rem_1fr_auto_auto] items-center gap-3 px-4 py-3 text-sm transition-colors"
                 >
                   <span
                     className={`font-display text-base tabular-nums ${
@@ -255,7 +240,7 @@ export default async function RankingsPage({
                   <span className="text-muted-foreground text-[10px] uppercase tracking-widest">
                     pts
                   </span>
-                </div>
+                </Link>
               ))}
             </Card>
           )}
