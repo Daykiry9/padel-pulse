@@ -97,7 +97,7 @@ function Hero() {
         aria-hidden
       />
       <PalaSilhouette
-        className="text-queens/[0.05] absolute -right-24 top-12 -z-10 size-[460px] rotate-[18deg]"
+        className="text-queens/[0.05] absolute -right-24 top-12 -z-10 hidden size-[460px] rotate-[18deg] md:block"
       />
 
       <div className="mx-auto max-w-6xl px-6 pb-24 pt-20 md:pt-28">

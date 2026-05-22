@@ -181,15 +181,12 @@ export default async function TournamentDetailPage({
           </Link>
           <div className="flex items-center gap-2">
             {isOrganizer && (
-              <>
-                <ShareInviteButton kind="tournament" targetId={tournament.id} label="Invitar" />
-                <Button variant="crown" size="sm" asChild>
-                  <Link href={`/app/tournaments/${tournament.slug}/manage`}>
-                    <Crown className="size-3" />
-                    Administrar
-                  </Link>
-                </Button>
-              </>
+              <Button variant="crown" size="sm" asChild>
+                <Link href={`/app/tournaments/${tournament.slug}/manage`}>
+                  <Crown className="size-3" />
+                  <span className="hidden sm:inline">Administrar</span>
+                </Link>
+              </Button>
             )}
             <Link href="/tournaments" className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest">
               <ArrowLeft className="inline size-3 mr-1" />
@@ -251,6 +248,17 @@ export default async function TournamentDetailPage({
                 {tournament.description}
               </p>
             </Card>
+          )}
+
+          {/* Compartir torneo — visible para todos los autenticados */}
+          {user && (
+            <ShareInviteButton
+              kind="tournament"
+              targetId={tournament.id}
+              variant="outline"
+              size="lg"
+              label="Invitar amigos a este torneo"
+            />
           )}
 
           {/* Inscripción */}

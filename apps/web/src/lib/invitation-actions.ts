@@ -52,19 +52,17 @@ export async function createInvitation(
 
   const supabase = await getSupabaseServerClient();
 
-  // Verificar ownership según kind. La RLS de cada tabla bloquea si no, pero
-  // chequear aquí da mejor mensaje al usuario.
+  // Verificar permisos según kind:
+  // - tournament: cualquier user autenticado puede compartir (el link es público)
+  // - team / community: solo miembros / owner
   if (kind === 'tournament') {
-    type Row = { clubs: { owner_id: string } | null };
+    // Verificar que exista nada más
     const { data } = await supabase
       .from('tournaments')
-      .select('clubs(owner_id)')
+      .select('id')
       .eq('id', targetId)
-      .single();
-    const row = data as unknown as Row | null;
-    if (!row || row.clubs?.owner_id !== user.id) {
-      return { ok: false, error: 'Solo el organizador puede invitar a este torneo' };
-    }
+      .maybeSingle();
+    if (!data) return { ok: false, error: 'El torneo no existe' };
   } else if (kind === 'team') {
     const { data } = await supabase
       .from('team_members')

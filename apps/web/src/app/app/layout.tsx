@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Crown, Globe, LogOut, Trophy, Users } from 'lucide-react';
 
 import { KingLogo } from '@/components/marketing/king-logo';
+import { MobileNav } from '@/components/mobile-nav';
 import { NotificationsBell, type NotificationItem } from '@/components/notifications-bell';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { signOut } from '@/lib/auth-actions';
@@ -79,7 +80,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-6 py-8 pb-24 md:pb-8">{children}</main>
+      <MobileNav />
     </div>
   );
 }
