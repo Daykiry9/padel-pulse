@@ -8,9 +8,9 @@ import { signIn } from '@/lib/auth-actions';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; verify?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, verify } = await searchParams;
 
   return (
     <div className="space-y-8">
@@ -24,6 +24,16 @@ export default async function LoginPage({
           .
         </p>
       </div>
+
+      {verify && (
+        <div className="border-crown/30 bg-crown/5 text-foreground rounded-lg border p-4 text-sm">
+          <p className="font-semibold">Confirma tu email</p>
+          <p className="text-muted-foreground mt-1">
+            Te enviamos un correo de confirmación. Ábrelo y haz click en el link, luego vuelve aquí
+            a ingresar.
+          </p>
+        </div>
+      )}
 
       <ActionForm action={signIn}>
         {next && <input type="hidden" name="next" value={next} />}

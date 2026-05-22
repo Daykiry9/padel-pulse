@@ -31,10 +31,18 @@ export default async function OnboardingPage() {
   if (!user) redirect('/login');
 
   const supabase = await getSupabaseServerClient();
-  const profileRes = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  const profileRes = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
   const profile = profileRes.data as { skill_category: string | null } | null;
 
-  if (profile?.skill_category) {
+  // Si el trigger no creó la fila por alguna razón, la creamos ahora desde el
+  // metadata del auth user. Evita 500 silencioso si el trigger falló.
+  if (!profile) {
+    const displayName =
+      (user.user_metadata?.display_name as string | undefined) ??
+      user.email?.split('@')[0] ??
+      'Jugador';
+    await supabase.from('profiles').insert({ id: user.id, display_name: displayName } as never);
+  } else if (profile.skill_category) {
     redirect('/app');
   }
 
