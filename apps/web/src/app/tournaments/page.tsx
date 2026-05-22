@@ -40,6 +40,7 @@ export default async function TournamentsPage() {
     .select(
       'id, slug, name, format, status, starts_at, category_kind, category, min_sum, tier, max_teams, price_per_team',
     )
+    .in('category_kind', ['estandar', 'suma', 'mixto_estandar', 'mixto_suma', 'casual'])
     .order('starts_at', { ascending: true });
 
   type TournamentRow = {
@@ -83,10 +84,13 @@ export default async function TournamentsPage() {
         <div className="mb-10">
           <Badge variant="crown">Torneos</Badge>
           <h1 className="font-display mt-4 text-5xl tracking-tight md:text-6xl">
-            TODOS LOS <span className="text-crown">TORNEOS</span>
+            TORNEOS <span className="text-crown">KINGS</span>
           </h1>
           <p className="text-muted-foreground mt-3 text-sm">
-            Filtros completos próximamente. Por ahora, en orden cronológico.
+            Masculinos + mixtos. ¿Buscas femeninos?{' '}
+            <Link href="/queens/tournaments" className="text-queens underline">
+              Ver Queens →
+            </Link>
           </p>
         </div>
 

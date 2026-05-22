@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Calendar,
   Crown,
-  Flame,
   Github,
   Globe,
   LineChart,
@@ -20,6 +19,7 @@ import { CommunityRankingPreview } from '@/components/marketing/community-rankin
 import { TournamentCardPreview } from '@/components/marketing/tournament-card-preview';
 import { LiveScoreboardPreview } from '@/components/marketing/live-scoreboard-preview';
 import { KingLogo } from '@/components/marketing/king-logo';
+import { PalaSilhouette } from '@/components/marketing/pala-silhouette';
 
 const featuredCommunities = [
   { name: 'Bogotá Pádel Circuit', city: 'Bogotá', teams: 38, badge: 'Top BOG' },
@@ -102,6 +102,9 @@ function Hero() {
         className="absolute right-0 top-1/3 -z-10 h-[480px] w-[480px] translate-x-1/3 rounded-full bg-queens/10 blur-3xl"
         aria-hidden
       />
+      <PalaSilhouette
+        className="text-crown/[0.04] absolute -left-24 top-12 -z-10 size-[460px] rotate-[-18deg]"
+      />
 
       <div className="mx-auto max-w-6xl px-6 pb-24 pt-20 md:pt-28">
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
@@ -164,7 +167,7 @@ function DualBrand() {
     <section className="border-y border-border/40">
       <div className="mx-auto grid max-w-6xl grid-cols-1 md:grid-cols-2">
         <div className="relative overflow-hidden border-border/40 px-6 py-10 md:border-r">
-          <Crown className="text-crown/20 absolute -right-2 -top-2 size-32" />
+          <PalaSilhouette className="text-crown/15 absolute -right-4 -top-4 size-36 rotate-12" />
           <div className="relative">
             <Badge variant="crown">PadelKing</Badge>
             <h3 className="font-display mt-4 text-2xl tracking-tight md:text-3xl">
@@ -177,7 +180,7 @@ function DualBrand() {
           </div>
         </div>
         <div className="theme-queens relative overflow-hidden px-6 py-10">
-          <Crown className="text-queens/20 absolute -right-2 -top-2 size-32" />
+          <PalaSilhouette className="text-queens/15 absolute -right-4 -top-4 size-36 -rotate-12" />
           <div className="relative">
             <Badge variant="queens">PadelQueens</Badge>
             <h3 className="font-display mt-4 text-2xl tracking-tight md:text-3xl">
