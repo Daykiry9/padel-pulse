@@ -4,7 +4,7 @@ import { Crown, Globe, Plus, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { joinCommunity } from '@/lib/community-actions';

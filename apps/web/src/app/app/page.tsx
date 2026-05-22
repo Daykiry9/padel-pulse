@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Crown, Globe, Plus, Trophy, TrendingUp, Users } from 'lucide-react';
+import { ArrowRight, Crown, Globe, Plus, Trophy, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

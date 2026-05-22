@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Calendar, Crown, MapPin, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Crown, Trophy, Users } from 'lucide-react';
 
 import { checkEligibility } from '@padelking/domain';
 import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
@@ -59,15 +59,19 @@ export default async function TournamentDetailPage({
 
   const tournamentRes = await supabase
     .from('tournaments')
-    .select('*')
+    .select('*, clubs(owner_id)')
     .eq('slug', slug)
     .single();
 
-  const tournament = tournamentRes.data as unknown as TournamentRow | null;
+  const tournament = tournamentRes.data as unknown as (TournamentRow & {
+    club_id: string;
+    clubs: { owner_id: string } | null;
+  }) | null;
   if (!tournament) notFound();
 
   const user = await getSession();
-  let myTeams: { id: string; name: string; category: TeamCategory | null; eligibility: { ok: boolean; reason?: string } }[] = [];
+  const isOrganizer = Boolean(user && tournament.clubs?.owner_id === user.id);
+  const myTeams: { id: string; name: string; category: TeamCategory | null; eligibility: { ok: boolean; reason?: string } }[] = [];
   let myProfile: { skillCategory: TeamCategory | null; gender: Gender | null; eligibility: { ok: boolean; reason?: string } } | null = null;
 
   if (user) {
@@ -174,10 +178,20 @@ export default async function TournamentDetailPage({
               PADEL<span className="text-crown">KING</span>
             </span>
           </Link>
-          <Link href="/tournaments" className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest">
-            <ArrowLeft className="inline size-3 mr-1" />
-            Volver
-          </Link>
+          <div className="flex items-center gap-4">
+            {isOrganizer && (
+              <Button variant="crown" size="sm" asChild>
+                <Link href={`/app/tournaments/${tournament.slug}/manage`}>
+                  <Crown className="size-3" />
+                  Administrar
+                </Link>
+              </Button>
+            )}
+            <Link href="/tournaments" className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest">
+              <ArrowLeft className="inline size-3 mr-1" />
+              Volver
+            </Link>
+          </div>
         </div>
       </header>
 
