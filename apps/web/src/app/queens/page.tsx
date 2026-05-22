@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { QueensLogo } from '@/components/marketing/queens-logo';
-import { PalaSilhouette } from '@/components/marketing/pala-silhouette';
 
 const featuredCommunities = [
   { name: 'Valkiria Queens', city: 'Bogotá', teams: 19, badge: 'Top BOG' },
@@ -96,10 +95,6 @@ function Hero() {
         className="absolute left-0 top-1/3 -z-10 h-[480px] w-[480px] -translate-x-1/3 rounded-full bg-crown/10 blur-3xl"
         aria-hidden
       />
-      <PalaSilhouette
-        className="text-queens/[0.05] absolute -right-24 top-12 -z-10 hidden size-[460px] rotate-[18deg] md:block"
-      />
-
       <div className="mx-auto max-w-6xl px-6 pb-24 pt-20 md:pt-28">
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
           <div className="space-y-8">
