@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
+import { ShareInviteButton } from '@/components/share-invite-button';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { RegisterButton } from './register-button';
 
@@ -178,14 +179,17 @@ export default async function TournamentDetailPage({
               PADEL<span className="text-crown">KING</span>
             </span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {isOrganizer && (
-              <Button variant="crown" size="sm" asChild>
-                <Link href={`/app/tournaments/${tournament.slug}/manage`}>
-                  <Crown className="size-3" />
-                  Administrar
-                </Link>
-              </Button>
+              <>
+                <ShareInviteButton kind="tournament" targetId={tournament.id} label="Invitar" />
+                <Button variant="crown" size="sm" asChild>
+                  <Link href={`/app/tournaments/${tournament.slug}/manage`}>
+                    <Crown className="size-3" />
+                    Administrar
+                  </Link>
+                </Button>
+              </>
             )}
             <Link href="/tournaments" className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest">
               <ArrowLeft className="inline size-3 mr-1" />

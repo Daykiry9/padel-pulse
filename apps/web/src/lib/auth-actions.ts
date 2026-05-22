@@ -59,13 +59,17 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
 
   if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
 
+  const invite = String(formData.get('invite') ?? '').trim();
+
   // Caso: email confirmation enabled. Sin sesión activa, el usuario tiene que
   // confirmar antes de continuar. Mandamos a /login con flag para mostrar mensaje.
   if (!data.session) {
-    return { ok: true, redirectTo: '/login?verify=1' };
+    const next = invite ? `&next=/i/${invite}` : '';
+    return { ok: true, redirectTo: `/login?verify=1${next}` };
   }
 
-  return { ok: true, redirectTo: '/onboarding' };
+  // Si vino con invite, pasarlo a onboarding para que la siguiente redirect lo aplique
+  return { ok: true, redirectTo: invite ? `/onboarding?invite=${invite}` : '/onboarding' };
 }
 
 export async function signIn(formData: FormData): Promise<ActionResult> {
@@ -102,16 +106,41 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   const gender = String(formData.get('gender') ?? '') || null;
   const city = String(formData.get('city') ?? '') || null;
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      skill_category: skillCategory,
-      gender,
-      city,
-    } as never)
-    .eq('id', user.id);
+  // Campos opcionales extendidos (marketing + sponsor visibility)
+  const phone = String(formData.get('phone') ?? '').trim() || null;
+  const birthdate = String(formData.get('birthdate') ?? '').trim() || null;
+  const instagramHandle =
+    String(formData.get('instagram_handle') ?? '').trim().replace(/^@/, '') || null;
+  const dominantHand = String(formData.get('dominant_hand') ?? '') || null;
+  const favoritePosition = String(formData.get('favorite_position') ?? '') || null;
+  const playingSinceRaw = String(formData.get('playing_since_year') ?? '').trim();
+  const playingSinceYear = playingSinceRaw ? Number(playingSinceRaw) : null;
+  const marketingOptIn = formData.get('marketing_opt_in') === 'true';
 
-  if (error) return { ok: false, error: error.message };
+  const updates: Record<string, unknown> = {
+    skill_category: skillCategory,
+    gender,
+    city,
+    marketing_opt_in: marketingOptIn,
+  };
+  if (phone) updates.phone = phone;
+  if (birthdate) updates.birthdate = birthdate;
+  if (instagramHandle) updates.instagram_handle = instagramHandle;
+  if (dominantHand) updates.dominant_hand = dominantHand;
+  if (favoritePosition) updates.favorite_position = favoritePosition;
+  if (playingSinceYear && !Number.isNaN(playingSinceYear)) {
+    updates.playing_since_year = playingSinceYear;
+  }
+
+  const { error } = await supabase.from('profiles').update(updates as never).eq('id', user.id);
+
+  if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
+
+  // Si vienen del flujo de invitación, redirigir a resolverlo en vez de /app
+  const nextInvite = String(formData.get('next_invite') ?? '').trim();
+  if (nextInvite) {
+    return { ok: true, redirectTo: `/i/${nextInvite}` };
+  }
 
   return { ok: true, redirectTo: '/app' };
 }

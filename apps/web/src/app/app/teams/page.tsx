@@ -5,6 +5,7 @@ import { Crown, Plus, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ShareInviteButton } from '@/components/share-invite-button';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 export default async function TeamsPage() {
@@ -68,6 +69,9 @@ export default async function TeamsPage() {
                   <br />
                   Rating: {t.rating}
                 </CardDescription>
+                <div className="mt-3">
+                  <ShareInviteButton kind="team" targetId={t.id} label="Invitar compañero" />
+                </div>
               </CardHeader>
             </Card>
           ))}

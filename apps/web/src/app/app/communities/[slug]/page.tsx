@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
+import { ShareInviteButton } from '@/components/share-invite-button';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { joinCommunity } from '@/lib/community-actions';
 
@@ -80,15 +81,20 @@ export default async function CommunityDetailPage({
             <span>Rating {community.rating}</span>
           </div>
         </div>
-        {!isMember && (
-          <ActionForm action={joinCommunity}>
-            <input type="hidden" name="community_id" value={community.id} />
-            <SubmitButton variant="crown" pendingLabel="Uniéndome…">
-              Unirme
-            </SubmitButton>
-          </ActionForm>
-        )}
-        {isMember && <Badge variant="success">Eres miembro</Badge>}
+        <div className="flex flex-col items-end gap-2">
+          {!isMember && (
+            <ActionForm action={joinCommunity}>
+              <input type="hidden" name="community_id" value={community.id} />
+              <SubmitButton variant="crown" pendingLabel="Uniéndome…">
+                Unirme
+              </SubmitButton>
+            </ActionForm>
+          )}
+          {isMember && <Badge variant="success">Eres miembro</Badge>}
+          {community.owner_id === user.id && (
+            <ShareInviteButton kind="community" targetId={community.id} label="Invitar amigos" />
+          )}
+        </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">
