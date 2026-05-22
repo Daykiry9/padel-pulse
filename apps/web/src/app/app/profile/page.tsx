@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Calendar, Crown, ExternalLink, Hand, Instagram, MapPin, Phone, Trophy, Users } from 'lucide-react';
+import { Crown, ExternalLink, Trophy, Users } from 'lucide-react';
 
 import { KING_CATEGORIES, QUEENS_CATEGORIES } from '@padelking/domain';
 

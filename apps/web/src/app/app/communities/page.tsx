@@ -1,10 +1,24 @@
 import Link from 'next/link';
-import { Globe, Plus, Users } from 'lucide-react';
+import { Globe, Plus, Search, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarGroup } from '@/components/ui/avatar';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Section } from '@/components/ui/section';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
+
+type Community = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  city: string;
+  rating: number;
+  member_count?: number;
+  recent_members?: { profile_id: string; display_name: string | null }[];
+};
 
 export default async function CommunitiesPage() {
   const user = await getSession();
@@ -20,75 +34,159 @@ export default async function CommunitiesPage() {
     supabase.from('community_members').select('community_id').eq('profile_id', user.id),
   ]);
 
-  const communities = allRes.data ?? [];
+  const communitiesRaw = (allRes.data ?? []) as unknown as Community[];
   const myIds = new Set((mineRes.data ?? []).map((m) => m.community_id));
 
+  // Fetch member counts + recent members (5 per community)
+  let communities: Community[] = communitiesRaw;
+  if (communitiesRaw.length > 0) {
+    const ids = communitiesRaw.map((c) => c.id);
+    const { data: members } = await supabase
+      .from('community_members')
+      .select('community_id, profile_id, profiles(display_name)')
+      .in('community_id', ids)
+      .order('joined_at', { ascending: false });
+    const grouped = new Map<string, { profile_id: string; display_name: string | null }[]>();
+    for (const m of (members ?? []) as {
+      community_id: string;
+      profile_id: string;
+      profiles: { display_name: string | null } | null;
+    }[]) {
+      if (!grouped.has(m.community_id)) grouped.set(m.community_id, []);
+      grouped.get(m.community_id)!.push({
+        profile_id: m.profile_id,
+        display_name: m.profiles?.display_name ?? null,
+      });
+    }
+    communities = communitiesRaw.map((c) => ({
+      ...c,
+      member_count: grouped.get(c.id)?.length ?? 0,
+      recent_members: grouped.get(c.id)?.slice(0, 5) ?? [],
+    }));
+  }
+
+  const myCommunities = communities.filter((c) => myIds.has(c.id));
+  const others = communities.filter((c) => !myIds.has(c.id));
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-end justify-between">
+    <div className="space-y-10">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+          <Badge variant="crown">Comunidades</Badge>
+          <h1 className="font-display mt-3 text-4xl tracking-tight md:text-5xl">
             COMUNIDADES
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Únete a un parche existente o crea el tuyo.
+          <p className="text-muted-foreground mt-2 max-w-md text-sm">
+            Únete a un grupo activo o crea el tuyo (requiere 5 fundadores).
           </p>
         </div>
         <Button variant="crown" asChild>
           <Link href="/app/communities/new">
             <Plus className="size-4" />
-            Nueva
+            Solicitar nueva
           </Link>
         </Button>
-      </div>
+      </header>
 
-      {communities.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Globe className="text-muted-foreground mx-auto size-10" />
-          <p className="text-foreground/80 mt-4 font-display text-xl">
-            Aún no hay comunidades creadas.
-          </p>
-          <p className="text-muted-foreground mt-2 text-sm">Crea la primera.</p>
-          <Button variant="crown" className="mt-4" asChild>
-            <Link href="/app/communities/new">
-              <Plus className="size-4" />
-              Crear comunidad
-            </Link>
-          </Button>
-        </Card>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {communities.map((c) => {
-            const isMine = myIds.has(c.id);
-            return (
-              <Link key={c.id} href={`/app/communities/${c.slug}`}>
-                <Card className="group hover:border-crown/40 h-full transition-[border-color,background-color] hover:border-foreground/20">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="from-crown/30 to-background size-12 shrink-0 rounded-lg bg-gradient-to-br" />
-                      {isMine && <Badge variant="success">Miembro</Badge>}
-                    </div>
-                    <CardTitle className="mt-3 text-base">{c.name}</CardTitle>
-                    <CardDescription className="flex items-center gap-2 normal-case">
-                      <Globe className="size-3.5" />
-                      {c.city}
-                    </CardDescription>
-                    {c.description && (
-                      <p className="text-muted-foreground mt-2 line-clamp-2 text-sm normal-case">
-                        {c.description}
-                      </p>
-                    )}
-                    <div className="text-muted-foreground mt-3 flex items-center gap-1 text-xs">
-                      <Users className="size-3" />
-                      Rating {c.rating}
-                    </div>
-                  </CardHeader>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+      {/* Mis comunidades destacadas arriba */}
+      {myCommunities.length > 0 && (
+        <Section title={`Mis comunidades · ${myCommunities.length}`}>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {myCommunities.map((c) => (
+              <CommunityCard key={c.id} community={c} isMember={true} />
+            ))}
+          </div>
+        </Section>
       )}
+
+      {/* Otras comunidades */}
+      {others.length > 0 ? (
+        <Section
+          title={myCommunities.length > 0 ? 'Explorar otras' : 'Comunidades activas'}
+          subtitle={`${others.length} ${others.length === 1 ? 'parche activo' : 'parches activos'} a tu disposición`}
+        >
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {others.map((c) => (
+              <CommunityCard key={c.id} community={c} isMember={false} />
+            ))}
+          </div>
+        </Section>
+      ) : myCommunities.length === 0 ? (
+        <EmptyState
+          icon={Globe}
+          title="Aún no hay comunidades"
+          description="Sé el primero en armar un parche local. Necesitas 5 fundadores reales para solicitar la creación; un super admin la revisa en 24-48h."
+          bullets={[
+            'Una comunidad agrupa jugadores de una ciudad o zona',
+            'Organiza torneos americanos y eliminatorias',
+            'Tiene su propio ranking interno + exposure ante sponsors',
+          ]}
+          primaryAction={
+            <Button variant="crown" asChild>
+              <Link href="/app/communities/new">
+                <Plus className="size-4" />
+                Solicitar comunidad
+              </Link>
+            </Button>
+          }
+        />
+      ) : null}
     </div>
+  );
+}
+
+function CommunityCard({ community, isMember }: { community: Community; isMember: boolean }) {
+  return (
+    <Link href={`/app/communities/${community.slug}`} className="block">
+      <Card className="group hover:border-gold-400/40 relative h-full overflow-hidden p-5 transition-[border-color,background-color] duration-[var(--duration-base)]">
+        {/* Avatar grande arriba */}
+        <div className="flex items-start justify-between gap-3">
+          <Avatar seed={community.slug} name={community.name} size="xl" />
+          {isMember && <Badge variant="success">Miembro</Badge>}
+        </div>
+
+        <h3 className="font-display mt-4 line-clamp-2 text-lg tracking-tight">
+          {community.name.toUpperCase()}
+        </h3>
+
+        <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span className="flex items-center gap-1">
+            <Globe className="size-3" />
+            {community.city}
+          </span>
+          <span className="tabular-nums">Rating {community.rating}</span>
+        </div>
+
+        {community.description && (
+          <p className="text-foreground/75 mt-3 line-clamp-2 text-sm leading-relaxed">
+            {community.description}
+          </p>
+        )}
+
+        {/* Miembros sociales */}
+        <div className="border-border/40 mt-4 flex items-center justify-between border-t pt-4">
+          <div className="flex items-center gap-2.5">
+            {community.recent_members && community.recent_members.length > 0 ? (
+              <AvatarGroup
+                avatars={community.recent_members.map((m) => ({
+                  seed: m.profile_id,
+                  name: m.display_name ?? undefined,
+                }))}
+                max={4}
+                size="xs"
+              />
+            ) : (
+              <Users className="text-muted-foreground size-3.5" />
+            )}
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {community.member_count ?? 0} miembros
+            </span>
+          </div>
+          <span className="text-muted-foreground group-hover:text-foreground text-[10px] uppercase tracking-widest transition-colors">
+            Ver →
+          </span>
+        </div>
+      </Card>
+    </Link>
   );
 }

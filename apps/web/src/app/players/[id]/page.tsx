@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Calendar, Crown, Hand, Instagram, MapPin, Trophy, Users } from 'lucide-react';
+import { Calendar, Crown, Hand, Instagram, MapPin } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';

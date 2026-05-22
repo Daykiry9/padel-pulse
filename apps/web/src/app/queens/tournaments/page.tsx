@@ -1,84 +1,65 @@
 import Link from 'next/link';
-import { Calendar, Crown, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { PublicHeader } from '@/components/public-header';
+import { SiteFooter } from '@/components/site-footer';
+import { TournamentListView, type TournamentRow } from '@/components/marketing/tournament-list-view';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
-
-const FORMAT_LABELS: Record<string, string> = {
-  americano_fijo: 'Americano fijo',
-  americano_random: 'Americano random',
-  liguilla_casual: 'Liguilla',
-  liga: 'Liga',
-  express: 'Express',
-  eliminacion: 'Eliminación',
-};
 
 export default async function QueensTournamentsPage() {
   const supabase = await getSupabaseServerClient();
   const { data } = await supabase
     .from('tournaments')
     .select(
-      'id, slug, name, format, status, starts_at, category_kind, category, min_sum, tier, max_teams, price_per_team',
+      'id, slug, name, format, status, starts_at, category_kind, category, min_sum, tier, max_teams, price_per_team, clubs(name, city)',
     )
     .in('category_kind', ['queens_estandar', 'queens_suma', 'mixto_estandar', 'mixto_suma'])
+    .eq('status', 'open')
     .order('starts_at', { ascending: true });
-
-  type TournamentRow = {
-    id: string;
-    slug: string;
-    name: string;
-    format: string;
-    status: string;
-    starts_at: string;
-    category_kind: string;
-    category: string | null;
-    min_sum: number | null;
-    tier: string;
-    max_teams: number;
-    price_per_team: number;
-  };
   const tournaments = (data ?? []) as unknown as TournamentRow[];
+
+  // Fetch reg counts
+  let tournamentsWithCount: TournamentRow[] = tournaments;
+  if (tournaments.length > 0) {
+    const ids = tournaments.map((t) => t.id);
+    const { data: regs } = await supabase
+      .from('tournament_registrations')
+      .select('tournament_id')
+      .in('tournament_id', ids)
+      .eq('status', 'confirmed');
+    const countMap = new Map<string, number>();
+    for (const r of (regs ?? []) as { tournament_id: string }[]) {
+      countMap.set(r.tournament_id, (countMap.get(r.tournament_id) ?? 0) + 1);
+    }
+    tournamentsWithCount = tournaments.map((t) => ({
+      ...t,
+      registrations_count: countMap.get(t.id) ?? 0,
+    }));
+  }
 
   return (
     <div className="theme-queens">
       <div className="bg-background min-h-screen">
         <PublicHeader brand="queens" />
 
-        <main className="mx-auto max-w-7xl px-6 py-12">
+        <main className="mx-auto max-w-7xl px-6 py-10 md:py-14">
           <div className="mb-10">
             <Badge variant="queens">Torneos</Badge>
             <h1 className="font-display mt-4 text-5xl tracking-tight md:text-6xl">
-              TORNEOS <span className="text-queens">QUEENS</span>
+              TORNEOS <span className="text-magenta-500">QUEENS</span>
             </h1>
-            <p className="text-muted-foreground mt-3 text-sm">
+            <p className="text-muted-foreground mt-3 max-w-2xl text-sm md:text-base">
               Femeninos + mixtos. ¿Buscas masculinos?{' '}
-              <Link href="/tournaments" className="text-crown underline">
+              <Link href="/tournaments" className="text-gold-400 underline-offset-2 hover:underline">
                 Ver Kings →
               </Link>
             </p>
           </div>
 
-          {tournaments.length === 0 ? (
+          {tournamentsWithCount.length === 0 ? (
             <Card className="p-12 text-center">
               <Trophy className="text-muted-foreground mx-auto size-10" />
               <p className="text-foreground/80 font-display mt-4 text-xl">
@@ -92,61 +73,10 @@ export default async function QueensTournamentsPage() {
               </Button>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {tournaments.map((t) => {
-                const isMixto =
-                  t.category_kind === 'mixto_estandar' || t.category_kind === 'mixto_suma';
-                return (
-                  <Link key={t.id} href={`/tournaments/${t.slug}`}>
-                    <Card className="hover:border-queens/40 h-full transition-[border-color,background-color] hover:border-foreground/20">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <Badge variant={isMixto ? 'data' : 'queens'}>
-                            {isMixto ? 'Mixto' : 'Queens'} ·{' '}
-                            {FORMAT_LABELS[t.format] ?? t.format}
-                          </Badge>
-                          <Badge
-                            variant={t.status === 'open' ? 'success' : 'muted'}
-                            className="text-[10px]"
-                          >
-                            {t.status}
-                          </Badge>
-                        </div>
-                        <CardTitle className="mt-3 text-base">{t.name}</CardTitle>
-                        <CardDescription className="normal-case">
-                          <div className="flex items-center gap-2 text-xs">
-                            <Crown className="text-queens size-3.5" />
-                            {t.category_kind === 'suma' ||
-                            t.category_kind === 'mixto_suma' ||
-                            t.category_kind === 'queens_suma'
-                              ? `Suma ≥ ${t.min_sum}`
-                              : t.category
-                                ? CATEGORY_LABELS[t.category]
-                                : 'Categoría abierta'}
-                          </div>
-                          <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
-                            <Calendar className="size-3.5" />
-                            {new Date(t.starts_at).toLocaleDateString('es-CO', {
-                              weekday: 'short',
-                              day: '2-digit',
-                              month: 'short',
-                            })}
-                          </div>
-                          <div className="text-muted-foreground mt-1 text-xs">
-                            {t.max_teams} equipos ·{' '}
-                            {t.price_per_team > 0
-                              ? `$${t.price_per_team.toLocaleString('es-CO')} COP`
-                              : 'Gratis'}
-                          </div>
-                        </CardDescription>
-                      </CardHeader>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
+            <TournamentListView tournaments={tournamentsWithCount} brand="queens" />
           )}
         </main>
+        <SiteFooter />
       </div>
     </div>
   );
