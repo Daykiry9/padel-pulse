@@ -5,6 +5,7 @@
 @custom-variant queens (&:is(.theme-queens *));
 
 @theme inline {
+  /* Semantic surfaces */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -25,6 +26,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Brand accents (single-tone aliases for legacy code) */
   --color-crown: var(--crown);
   --color-crown-foreground: var(--crown-foreground);
   --color-queens: var(--queens);
@@ -32,18 +34,58 @@
   --color-data: var(--data);
   --color-live: var(--live);
   --color-success: var(--success);
+  --color-warning: var(--warning);
 
+  /* Ink scale: greys neutrales para hierarchy */
+  --color-ink-50:  #f1efea;
+  --color-ink-100: #d6d4cd;
+  --color-ink-200: #a8a6a0;
+  --color-ink-300: #7b7976;
+  --color-ink-400: #52514f;
+  --color-ink-500: #3a3937;
+  --color-ink-600: #26262a;
+  --color-ink-700: #1b1d22;
+  --color-ink-800: #15171b;
+  --color-ink-900: #0f1115;
+  --color-ink-950: #0a0a0a;
+
+  /* Gold scale (PadelKing) */
+  --color-gold-50:  #fff9e5;
+  --color-gold-100: #ffefb8;
+  --color-gold-200: #ffe286;
+  --color-gold-300: #ffd55a;
+  --color-gold-400: #ffc53d;
+  --color-gold-500: #fbb217;
+  --color-gold-600: #d78f0a;
+  --color-gold-700: #a86c07;
+  --color-gold-800: #7c4f05;
+  --color-gold-900: #523503;
+
+  /* Magenta scale (PadelQueens) */
+  --color-magenta-50:  #fdf2f8;
+  --color-magenta-100: #fce7f3;
+  --color-magenta-200: #fbcfe8;
+  --color-magenta-300: #f9a8d4;
+  --color-magenta-400: #f472b6;
+  --color-magenta-500: #ec4899;
+  --color-magenta-600: #db2777;
+  --color-magenta-700: #be185d;
+  --color-magenta-800: #9d174d;
+  --color-magenta-900: #831843;
+
+  /* Radius scale */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 12px);
 
+  /* Type scale — fewer sizes, more contrast (impeccable typography) */
   --font-display: 'Archivo Black', 'Anton', 'Bebas Neue', system-ui, sans-serif;
   --font-sans: 'Manrope', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* Motion tokens (Emil Kowalski). Built-in CSS easings son demasiado
-     blandos; estos custom dan punch sin ser cartoonish. */
+  /* Motion tokens (Emil Kowalski) */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -87,6 +129,7 @@
   --data: #5eead4;
   --live: #fb7185;
   --success: #4ade80;
+  --warning: #fbbf24;
 }
 
 .theme-queens {
@@ -111,20 +154,23 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
-    line-height: 1.55;
+    /* Light-on-dark compensation (impeccable): +line-height, +letter-spacing, regular→medium */
+    line-height: 1.6;
+    letter-spacing: 0.005em;
+    font-weight: 450;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight uppercase;
     letter-spacing: -0.01em;
     line-height: 1.05;
+    font-weight: 400;
   }
 
-  /* Focus rings consistentes con motion. Specific properties, no `all`. */
   *:focus-visible {
     outline: none;
   }
 
-  /* Reduced motion: solo conservar opacidad/color, remover movimiento. */
+  /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -134,7 +180,16 @@
       scroll-behavior: auto !important;
     }
   }
+
+  /* Tabular nums por default en números — broadcast feel */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
+
+/* ================================================================
+   UTILITY CLASSES
+   ================================================================ */
 
 @utility court-grid {
   background-image:
@@ -152,18 +207,78 @@
   background-size: 24px 24px;
 }
 
-/* Press feedback de Emil: sutil, 100-160ms, ease-press */
 @utility press {
   transition: transform var(--duration-quick) var(--ease-press);
-
-  &:active {
-    transform: scale(0.97);
-  }
+  &:active { transform: scale(0.97); }
 }
 
-/* Stagger fade-in para items de listas (no rompe interacción) */
 @utility stagger-fade-in {
   animation: stagger-fade var(--duration-relaxed) var(--ease-out) both;
+}
+
+@utility shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(241, 239, 234, 0.04) 0%,
+    rgba(241, 239, 234, 0.08) 50%,
+    rgba(241, 239, 234, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-pulse 2s ease-in-out infinite;
+}
+
+/* Glow shadows con brand color */
+@utility shadow-glow-crown {
+  box-shadow:
+    0 0 0 1px rgb(255 197 61 / 0.2),
+    0 8px 32px -4px rgb(255 197 61 / 0.25),
+    0 2px 8px -2px rgb(0 0 0 / 0.4);
+}
+
+@utility shadow-glow-queens {
+  box-shadow:
+    0 0 0 1px rgb(236 72 153 / 0.2),
+    0 8px 32px -4px rgb(236 72 153 / 0.25),
+    0 2px 8px -2px rgb(0 0 0 / 0.4);
+}
+
+@utility shadow-elevated {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 8px 24px -6px rgb(0 0 0 / 0.5);
+}
+
+/* Display type — only for true heros */
+@utility text-display-xl {
+  font-size: clamp(3rem, 8vw, 6rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+
+@utility text-display {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.0;
+  letter-spacing: -0.015em;
+}
+
+/* Tight-then-generous rhythm helper */
+@utility section-y {
+  padding-block: clamp(2.5rem, 6vw, 5rem);
+}
+
+/* Live indicator dot — pulse */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+@utility pulse-live {
+  animation: live-pulse 1.5s var(--ease-in-out) infinite;
+}
+
+@keyframes shimmer-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @keyframes stagger-fade {
