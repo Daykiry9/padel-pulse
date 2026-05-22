@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Crown, Globe, Shield, Trophy, Users } from 'lucide-react';
 
+import { CommandPalette } from '@/components/command-palette';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { MobileNav } from '@/components/mobile-nav';
 import { NotificationsBell, type NotificationItem } from '@/components/notifications-bell';
@@ -79,6 +80,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             )}
           </nav>
           <div className="flex items-center gap-3">
+            <div className="hidden md:block">
+              <CommandPalette />
+            </div>
             <NotificationsBell notifications={notifications} unreadCount={unreadCount} />
             <UserMenu
               userId={user.id}

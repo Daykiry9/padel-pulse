@@ -3,6 +3,7 @@ import { LayoutDashboard } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { BrandSwitcher } from '@/components/brand-switcher';
+import { CommandPalette } from '@/components/command-palette';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { getBrandFromCookie } from '@/lib/brand';
 import { getSession } from '@/lib/supabase/server';
@@ -51,6 +52,9 @@ export async function PublicHeader({
         </nav>
 
         <div className="flex items-center gap-2">
+          <div className="hidden md:block">
+            <CommandPalette />
+          </div>
           <div className="md:hidden">
             <BrandSwitcher current={effectiveBrand} />
           </div>
