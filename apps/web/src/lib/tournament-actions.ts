@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { generateFixedAmericano, tierOf, weightOf } from '@padelking/domain';
+import { applyPaddleElo, generateFixedAmericano, tierOf, weightOf } from '@padelking/domain';
 import type {
   CategoryKind,
   PairingMode,
@@ -11,8 +11,10 @@ import type {
 } from '@padelking/domain';
 
 import { getSession, getSupabaseServerClient } from './supabase/server';
+import { getServiceRoleClient } from './supabase/admin';
 import type { ActionResult } from './auth-actions';
 import { translateDbError } from './error-translate';
+import { createNotifications } from './notification-actions';
 
 function slugify(input: string): string {
   return input
@@ -277,6 +279,35 @@ export async function closeRegistrationsAndGenerateBracket(
     .eq('id', tournamentId);
   if (updErr) return { ok: false, error: translateDbError(updErr.message) };
 
+  // 7. Notificar a todos los participantes que el torneo arrancó
+  type RegPlayer = {
+    player_one_id: string | null;
+    player_two_id: string | null;
+    player_id: string | null;
+  };
+  const { data: regsForNotif } = await supabase
+    .from('tournament_registrations')
+    .select('player_one_id, player_two_id, player_id')
+    .eq('tournament_id', tournamentId)
+    .eq('status', 'confirmed');
+  const playerIds = new Set<string>();
+  for (const r of (regsForNotif ?? []) as RegPlayer[]) {
+    if (r.player_one_id) playerIds.add(r.player_one_id);
+    if (r.player_two_id) playerIds.add(r.player_two_id);
+    if (r.player_id) playerIds.add(r.player_id);
+  }
+  if (playerIds.size > 0) {
+    await createNotifications(
+      [...playerIds].map((pid) => ({
+        profileId: pid,
+        type: 'tournament_starting',
+        title: 'El torneo arrancó',
+        body: 'Ya está el bracket listo. Mira tus matches.',
+        link: `/tournaments/${tournament.slug}/live`,
+      })),
+    );
+  }
+
   revalidatePath(`/tournaments/${tournament.slug}`);
   revalidatePath(`/app/tournaments/${tournament.slug}/manage`);
   return { ok: true };
@@ -320,13 +351,156 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       ended_at: isCompleted ? new Date().toISOString() : null,
     } as never)
     .eq('id', matchId)
-    .select('tournament_id, tournaments(slug)')
+    .select(
+      'tournament_id, registration_one_id, registration_two_id, tournaments(slug)',
+    )
     .single();
 
   if (error) return { ok: false, error: translateDbError(error.message) };
 
-  const slugRow = data as unknown as { tournaments: { slug: string } | null } | null;
-  const slug = slugRow?.tournaments?.slug;
+  const matchData = data as unknown as {
+    tournament_id: string;
+    registration_one_id: string;
+    registration_two_id: string;
+    tournaments: { slug: string } | null;
+  } | null;
+  const slug = matchData?.tournaments?.slug;
+
+  // Side effects post-completed: notificaciones + ELO
+  if (isCompleted && matchData) {
+    type RegRow = {
+      id: string;
+      player_one_id: string | null;
+      player_two_id: string | null;
+      player_id: string | null;
+    };
+    const { data: regsData } = await supabase
+      .from('tournament_registrations')
+      .select('id, player_one_id, player_two_id, player_id')
+      .in('id', [matchData.registration_one_id, matchData.registration_two_id]);
+    const regs = (regsData ?? []) as RegRow[];
+    const regOne = regs.find((r) => r.id === matchData.registration_one_id);
+    const regTwo = regs.find((r) => r.id === matchData.registration_two_id);
+
+    // ELO update — solo si ambas registrations son parejas (2 players cada)
+    if (
+      regOne?.player_one_id &&
+      regOne?.player_two_id &&
+      regTwo?.player_one_id &&
+      regTwo?.player_two_id
+    ) {
+      const { data: tData } = await supabase
+        .from('tournaments')
+        .select('tier')
+        .eq('id', matchData.tournament_id)
+        .single();
+      const tier = (tData as { tier: string } | null)?.tier;
+      const k = tier === 'competitivo' ? 32 : 16;
+
+      const playerIds = [
+        regOne.player_one_id,
+        regOne.player_two_id,
+        regTwo.player_one_id,
+        regTwo.player_two_id,
+      ];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, elo_rating')
+        .in('id', playerIds);
+      const eloMap = new Map(
+        ((profilesData ?? []) as unknown as { id: string; elo_rating: number }[]).map((p) => [
+          p.id,
+          p.elo_rating,
+        ]),
+      );
+
+      const beforeOnePOne = eloMap.get(regOne.player_one_id) ?? 1000;
+      const beforeOnePTwo = eloMap.get(regOne.player_two_id) ?? 1000;
+      const beforeTwoPOne = eloMap.get(regTwo.player_one_id) ?? 1000;
+      const beforeTwoPTwo = eloMap.get(regTwo.player_two_id) ?? 1000;
+
+      const eloResult = applyPaddleElo({
+        pairOne: { p1: beforeOnePOne, p2: beforeOnePTwo },
+        pairTwo: { p1: beforeTwoPOne, p2: beforeTwoPTwo },
+        scoreOne,
+        scoreTwo,
+        k,
+      });
+
+      const admin = getServiceRoleClient();
+      await Promise.all([
+        admin
+          .from('profiles')
+          .update({ elo_rating: eloResult.pairOne.p1 } as never)
+          .eq('id', regOne.player_one_id),
+        admin
+          .from('profiles')
+          .update({ elo_rating: eloResult.pairOne.p2 } as never)
+          .eq('id', regOne.player_two_id),
+        admin
+          .from('profiles')
+          .update({ elo_rating: eloResult.pairTwo.p1 } as never)
+          .eq('id', regTwo.player_one_id),
+        admin
+          .from('profiles')
+          .update({ elo_rating: eloResult.pairTwo.p2 } as never)
+          .eq('id', regTwo.player_two_id),
+      ]);
+
+      // History
+      await (admin as never as { from: (t: string) => { insert: (rows: unknown) => Promise<unknown> } })
+        .from('elo_history')
+        .insert([
+          {
+            profile_id: regOne.player_one_id,
+            match_id: matchId,
+            elo_before: beforeOnePOne,
+            elo_after: eloResult.pairOne.p1,
+            delta: eloResult.pairOne.delta,
+          },
+          {
+            profile_id: regOne.player_two_id,
+            match_id: matchId,
+            elo_before: beforeOnePTwo,
+            elo_after: eloResult.pairOne.p2,
+            delta: eloResult.pairOne.delta,
+          },
+          {
+            profile_id: regTwo.player_one_id,
+            match_id: matchId,
+            elo_before: beforeTwoPOne,
+            elo_after: eloResult.pairTwo.p1,
+            delta: eloResult.pairTwo.delta,
+          },
+          {
+            profile_id: regTwo.player_two_id,
+            match_id: matchId,
+            elo_before: beforeTwoPTwo,
+            elo_after: eloResult.pairTwo.p2,
+            delta: eloResult.pairTwo.delta,
+          },
+        ]);
+    }
+
+    // Notificaciones a los 4 jugadores
+    const playerIds = new Set<string>();
+    for (const r of regs) {
+      if (r.player_one_id) playerIds.add(r.player_one_id);
+      if (r.player_two_id) playerIds.add(r.player_two_id);
+      if (r.player_id) playerIds.add(r.player_id);
+    }
+    if (playerIds.size > 0 && slug) {
+      await createNotifications(
+        [...playerIds].map((pid) => ({
+          profileId: pid,
+          type: 'match_result',
+          title: `Marcador reportado: ${scoreOne} - ${scoreTwo}`,
+          body: 'Revisa el bracket en vivo.',
+          link: `/tournaments/${slug}/live`,
+        })),
+      );
+    }
+  }
   if (slug) {
     revalidatePath(`/tournaments/${slug}`);
     revalidatePath(`/tournaments/${slug}/live`);

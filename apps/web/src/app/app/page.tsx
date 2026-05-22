@@ -54,7 +54,7 @@ export default async function DashboardPage() {
       .maybeSingle(),
   ]);
 
-  type Profile = { display_name: string; skill_category: string | null };
+  type Profile = { display_name: string; skill_category: string | null; elo_rating: number };
   type Team = { id: string; name: string; category: string | null; rating: number; slug: string };
   type CommunityMem = { community_id: string; communities: { name: string; slug: string; city: string } | null };
   type Tournament = {
@@ -131,6 +131,31 @@ export default async function DashboardPage() {
               value={ranking?.raw_tier2_points ?? 0}
               accent="text-data"
             />
+          </div>
+        </div>
+      </Card>
+
+      {/* ELO individual — separado, estilo Playtomic */}
+      <Card className="border-data/30 bg-gradient-to-br from-data/[0.05] to-transparent p-6">
+        <div className="flex items-center justify-between gap-6 flex-wrap">
+          <div>
+            <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
+              ELO individual
+            </div>
+            <div className="font-display mt-1 text-3xl tracking-tight">
+              {profile?.elo_rating ?? 1000}
+            </div>
+            <div className="text-muted-foreground mt-1 text-xs">
+              Actualiza match-a-match. K=24 (americano) · K=32 (Tier 1 competitivo).
+            </div>
+          </div>
+          <div className="text-muted-foreground text-right text-[10px] uppercase tracking-widest">
+            <div>Rookie</div>
+            <div>800-1000</div>
+            <div className="mt-1">Intermedio</div>
+            <div>1000-1400</div>
+            <div className="mt-1">Avanzado</div>
+            <div>1400+</div>
           </div>
         </div>
       </Card>

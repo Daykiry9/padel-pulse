@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Crown, Globe, LogOut, Trophy, Users } from 'lucide-react';
 
 import { KingLogo } from '@/components/marketing/king-logo';
+import { NotificationsBell, type NotificationItem } from '@/components/notifications-bell';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { signOut } from '@/lib/auth-actions';
 
@@ -11,13 +12,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect('/login');
 
   const supabase = await getSupabaseServerClient();
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, skill_category, gender, city')
-    .eq('id', user.id)
-    .single();
+  const [profileRes, notificationsRes] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('display_name, skill_category, gender, city')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('notifications')
+      .select('id, type, title, body, link, read_at, created_at')
+      .eq('profile_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(15),
+  ]);
 
+  const profile = profileRes.data;
   if (!profile?.skill_category) redirect('/onboarding');
+
+  const notifications = (notificationsRes.data ?? []) as unknown as NotificationItem[];
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   const isQueens = profile.gender === 'female' && profile.skill_category?.startsWith('queens_');
 
@@ -50,6 +63,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Link>
           </nav>
           <div className="flex items-center gap-3">
+            <NotificationsBell notifications={notifications} unreadCount={unreadCount} />
             <span className="text-muted-foreground hidden text-xs uppercase tracking-wider md:inline">
               {profile.display_name}
             </span>
