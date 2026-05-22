@@ -3,26 +3,15 @@
 ## Setup inicial (una sola vez)
 
 1. **Import en Vercel**: nuevo proyecto desde GitHub → seleccionar el repo.
-2. **Root Directory**: déjalo en `.` (raíz del monorepo). El `vercel.json` se encarga del resto.
-3. **Framework Preset**: Next.js (Vercel lo detecta solo gracias al `framework` del vercel.json).
-4. **Environment Variables**: copiar al panel de Vercel:
+2. **Framework Preset**: Next.js (Vercel lo detecta solo).
+3. **Root Directory**: `apps/web` (Vercel lo sugiere automáticamente porque ahí está el `next.config`).
+4. **Build & Development Settings**: déjalo en defaults (`pnpm install`, `pnpm build`). Vercel detecta `pnpm-workspace.yaml` en la raíz y resuelve workspaces solo.
+5. **Environment Variables** (copiar al panel de Vercel, Production y Preview):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (Production, sensible — no Preview)
-   - `NEXT_PUBLIC_APP_URL` → `https://<tu-dominio>.vercel.app` (en Production)
-5. **Deploy**.
-
-## Comandos (definidos en `vercel.json`)
-
-```
-install:  pnpm install --frozen-lockfile
-build:    pnpm turbo build --filter=web
-output:   apps/web/.next
-```
-
-## CI ignore inteligente
-
-El `ignoreCommand` corta deploys si el cambio no toca `apps/web/`, `packages/`, `turbo.json`, o el lockfile. Útil cuando edites el folder de mobile o de docs y no quieras gastar minutos.
+   - `SUPABASE_SERVICE_ROLE_KEY` (Production-only — sensible)
+   - `NEXT_PUBLIC_APP_URL` → `https://<tu-dominio>.vercel.app` (Production)
+6. **Deploy**.
 
 ## Validar localmente antes de pushear
 
@@ -34,9 +23,9 @@ pnpm build       # debe terminar sin errores
 
 ## Bugs comunes que rompieron deploys antes
 
-- `prefer-const` falla el build de Vercel (next lint corre en build).
-- Variables NEXT_PUBLIC_* deben estar SET en Vercel — si no, `process.env.NEXT_PUBLIC_SUPABASE_URL!` es `undefined` y la primera request a supabase tira.
-- `pnpm@10.x` requiere `packageManager` field en root `package.json` (ya está).
+- **`prefer-const` rompe el build** — `next lint` corre en build de Vercel.
+- **NEXT_PUBLIC_* sin setear** — `process.env.NEXT_PUBLIC_SUPABASE_URL!` es `undefined` y la primera request a Supabase tira null.
+- **`vercel.json` en raíz + Root Directory = `apps/web`** — config conflict. Si Root Directory = `apps/web`, NO necesitas `vercel.json` (Vercel detecta todo nativamente).
 
 ## Post-deploy: verificar
 
@@ -47,6 +36,21 @@ pnpm build       # debe terminar sin errores
 
 ## Custom domain (opcional)
 
-`padelking.co` → Vercel → settings → Domains → agregar. DNS:
+`padelking.co` → Vercel → Settings → Domains → agregar. DNS:
 - `A` record → `76.76.21.21`
 - `CNAME` para `www` → `cname.vercel-dns.com`
+
+## Si necesitas configurar el build manualmente
+
+Si por alguna razón quieres mantener Root Directory = `.` (raíz del monorepo) en lugar de `apps/web`, crea `vercel.json` en la raíz con:
+
+```json
+{
+  "buildCommand": "pnpm turbo build --filter=web",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "apps/web/.next",
+  "framework": "nextjs"
+}
+```
+
+Pero la opción default (Root Directory = `apps/web` sin vercel.json) es más simple.
