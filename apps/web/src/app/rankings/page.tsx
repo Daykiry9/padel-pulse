@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PublicHeader } from '@/components/public-header';
+import { SiteFooter } from '@/components/site-footer';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -255,6 +256,8 @@ export default async function RankingsPage({
           </Button>
         </div>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

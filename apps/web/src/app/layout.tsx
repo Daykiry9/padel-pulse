@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo_Black, JetBrains_Mono, Manrope } from 'next/font/google';
 
+import { getBrandFromCookie } from '@/lib/brand';
+
 import './globals.css';
 
 const archivoBlack = Archivo_Black({
@@ -59,11 +61,12 @@ export const viewport: Viewport = {
   themeColor: '#0a0a0a',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const brand = await getBrandFromCookie();
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${archivoBlack.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${archivoBlack.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased ${brand === 'queens' ? 'theme-queens' : ''}`}
       >
         {children}
       </body>
