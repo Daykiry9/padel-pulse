@@ -50,20 +50,10 @@ export async function createCommunity(formData: FormData): Promise<ActionResult>
   return { ok: true, redirectTo: `/app/communities/${slugResult}` };
 }
 
+// joinCommunity ahora delega al flujo de request — la membresía requiere
+// aprobación del owner/admin de la comunidad.
+import { requestJoinCommunity } from './community-approval-actions';
+
 export async function joinCommunity(formData: FormData): Promise<ActionResult> {
-  const user = await getSession();
-  if (!user) return { ok: false, error: 'No autenticado' };
-
-  const communityId = String(formData.get('community_id') ?? '');
-  if (!communityId) return { ok: false, error: 'Comunidad inválida' };
-
-  const supabase = await getSupabaseServerClient();
-  const { error } = await supabase
-    .from('community_members')
-    .insert({ community_id: communityId, profile_id: user.id } as never);
-
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath('/app/communities');
-  return { ok: true };
+  return requestJoinCommunity(formData);
 }

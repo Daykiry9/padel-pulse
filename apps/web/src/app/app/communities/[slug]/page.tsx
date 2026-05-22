@@ -9,6 +9,7 @@ import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { ShareInviteButton } from '@/components/share-invite-button';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { joinCommunity } from '@/lib/community-actions';
+import { JoinRequestRow } from './join-request-row';
 
 export default async function CommunityDetailPage({
   params,
@@ -28,7 +29,14 @@ export default async function CommunityDetailPage({
 
   if (!community) notFound();
 
-  const [membersRes, teamsRes, tournamentsRes, mineRes] = await Promise.all([
+  type JoinReq = {
+    id: string;
+    profile_id: string;
+    message: string | null;
+    created_at: string;
+    profiles: { display_name: string; skill_category: string | null; city: string | null } | null;
+  };
+  const [membersRes, teamsRes, tournamentsRes, mineRes, myPendingRes, joinReqsRes] = await Promise.all([
     supabase
       .from('community_members')
       .select('profile_id, role, profiles(display_name, skill_category)')
@@ -49,12 +57,58 @@ export default async function CommunityDetailPage({
       .eq('community_id', community.id)
       .eq('profile_id', user.id)
       .maybeSingle(),
+    // ¿Tengo una request pendiente?
+    (
+      supabase as unknown as {
+        from: (t: string) => {
+          select: (cols: string) => {
+            eq: (k: string, v: string) => {
+              eq: (k: string, v: string) => {
+                eq: (k: string, v: string) => {
+                  maybeSingle: () => Promise<{ data: { id: string } | null }>;
+                };
+              };
+            };
+          };
+        };
+      }
+    )
+      .from('community_join_requests')
+      .select('id')
+      .eq('community_id', community.id)
+      .eq('profile_id', user.id)
+      .eq('status', 'pending')
+      .maybeSingle(),
+    // Requests pendientes (solo si soy owner)
+    (
+      supabase as unknown as {
+        from: (t: string) => {
+          select: (cols: string) => {
+            eq: (k: string, v: string) => {
+              eq: (k: string, v: string) => {
+                order: (col: string, opts: { ascending: boolean }) => Promise<{ data: JoinReq[] | null }>;
+              };
+            };
+          };
+        };
+      }
+    )
+      .from('community_join_requests')
+      .select(
+        'id, profile_id, message, created_at, profiles:profile_id(display_name, skill_category, city)',
+      )
+      .eq('community_id', community.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
   ]);
 
   const members = membersRes.data ?? [];
   const teams = teamsRes.data ?? [];
   const tournaments = tournamentsRes.data ?? [];
   const isMember = !!mineRes.data;
+  const hasPendingRequest = !!myPendingRes.data;
+  const pendingRequests = (joinReqsRes.data ?? []) as JoinReq[];
+  const isOwner = community.owner_id === user.id;
 
   return (
     <div className="space-y-10">
@@ -82,20 +136,36 @@ export default async function CommunityDetailPage({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          {!isMember && (
+          {!isMember && !hasPendingRequest && (
             <ActionForm action={joinCommunity}>
               <input type="hidden" name="community_id" value={community.id} />
-              <SubmitButton variant="crown" pendingLabel="Uniéndome…">
-                Unirme
+              <SubmitButton variant="crown" pendingLabel="Enviando…">
+                Pedir unirme
               </SubmitButton>
             </ActionForm>
           )}
+          {hasPendingRequest && <Badge variant="muted">Solicitud pendiente</Badge>}
           {isMember && <Badge variant="success">Eres miembro</Badge>}
-          {community.owner_id === user.id && (
+          {isOwner && (
             <ShareInviteButton kind="community" targetId={community.id} label="Invitar amigos" />
           )}
         </div>
       </header>
+
+      {/* Solicitudes pendientes (solo visible al owner) */}
+      {isOwner && pendingRequests.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-display text-xl tracking-tight">
+            SOLICITUDES PENDIENTES{' '}
+            <span className="text-crown">({pendingRequests.length})</span>
+          </h2>
+          <div className="space-y-3">
+            {pendingRequests.map((req) => (
+              <JoinRequestRow key={req.id} request={req} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <section>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Crown, Globe, LogOut, Trophy, Users } from 'lucide-react';
+import { Crown, Globe, LogOut, Shield, Trophy, Users } from 'lucide-react';
 
 import { KingLogo } from '@/components/marketing/king-logo';
 import { MobileNav } from '@/components/mobile-nav';
@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [profileRes, notificationsRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('display_name, skill_category, gender, city')
+      .select('display_name, skill_category, gender, city, is_super_admin')
       .eq('id', user.id)
       .single(),
     supabase
@@ -27,8 +27,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .limit(15),
   ]);
 
-  const profile = profileRes.data;
+  const profile = profileRes.data as
+    | { display_name: string; skill_category: string | null; gender: string | null; city: string | null; is_super_admin: boolean }
+    | null;
   if (!profile?.skill_category) redirect('/onboarding');
+  const isSuperAdmin = profile.is_super_admin === true;
 
   const notifications = (notificationsRes.data ?? []) as unknown as NotificationItem[];
   const unreadCount = notifications.filter((n) => !n.read_at).length;
@@ -62,6 +65,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Crown className="inline size-4 mr-1.5" />
               Torneos
             </Link>
+            {isSuperAdmin && (
+              <Link
+                href="/app/admin"
+                className="text-crown hover:brightness-125 transition-colors"
+              >
+                <Shield className="inline size-4 mr-1.5" />
+                Admin
+              </Link>
+            )}
           </nav>
           <div className="flex items-center gap-3">
             <NotificationsBell notifications={notifications} unreadCount={unreadCount} />
@@ -81,7 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8 pb-24 md:pb-8">{children}</main>
-      <MobileNav />
+      <MobileNav isSuperAdmin={isSuperAdmin} />
     </div>
   );
 }

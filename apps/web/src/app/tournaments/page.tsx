@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 const CATEGORY_LABELS: Record<string, string> = {
   libre: 'Libre',
@@ -33,31 +33,50 @@ const FORMAT_LABELS: Record<string, string> = {
   eliminacion: 'Eliminación',
 };
 
-export default async function TournamentsPage() {
+export default async function TournamentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ city?: string }>;
+}) {
+  const { city: cityParam } = await searchParams;
   const supabase = await getSupabaseServerClient();
+
+  // Auto-detectar ciudad del user si no hay filter explícito
+  const user = await getSession();
+  let myCity: string | null = null;
+  if (user && cityParam !== 'all') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('city')
+      .eq('id', user.id)
+      .maybeSingle();
+    myCity = (profile as { city: string | null } | null)?.city ?? null;
+  }
+  const cityFilter = cityParam && cityParam !== 'all' ? cityParam : myCity;
+
+  // Query: join con clubs para filtrar por ciudad del club
   const { data } = await supabase
     .from('tournaments')
     .select(
-      'id, slug, name, format, status, starts_at, category_kind, category, min_sum, tier, max_teams, price_per_team',
+      'id, slug, name, format, status, starts_at, category_kind, category, min_sum, tier, max_teams, price_per_team, clubs(city)',
     )
     .in('category_kind', ['estandar', 'suma', 'mixto_estandar', 'mixto_suma', 'casual'])
     .order('starts_at', { ascending: true });
 
-  type TournamentRow = {
-    id: string;
-    slug: string;
-    name: string;
-    format: string;
-    status: string;
-    starts_at: string;
-    category_kind: string;
-    category: string | null;
-    min_sum: number | null;
-    tier: string;
-    max_teams: number;
-    price_per_team: number;
-  };
-  const tournaments = (data ?? []) as unknown as TournamentRow[];
+  const tournamentsAll = (data ?? []) as unknown as (TournamentRow & {
+    clubs: { city: string } | null;
+  })[];
+
+  // Filtro client-side por ciudad (más simple que un sub-query)
+  const tournaments = cityFilter
+    ? tournamentsAll.filter((t) => t.clubs?.city === cityFilter)
+    : tournamentsAll;
+
+  // Lista de ciudades disponibles para el selector
+  const availableCities = Array.from(
+    new Set(tournamentsAll.map((t) => t.clubs?.city).filter(Boolean) as string[]),
+  ).sort();
+
 
   return (
     <div className="bg-background min-h-screen">
@@ -92,6 +111,29 @@ export default async function TournamentsPage() {
               Ver Queens →
             </Link>
           </p>
+
+          {/* Filtro de ciudad */}
+          {availableCities.length > 0 && (
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                Ciudad:
+              </span>
+              <CityChip href="/tournaments?city=all" active={cityParam === 'all'} label="Todas" />
+              {availableCities.map((c) => (
+                <CityChip
+                  key={c}
+                  href={`/tournaments?city=${encodeURIComponent(c)}`}
+                  active={cityFilter === c && cityParam !== 'all'}
+                  label={c}
+                />
+              ))}
+              {myCity && !cityParam && (
+                <span className="text-muted-foreground text-[10px] italic">
+                  Mostrando tu ciudad ({myCity}) por defecto
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {tournaments.length === 0 ? (
@@ -153,5 +195,35 @@ export default async function TournamentsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+type TournamentRow = {
+  id: string;
+  slug: string;
+  name: string;
+  format: string;
+  status: string;
+  starts_at: string;
+  category_kind: string;
+  category: string | null;
+  min_sum: number | null;
+  tier: string;
+  max_teams: number;
+  price_per_team: number;
+};
+
+function CityChip({ href, active, label }: { href: string; active: boolean; label: string }) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs uppercase tracking-widest transition-colors ${
+        active
+          ? 'border-crown/40 bg-crown/15 text-crown'
+          : 'border-border/40 text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+    </Link>
   );
 }

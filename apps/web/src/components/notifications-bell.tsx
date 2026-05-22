@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Bell, BellDot, Check } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/notification-actions';
 
 export interface NotificationItem {
