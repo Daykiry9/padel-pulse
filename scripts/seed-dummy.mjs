@@ -7,8 +7,13 @@
  *   SUPABASE_URL=... SUPABASE_SERVICE_KEY=... node scripts/seed-dummy.mjs
  */
 
-const URL = process.env.SUPABASE_URL ?? 'https://ulwieksgoamoqnpenabr.supabase.co';
-const KEY = process.env.SUPABASE_SERVICE_KEY ?? 'sb_secret_xlbUhBP16OZX1ihdUzv4Vg_zUmbGO4j';
+const URL = process.env.SUPABASE_URL;
+const KEY = process.env.SUPABASE_SERVICE_KEY;
+if (!URL || !KEY) {
+  console.error('Faltan SUPABASE_URL y/o SUPABASE_SERVICE_KEY en el environment.');
+  console.error('Uso: SUPABASE_URL=https://...supabase.co SUPABASE_SERVICE_KEY=sb_secret_... node scripts/seed-dummy.mjs');
+  process.exit(1);
+}
 
 const headers = {
   apikey: KEY,
