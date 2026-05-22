@@ -67,7 +67,7 @@ function SiteHeader() {
           <Link href="#categorias" className="hover:text-foreground transition-colors">
             Categorías
           </Link>
-          <Link href="#ranking" className="hover:text-foreground transition-colors">
+          <Link href="/rankings" className="hover:text-foreground transition-colors">
             Ranking
           </Link>
           <Link href="/queens" className="text-queens hover:brightness-125 transition-[border-color,background-color]">
