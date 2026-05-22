@@ -12,6 +12,7 @@ import type {
 
 import { getSession, getSupabaseServerClient } from './supabase/server';
 import type { ActionResult } from './auth-actions';
+import { translateDbError } from './error-translate';
 
 function slugify(input: string): string {
   return input
@@ -93,7 +94,7 @@ export async function createTournament(formData: FormData): Promise<ActionResult
     .select('slug')
     .single();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: translateDbError(error.message) };
 
   const slugResult = (data as { slug: string } | null)?.slug ?? '';
   revalidatePath('/tournaments');
@@ -120,7 +121,7 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
       status: 'confirmed',
       payment_amount: 0,
     } as never);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: translateDbError(error.message) };
   } else if (modality === 'team') {
     const teamId = String(formData.get('team_id') ?? '');
     if (!teamId) return { ok: false, error: 'Selecciona tu equipo' };
@@ -146,7 +147,7 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
       status: 'confirmed',
       payment_amount: 0,
     } as never);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: translateDbError(error.message) };
   } else if (modality === 'adhoc') {
     const partnerSearch = String(formData.get('partner_search') ?? '').trim();
     if (!partnerSearch) return { ok: false, error: 'Indica con quién te inscribes' };
@@ -174,7 +175,7 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
       status: 'confirmed',
       payment_amount: 0,
     } as never);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: translateDbError(error.message) };
   } else {
     return { ok: false, error: 'Modalidad de inscripción inválida' };
   }
@@ -267,14 +268,14 @@ export async function closeRegistrationsAndGenerateBracket(
 
   // 5. Insertar todos
   const { error: insertErr } = await supabase.from('matches').insert(matchRows as never);
-  if (insertErr) return { ok: false, error: `Error guardando matches: ${insertErr.message}` };
+  if (insertErr) return { ok: false, error: translateDbError(insertErr.message) };
 
   // 6. Pasar a in_progress
   const { error: updErr } = await supabase
     .from('tournaments')
     .update({ status: 'in_progress' } as never)
     .eq('id', tournamentId);
-  if (updErr) return { ok: false, error: `Error actualizando estado: ${updErr.message}` };
+  if (updErr) return { ok: false, error: translateDbError(updErr.message) };
 
   revalidatePath(`/tournaments/${tournament.slug}`);
   revalidatePath(`/app/tournaments/${tournament.slug}/manage`);
@@ -322,7 +323,7 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
     .select('tournament_id, tournaments(slug)')
     .single();
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: translateDbError(error.message) };
 
   const slugRow = data as unknown as { tournaments: { slug: string } | null } | null;
   const slug = slugRow?.tournaments?.slug;
