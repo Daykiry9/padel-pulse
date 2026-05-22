@@ -147,7 +147,12 @@ export default async function CommunityDetailPage({
           {hasPendingRequest && <Badge variant="muted">Solicitud pendiente</Badge>}
           {isMember && <Badge variant="success">Eres miembro</Badge>}
           {isOwner && (
-            <ShareInviteButton kind="community" targetId={community.id} label="Invitar amigos" />
+            <ShareInviteButton
+              kind="community"
+              targetId={community.id}
+              name={community.name}
+              label="Invitar por WhatsApp"
+            />
           )}
         </div>
       </header>

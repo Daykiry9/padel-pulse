@@ -255,9 +255,10 @@ export default async function TournamentDetailPage({
             <ShareInviteButton
               kind="tournament"
               targetId={tournament.id}
+              name={tournament.name}
               variant="outline"
               size="lg"
-              label="Invitar amigos a este torneo"
+              label="Invitar por WhatsApp"
             />
           )}
 

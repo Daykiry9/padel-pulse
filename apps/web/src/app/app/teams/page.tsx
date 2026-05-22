@@ -70,7 +70,12 @@ export default async function TeamsPage() {
                   Rating: {t.rating}
                 </CardDescription>
                 <div className="mt-3">
-                  <ShareInviteButton kind="team" targetId={t.id} label="Invitar compañero" />
+                  <ShareInviteButton
+                    kind="team"
+                    targetId={t.id}
+                    name={t.name}
+                    label="Invitar compañero"
+                  />
                 </div>
               </CardHeader>
             </Card>
