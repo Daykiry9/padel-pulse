@@ -4,9 +4,52 @@ import { ArrowLeft, Crown, Medal, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Avatar } from '@/components/ui/avatar';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PublicHeader } from '@/components/public-header';
 import { SiteFooter } from '@/components/site-footer';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+
+// Mock visual del top 5 — se muestra cuando rows está vacío para enseñar
+// cómo se verá el ranking real, no dejar al user en el aire.
+const PREVIEW_PLAYERS = [
+  { rank: 1, name: 'Sebastián Castaño', cat: '1ra', city: 'Bogotá', pts: 2840 },
+  { rank: 2, name: 'María González', cat: '1ra', city: 'Medellín', pts: 2615 },
+  { rank: 3, name: 'Juan Pablo Ortiz', cat: '2da', city: 'Bogotá', pts: 2280 },
+  { rank: 4, name: 'Laura Restrepo', cat: '1ra', city: 'Cali', pts: 2105 },
+  { rank: 5, name: 'Andrés Mejía', cat: '2da', city: 'Bogotá', pts: 1990 },
+];
+
+function RankingPreviewMock() {
+  return (
+    <div className="border-border/40 bg-card/40 rounded-lg border p-3">
+      <div className="text-muted-foreground mb-2 text-[10px] uppercase tracking-widest">
+        Top 5 · 1ra masculina · ejemplo
+      </div>
+      <ul className="divide-border/30 divide-y">
+        {PREVIEW_PLAYERS.map((p) => (
+          <li key={p.rank} className="grid grid-cols-[1.5rem_auto_1fr_auto] items-center gap-2 py-2 text-xs">
+            <span
+              className={`font-display tabular-nums ${
+                p.rank === 1 ? 'text-crown' : p.rank <= 3 ? 'text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              {p.rank}
+            </span>
+            <Avatar seed={p.name} name={p.name} size="xs" />
+            <div className="min-w-0">
+              <div className="truncate font-medium">{p.name}</div>
+              <div className="text-muted-foreground text-[9px] uppercase tracking-widest">
+                {p.cat} · {p.city}
+              </div>
+            </div>
+            <span className="text-muted-foreground tabular-nums">{p.pts.toLocaleString('es-CO')}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const CATEGORY_LABELS: Record<string, string> = {
   libre: 'Libre / Pro',
@@ -81,7 +124,7 @@ export default async function RankingsPage({
     <div className="bg-background min-h-screen">
       <PublicHeader />
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-7xl px-6 py-10 md:py-14">
         <div>
           <Badge variant="crown">Ranking</Badge>
           <h1 className="font-display mt-3 text-5xl tracking-tight md:text-6xl">
@@ -201,16 +244,22 @@ export default async function RankingsPage({
         <div className="mt-10">
           <h2 className="font-display mb-3 text-2xl tracking-tight">TOP 100</h2>
           {rows.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Trophy className="text-muted-foreground mx-auto size-10" />
-              <p className="text-foreground/80 font-display mt-3 text-lg">
-                Sin datos todavía para estos filtros
-              </p>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Los rankings se llenan cuando los torneos terminan y los puntos se asignan. Vuelve
-                pronto.
-              </p>
-            </Card>
+            <EmptyState
+              icon={Trophy}
+              title="El ranking se llena con tus primeros torneos"
+              description="Cuando los organizadores cierran torneos y asignan puntos, los jugadores van escalando posiciones. Estos son ejemplos de cómo se verá."
+              bullets={[
+                'Tier 1 (oficiales) pesa x1.0 — mayor velocidad de subida',
+                'Tier 2 (americanos casuales) pesa x0.5 — más volumen, suma constante',
+                'Los puntos decaen linealmente en 12 meses para premiar consistencia',
+              ]}
+              primaryAction={
+                <Button variant="crown" asChild>
+                  <Link href="/tournaments">Ver torneos abiertos</Link>
+                </Button>
+              }
+              preview={<RankingPreviewMock />}
+            />
           ) : (
             <Card className="divide-border/30 divide-y overflow-hidden p-0">
               {rows.map((r, idx) => (

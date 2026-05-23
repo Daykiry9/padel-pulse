@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { ShareInviteButton } from '@/components/share-invite-button';
+import { formatDateTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { RegisterButton } from './register-button';
 
@@ -196,7 +197,7 @@ export default async function TournamentDetailPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-7xl px-6 py-10 md:py-14">
         <div className="space-y-8">
           <div>
             <div className="flex items-center gap-2">
@@ -214,13 +215,7 @@ export default async function TournamentDetailPage({
             <InfoCard
               icon={Calendar}
               label="Fecha"
-              value={new Date(tournament.starts_at).toLocaleString('es-CO', {
-                weekday: 'long',
-                day: '2-digit',
-                month: 'long',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              value={formatDateTime(tournament.starts_at)}
             />
             <InfoCard
               icon={Crown}

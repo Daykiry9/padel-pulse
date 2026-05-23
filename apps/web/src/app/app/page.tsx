@@ -22,6 +22,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PriceTag } from '@/components/ui/price-tag';
 import { Section } from '@/components/ui/section';
 import { StatCard } from '@/components/ui/stat-card';
+import { formatDate, formatTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -135,34 +136,37 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      {/* HERO — saludo personalizado con stat summary */}
+      {/* HERO — nombre gigante con stat-line consolidada */}
       <div>
-        <div className="text-muted-foreground flex items-center gap-2 text-xs uppercase tracking-[0.18em]">
-          <span>Hola, {profile?.display_name?.split(' ')[0]}</span>
-          <span>·</span>
-          {profile?.city && (
-            <>
-              <MapPin className="size-3" />
-              <span>{profile.city}</span>
-            </>
-          )}
-        </div>
-        <h1 className="font-display mt-1 text-4xl tracking-tight md:text-5xl">
+        <h1 className="font-display text-4xl tracking-tight md:text-5xl">
           {profile?.display_name?.toUpperCase()}
         </h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          {myRank ? (
-            <>
-              <span className="text-foreground font-semibold tabular-nums">#{myRank}</span>{' '}
-              nacional ·{' '}
-            </>
-          ) : (
-            <>Sin ranking aún · </>
+        <p className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {profile?.skill_category && (
+            <span className="text-foreground font-semibold">
+              {CATEGORY_LABELS[profile.skill_category]}
+            </span>
           )}
-          {profile?.skill_category ? CATEGORY_LABELS[profile.skill_category] : 'Sin categoría'}
-          {' · '}
-          <span className="tabular-nums">{ranking?.tournaments_played ?? 0}</span> torneos en 12
-          meses
+          {profile?.city && (
+            <span className="flex items-center gap-1">
+              <MapPin className="size-3" />
+              {profile.city}
+            </span>
+          )}
+          <span aria-hidden>·</span>
+          {myRank ? (
+            <span>
+              <span className="text-foreground font-semibold tabular-nums">#{myRank}</span>{' '}
+              nacional
+            </span>
+          ) : (
+            <span>Sin ranking aún</span>
+          )}
+          <span aria-hidden>·</span>
+          <span>
+            <span className="tabular-nums">{ranking?.tournaments_played ?? 0}</span> torneos · 12
+            meses
+          </span>
         </p>
       </div>
 
@@ -268,16 +272,9 @@ export default async function DashboardPage() {
                 <span className="flex items-center gap-1.5">
                   <Calendar className="size-3.5" />
                   <span className="tabular-nums">
-                    {new Date(nextTournament.starts_at).toLocaleDateString('es-CO', {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: 'short',
-                    })}
+                    {formatDate(nextTournament.starts_at, { weekday: 'short', day: '2-digit', month: 'short' })}
                     {' · '}
-                    {new Date(nextTournament.starts_at).toLocaleTimeString('es-CO', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {formatTime(nextTournament.starts_at)}
                   </span>
                 </span>
                 {nextTournament.clubs && (
@@ -358,10 +355,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="text-muted-foreground mt-1 flex items-center gap-2 text-[10px] uppercase tracking-widest tabular-nums">
                   <Calendar className="size-3" />
-                  {new Date(t.starts_at).toLocaleDateString('es-CO', {
-                    day: '2-digit',
-                    month: 'short',
-                  })}
+                  {formatDate(t.starts_at, { day: '2-digit', month: 'short' })}
                   <span>·</span>
                   <PriceTag value={t.price_per_team} size="sm" />
                 </div>

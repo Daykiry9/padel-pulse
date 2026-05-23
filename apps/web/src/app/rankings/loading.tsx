@@ -5,7 +5,7 @@ export default function RankingsLoading() {
   return (
     <div className="bg-background min-h-screen">
       <div className="border-border/40 bg-background/60 sticky top-0 z-40 h-16 border-b backdrop-blur-xl" />
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-7xl px-6 py-10 md:py-14">
         <Skeleton className="h-6 w-24" />
         <Skeleton className="mt-3 h-14 w-96 max-w-full" />
         <Skeleton className="mt-3 h-4 w-3/4" />

@@ -8,6 +8,7 @@ import { CategoryBadge } from '@/components/ui/category-badge';
 import { Countdown } from '@/components/ui/countdown';
 import { PriceTag } from '@/components/ui/price-tag';
 import { Section } from '@/components/ui/section';
+import { formatDate, formatTime } from '@/lib/format-date';
 import { cn } from '@/lib/utils';
 
 export type TournamentRow = {
@@ -177,16 +178,9 @@ function HeroTournamentCard({ tournament, brand }: { tournament: TournamentRow; 
             <span className="flex items-center gap-1.5">
               <Calendar className="size-4" />
               <span className="tabular-nums">
-                {new Date(tournament.starts_at).toLocaleDateString('es-CO', {
-                  weekday: 'long',
-                  day: '2-digit',
-                  month: 'short',
-                })}
+                {formatDate(tournament.starts_at, { weekday: 'long', day: '2-digit', month: 'short' })}
                 {' · '}
-                {new Date(tournament.starts_at).toLocaleTimeString('es-CO', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {formatTime(tournament.starts_at)}
               </span>
             </span>
             {tournament.clubs && (
@@ -274,13 +268,9 @@ function MediumTournamentCard({ tournament, brand }: { tournament: TournamentRow
         <div className="text-muted-foreground mt-4 space-y-1 text-xs">
           <div className="flex items-center gap-1.5 tabular-nums">
             <Calendar className="size-3" />
-            {new Date(tournament.starts_at).toLocaleDateString('es-CO', {
-              weekday: 'short',
-              day: '2-digit',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {formatDate(tournament.starts_at, { weekday: 'short', day: '2-digit', month: 'short' })}
+            {' · '}
+            {formatTime(tournament.starts_at)}
           </div>
           {tournament.clubs && (
             <div className="flex items-center gap-1.5">
@@ -347,10 +337,7 @@ function CompactTournamentCard({ tournament, brand }: { tournament: TournamentRo
         </h4>
         <div className="text-muted-foreground mt-2 flex items-center gap-1.5 text-[10px] uppercase tracking-widest tabular-nums">
           <Calendar className="size-3" />
-          {new Date(tournament.starts_at).toLocaleDateString('es-CO', {
-            day: '2-digit',
-            month: 'short',
-          })}
+          {formatDate(tournament.starts_at, { day: '2-digit', month: 'short' })}
         </div>
         <div className="mt-2 flex items-center justify-between">
           <span className="text-muted-foreground text-[10px] tabular-nums">
@@ -373,10 +360,7 @@ function LineTournamentRow({ tournament, brand }: { tournament: TournamentRow; b
       className="hover:bg-muted/30 flex items-center gap-3 px-4 py-3 transition-colors"
     >
       <div className="text-muted-foreground hidden w-16 text-xs uppercase tracking-widest tabular-nums sm:block">
-        {new Date(tournament.starts_at).toLocaleDateString('es-CO', {
-          day: '2-digit',
-          month: 'short',
-        })}
+        {formatDate(tournament.starts_at, { day: '2-digit', month: 'short' })}
       </div>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <span className="truncate text-sm font-semibold">{tournament.name}</span>

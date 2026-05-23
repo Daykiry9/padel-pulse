@@ -93,7 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-8 pb-24 md:pb-8">{children}</main>
+      <main className="mx-auto max-w-7xl px-6 py-10 pb-24 md:py-14 md:pb-14">{children}</main>
       <MobileNav isSuperAdmin={isSuperAdmin} />
     </div>
   );
