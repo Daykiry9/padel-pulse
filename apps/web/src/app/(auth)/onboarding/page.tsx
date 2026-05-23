@@ -2,8 +2,6 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { Sparkles } from 'lucide-react';
 
-import { KING_CATEGORIES, QUEENS_CATEGORIES } from '@padelking/domain';
-
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
@@ -12,22 +10,7 @@ import { Card } from '@/components/ui/card';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { updateProfile } from '@/lib/auth-actions';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre / Pro',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
+import { CategoryQuiz } from './category-quiz';
 
 export default async function OnboardingPage({
   searchParams,
@@ -69,36 +52,7 @@ export default async function OnboardingPage({
       <ActionForm action={updateProfile}>
         {invite && <input type="hidden" name="next_invite" value={invite} />}
 
-        <FormField label="Género">
-          <Select name="gender" defaultValue="male" required>
-            <option value="male">Masculino</option>
-            <option value="female">Femenino</option>
-            <option value="nonbinary">No-binario</option>
-            <option value="prefer_not_to_say">Prefiero no decir</option>
-          </Select>
-        </FormField>
-
-        <FormField
-          label="Tu categoría actual"
-          hint="Si no sabes, elige una baja conservadora. El organizador puede ajustarla."
-        >
-          <Select name="skill_category" defaultValue="quinta" required>
-            <optgroup label="Masculino">
-              {KING_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Femenino (Queens)">
-              {QUEENS_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
-                </option>
-              ))}
-            </optgroup>
-          </Select>
-        </FormField>
+        <CategoryQuiz />
 
         <FormField label="Ciudad">
           <Input name="city" defaultValue="Bogotá" required />
