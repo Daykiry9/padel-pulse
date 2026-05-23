@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { ShareInviteButton } from '@/components/share-invite-button';
+import { ShareStoryButton } from '@/components/share-story-button';
 import { formatDateTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { RegisterButton } from './register-button';
@@ -247,14 +248,22 @@ export default async function TournamentDetailPage({
 
           {/* Compartir torneo — visible para todos los autenticados */}
           {user && (
-            <ShareInviteButton
-              kind="tournament"
-              targetId={tournament.id}
-              name={tournament.name}
-              variant="outline"
-              size="lg"
-              label="Invitar por WhatsApp"
-            />
+            <div className="flex flex-wrap gap-3">
+              <ShareInviteButton
+                kind="tournament"
+                targetId={tournament.id}
+                name={tournament.name}
+                variant="outline"
+                size="lg"
+                label="Invitar por WhatsApp"
+              />
+              <ShareStoryButton
+                slug={tournament.slug}
+                tournamentName={tournament.name}
+                variant="outline"
+                size="lg"
+              />
+            </div>
           )}
 
           {/* Inscripción */}
