@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { ShareInviteButton } from '@/components/share-invite-button';
 import { ShareStoryButton } from '@/components/share-story-button';
+import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
 import { formatDateTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { RegisterButton } from './register-button';
@@ -160,14 +161,47 @@ export default async function TournamentDetailPage({
     id: string;
     team_id: string | null;
     player_id: string | null;
+    player_one_id: string | null;
+    player_two_id: string | null;
     teams: { name: string } | null;
   };
 
   const regsRes = await supabase
     .from('tournament_registrations')
-    .select('id, team_id, player_id, teams(name)')
+    .select('id, team_id, player_id, player_one_id, player_two_id, teams(name)')
     .eq('tournament_id', tournament.id);
   const registrations = (regsRes.data ?? []) as unknown as RegistrationRow[];
+
+  // ¿El user es participante del torneo? → desbloquea el chat
+  type RegFlat = {
+    player_id: string | null;
+    player_one_id: string | null;
+    player_two_id: string | null;
+  };
+  const userIsParticipant =
+    !!user &&
+    (registrations as unknown as RegFlat[]).some(
+      (r) =>
+        r.player_id === user.id ||
+        r.player_one_id === user.id ||
+        r.player_two_id === user.id,
+    );
+  const canChat = userIsParticipant || isOrganizer;
+
+  // Fetch initial chat messages si tiene acceso
+  let initialChatMessages: ChatMessage[] = [];
+  if (canChat) {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const sb = supabase as any;
+    const { data: chatData } = await sb
+      .from('chat_messages')
+      .select('id, body, created_at, profile_id, profiles:profile_id(display_name)')
+      .eq('target_kind', 'tournament')
+      .eq('target_id', tournament.id)
+      .order('created_at', { ascending: true })
+      .limit(50);
+    initialChatMessages = (chatData ?? []) as ChatMessage[];
+  }
 
   const isIndividual = tournament.competition_unit === 'player';
 
@@ -264,6 +298,15 @@ export default async function TournamentDetailPage({
                 size="lg"
               />
             </div>
+          )}
+
+          {/* Chat del torneo — solo participantes / organizador */}
+          {canChat && user && (
+            <TournamentChat
+              tournamentId={tournament.id}
+              initialMessages={initialChatMessages}
+              currentUserId={user.id}
+            />
           )}
 
           {/* Inscripción */}

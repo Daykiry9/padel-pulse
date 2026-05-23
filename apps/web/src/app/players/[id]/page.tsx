@@ -4,6 +4,7 @@ import { Calendar, Crown, Hand, Instagram, MapPin } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Avatar } from '@/components/ui/avatar';
 import { PublicHeader } from '@/components/public-header';
 import { SiteFooter } from '@/components/site-footer';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -89,6 +90,78 @@ export default async function PublicPlayerPage({
     ? new Date().getFullYear() - player.playing_since_year
     : null;
 
+  // Players in common: comparten torneos
+  type RegRow = {
+    tournament_id: string;
+    player_one_id: string | null;
+    player_two_id: string | null;
+    player_id: string | null;
+  };
+  const { data: myRegsData } = await supabase
+    .from('tournament_registrations')
+    .select('tournament_id, player_one_id, player_two_id, player_id')
+    .or(`player_one_id.eq.${id},player_two_id.eq.${id},player_id.eq.${id}`);
+  const myRegs = (myRegsData ?? []) as unknown as RegRow[];
+  const myTournamentIds = Array.from(new Set(myRegs.map((r) => r.tournament_id)));
+
+  let playersInCommon: { id: string; name: string; sharedCount: number }[] = [];
+  if (myTournamentIds.length > 0) {
+    const { data: otherRegsData } = await supabase
+      .from('tournament_registrations')
+      .select('tournament_id, player_one_id, player_two_id, player_id')
+      .in('tournament_id', myTournamentIds);
+    const otherRegs = (otherRegsData ?? []) as unknown as RegRow[];
+
+    const counts = new Map<string, Set<string>>();
+    for (const r of otherRegs) {
+      const ids = [r.player_one_id, r.player_two_id, r.player_id].filter(Boolean) as string[];
+      for (const otherId of ids) {
+        if (otherId !== id) {
+          if (!counts.has(otherId)) counts.set(otherId, new Set());
+          counts.get(otherId)!.add(r.tournament_id);
+        }
+      }
+    }
+    const topIds = [...counts.entries()]
+      .map(([profileId, ts]) => ({ profileId, count: ts.size }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
+    if (topIds.length > 0) {
+      const { data: names } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in(
+          'id',
+          topIds.map((t) => t.profileId),
+        );
+      const nameMap = new Map(
+        ((names ?? []) as { id: string; display_name: string }[]).map((p) => [p.id, p.display_name]),
+      );
+      playersInCommon = topIds.map((t) => ({
+        id: t.profileId,
+        name: nameMap.get(t.profileId) ?? '?',
+        sharedCount: t.count,
+      }));
+    }
+  }
+
+  // Reliability del ELO según tournaments_played
+  const tournamentsPlayed = ranking?.tournaments_played ?? 0;
+  const reliability =
+    tournamentsPlayed === 0
+      ? { level: 'none', label: 'Sin data', pct: 5 }
+      : tournamentsPlayed < 3
+        ? { level: 'low', label: 'Baja', pct: 25 }
+        : tournamentsPlayed < 10
+          ? { level: 'medium', label: 'Media', pct: 60 }
+          : { level: 'high', label: 'Alta', pct: 95 };
+
+  // Nivel sub-decimal estimado desde ELO (sólo display)
+  // 800 → 1.0, 1000 → 2.0, 1200 → 3.0, 1400 → 4.0, etc.
+  const elo = player.elo_rating ?? 1000;
+  const estimatedLevel = Math.max(1.0, Math.min(7.0, 1.0 + (elo - 800) / 200));
+
   return (
     <div className={`bg-background min-h-screen ${isQueens ? 'theme-queens' : ''}`}>
       <PublicHeader brand={isQueens ? 'queens' : 'kings'} />
@@ -121,7 +194,52 @@ export default async function PublicPlayerPage({
               {player.elo_rating ?? 1000}
             </div>
             <div className="text-muted-foreground mt-1 text-xs">
-              {player.elo_rating < 1000 ? 'Rookie' : player.elo_rating < 1400 ? 'Intermedio' : 'Avanzado'}
+              Nivel estimado{' '}
+              <span className="text-foreground font-semibold tabular-nums">
+                {estimatedLevel.toFixed(1)}
+              </span>{' '}
+              ·{' '}
+              {(player.elo_rating ?? 1000) < 1000
+                ? 'Rookie'
+                : (player.elo_rating ?? 1000) < 1400
+                  ? 'Intermedio'
+                  : 'Avanzado'}
+            </div>
+            {/* Reliability bar */}
+            <div className="border-border/40 mt-3 border-t pt-3">
+              <div className="text-muted-foreground flex items-center justify-between text-[10px] uppercase tracking-widest">
+                <span>Confianza</span>
+                <span
+                  className={
+                    reliability.level === 'high'
+                      ? 'text-success'
+                      : reliability.level === 'medium'
+                        ? 'text-foreground'
+                        : 'text-muted-foreground'
+                  }
+                >
+                  {reliability.label}
+                </span>
+              </div>
+              <div className="bg-muted/40 mt-1.5 h-1 overflow-hidden rounded-full">
+                <div
+                  className={`h-full rounded-full ${
+                    reliability.level === 'high'
+                      ? 'bg-success'
+                      : reliability.level === 'medium'
+                        ? isQueens
+                          ? 'bg-queens'
+                          : 'bg-crown'
+                        : 'bg-muted-foreground'
+                  }`}
+                  style={{ width: `${reliability.pct}%` }}
+                />
+              </div>
+              <div className="text-muted-foreground mt-1 text-[10px]">
+                {tournamentsPlayed === 0
+                  ? 'Sin torneos aún'
+                  : `Basado en ${tournamentsPlayed} torneo${tournamentsPlayed === 1 ? '' : 's'}`}
+              </div>
             </div>
           </Card>
 
@@ -203,15 +321,34 @@ export default async function PublicPlayerPage({
           )}
         </Card>
 
-        {/* Compañeros frecuentes — placeholder */}
+        {/* Players in common: compartió torneo con */}
         <Card className="mt-6 p-6">
-          <h2 className="font-display text-lg tracking-tight">COMPAÑEROS FRECUENTES</h2>
+          <h2 className="font-display text-lg tracking-tight">JUGADORES EN COMÚN</h2>
           <p className="text-muted-foreground mt-1 text-xs">
-            Los jugadores con los que más ha compartido cancha en torneos.
+            Los que más torneos ha compartido con este perfil.
           </p>
-          <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/40 px-4 py-6 text-center text-xs">
-            Próximamente · necesita matches reales jugados
-          </div>
+          {playersInCommon.length === 0 ? (
+            <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/40 px-4 py-6 text-center text-xs">
+              Aún sin torneos compartidos
+            </div>
+          ) : (
+            <ul className="divide-border/30 mt-4 divide-y">
+              {playersInCommon.map((p) => (
+                <li key={p.id}>
+                  <Link
+                    href={`/players/${p.id}`}
+                    className="hover:bg-muted/30 -mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors"
+                  >
+                    <Avatar seed={p.id} name={p.name} size="sm" />
+                    <span className="flex-1 truncate text-sm font-medium">{p.name}</span>
+                    <span className="text-muted-foreground text-xs uppercase tracking-widest tabular-nums">
+                      {p.sharedCount} {p.sharedCount === 1 ? 'torneo' : 'torneos'}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
 
         {/* Desglose ranking */}
