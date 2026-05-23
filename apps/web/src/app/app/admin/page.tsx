@@ -105,6 +105,43 @@ export default async function AdminPage() {
         <Stat label="Rechazadas" value={counts.rejected} accent="text-muted-foreground" />
       </div>
 
+      {/* Distribución de actividad por ciudad — demo hasta que haya volumen */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg tracking-tight">ACTIVIDAD · COLOMBIA</h2>
+          <span className="text-muted-foreground text-[10px] uppercase tracking-widest">
+            Comunidades por ciudad
+          </span>
+        </div>
+        <div className="mt-4 space-y-2.5">
+          {[
+            { city: 'Bogotá', demo: 12 },
+            { city: 'Medellín', demo: 6 },
+            { city: 'Cali', demo: 4 },
+            { city: 'Cartagena', demo: 2 },
+            { city: 'Bucaramanga', demo: 1 },
+          ].map((row) => {
+            const pct = Math.max(4, (row.demo / 12) * 100);
+            return (
+              <div key={row.city} className="flex items-center gap-3 text-sm">
+                <span className="text-muted-foreground w-24 text-xs uppercase tracking-widest">
+                  {row.city}
+                </span>
+                <div className="bg-muted/40 relative flex-1 overflow-hidden rounded-full">
+                  <div className="bg-crown/60 h-2 rounded-full" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-muted-foreground w-10 text-right text-xs tabular-nums">
+                  {row.demo}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-muted-foreground mt-4 text-[10px] uppercase tracking-widest">
+          Demo · datos reales cuando arranque la beta abierta
+        </p>
+      </Card>
+
       <section>
         <h2 className="font-display mb-4 text-2xl tracking-tight">SOLICITUDES PENDIENTES</h2>
 

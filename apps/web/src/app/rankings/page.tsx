@@ -144,31 +144,46 @@ export default async function RankingsPage({
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div>
-            <div className="text-muted-foreground mb-2 text-[10px] uppercase tracking-widest">
-              Categoría
+          <div className="space-y-3">
+            <div>
+              <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+                <span className="text-gold-400">●</span> Kings · masculino
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <FilterChip
+                  href="/rankings"
+                  active={!category}
+                  label="Todas"
+                  small
+                />
+                {KING_CATS.map((c) => (
+                  <FilterChip
+                    key={c}
+                    href={`/rankings?category=${c}`}
+                    active={category === c}
+                    label={CATEGORY_LABELS[c]!}
+                    small
+                  />
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              <FilterChip href="/rankings" active={!category} label="Todas" small />
-              {KING_CATS.map((c) => (
-                <FilterChip
-                  key={c}
-                  href={`/rankings?category=${c}`}
-                  active={category === c}
-                  label={CATEGORY_LABELS[c]!}
-                  small
-                />
-              ))}
-              {QUEENS_CATS.map((c) => (
-                <FilterChip
-                  key={c}
-                  href={`/rankings?category=${c}`}
-                  active={category === c}
-                  label={CATEGORY_LABELS[c]!}
-                  small
-                  queens
-                />
-              ))}
+
+            <div>
+              <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+                <span className="text-magenta-500">●</span> Queens · femenino
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {QUEENS_CATS.map((c) => (
+                  <FilterChip
+                    key={c}
+                    href={`/rankings?category=${c}`}
+                    active={category === c}
+                    label={CATEGORY_LABELS[c]!}
+                    small
+                    queens
+                  />
+                ))}
+              </div>
             </div>
           </div>
 

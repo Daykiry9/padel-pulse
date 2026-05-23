@@ -88,30 +88,23 @@ export default async function CommunitiesPage() {
         </Button>
       </header>
 
-      {/* Mis comunidades destacadas arriba */}
-      {myCommunities.length > 0 && (
-        <Section title={`Mis comunidades · ${myCommunities.length}`}>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {myCommunities.map((c) => (
-              <CommunityCard key={c.id} community={c} isMember={true} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Otras comunidades */}
-      {others.length > 0 ? (
+      {/* Grid uniforme: mis comunidades primero (badge MIEMBRO), después el resto */}
+      {communities.length > 0 ? (
         <Section
-          title={myCommunities.length > 0 ? 'Explorar otras' : 'Comunidades activas'}
-          subtitle={`${others.length} ${others.length === 1 ? 'parche activo' : 'parches activos'} a tu disposición`}
+          title={`Comunidades activas · ${communities.length}`}
+          subtitle={
+            myCommunities.length > 0
+              ? `Eres miembro de ${myCommunities.length} · descubre las demás abajo`
+              : 'Encuentra tu parche local y pide unirte'
+          }
         >
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {others.map((c) => (
-              <CommunityCard key={c.id} community={c} isMember={false} />
+            {[...myCommunities, ...others].map((c) => (
+              <CommunityCard key={c.id} community={c} isMember={myIds.has(c.id)} />
             ))}
           </div>
         </Section>
-      ) : myCommunities.length === 0 ? (
+      ) : (
         <EmptyState
           icon={Globe}
           title="Aún no hay comunidades"
@@ -130,7 +123,7 @@ export default async function CommunitiesPage() {
             </Button>
           }
         />
-      ) : null}
+      )}
     </div>
   );
 }

@@ -84,6 +84,34 @@ export default async function TournamentsPage({
             </Link>
           </p>
 
+          {/* Hero stats — credibilidad de un vistazo */}
+          <dl className="border-border/40 bg-card/40 mt-6 grid max-w-2xl grid-cols-3 divide-x divide-border/40 overflow-hidden rounded-xl border">
+            <div className="px-4 py-3">
+              <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                Abiertos
+              </dt>
+              <dd className="font-display mt-1 text-2xl tabular-nums">
+                {tournamentsWithCount.filter((t) => t.status === 'open').length}
+              </dd>
+            </div>
+            <div className="px-4 py-3">
+              <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                Ciudades
+              </dt>
+              <dd className="font-display mt-1 text-2xl tabular-nums">
+                {new Set(tournamentsWithCount.map((t) => t.clubs?.city).filter(Boolean)).size}
+              </dd>
+            </div>
+            <div className="px-4 py-3">
+              <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                Inscritos
+              </dt>
+              <dd className="font-display mt-1 text-2xl tabular-nums">
+                {tournamentsWithCount.reduce((s, t) => s + (t.registrations_count ?? 0), 0)}
+              </dd>
+            </div>
+          </dl>
+
           {availableCities.length > 0 && (
             <div className="mt-6 flex flex-wrap items-center gap-2">
               <span className="text-muted-foreground text-[10px] uppercase tracking-[0.15em]">

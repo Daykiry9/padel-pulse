@@ -182,6 +182,38 @@ export default async function PublicPlayerPage({
           </dl>
         </Card>
 
+        {/* Histórico de torneos — placeholder hasta que haya data real */}
+        <Card className="mt-6 p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg tracking-tight">HISTORIAL · 12 MESES</h2>
+            <span className="text-muted-foreground text-[10px] uppercase tracking-widest">
+              {ranking?.tournaments_played ?? 0} torneos
+            </span>
+          </div>
+          {(ranking?.tournaments_played ?? 0) === 0 ? (
+            <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/40 px-4 py-8 text-center text-sm">
+              Aún sin torneos jugados. Cuando juegue su primer torneo,
+              <br className="hidden md:inline" />
+              aparecerá aquí su historial con posición y puntos sumados.
+            </div>
+          ) : (
+            <div className="text-muted-foreground mt-4 text-sm">
+              Mostrando los últimos torneos jugados (vista detallada próximamente).
+            </div>
+          )}
+        </Card>
+
+        {/* Compañeros frecuentes — placeholder */}
+        <Card className="mt-6 p-6">
+          <h2 className="font-display text-lg tracking-tight">COMPAÑEROS FRECUENTES</h2>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Los jugadores con los que más ha compartido cancha en torneos.
+          </p>
+          <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/40 px-4 py-6 text-center text-xs">
+            Próximamente · necesita matches reales jugados
+          </div>
+        </Card>
+
         {/* Desglose ranking */}
         {ranking && ranking.total_points > 0 && (
           <Card className="mt-6 p-6">

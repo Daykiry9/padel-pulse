@@ -220,8 +220,8 @@ export default async function DashboardPage() {
       {/* HERO TORNEO — el más próximo */}
       {nextTournament ? (
         <Section
-          title="Tu próximo torneo"
-          subtitle="Inscríbete o checkea quién ya está adentro"
+          title="Próximo torneo"
+          subtitle="Inscríbete o mira quién ya está adentro"
           action={
             <Button variant="ghost" size="sm" asChild>
               <Link href="/tournaments">
@@ -329,7 +329,10 @@ export default async function DashboardPage() {
 
       {/* OTROS TORNEOS — grid compacto */}
       {otherTournaments.length > 0 && (
-        <Section title="Más torneos abiertos">
+        <Section
+          title="Más abiertos · próximos 30 días"
+          subtitle={`${otherTournaments.length} torneos disponibles en tu zona`}
+        >
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {otherTournaments.slice(0, 6).map((t) => (
               <Link

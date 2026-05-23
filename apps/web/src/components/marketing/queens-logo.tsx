@@ -1,6 +1,3 @@
-/**
- * Isotipo PadelQueens: misma pala teardrop con corona negative space, pero en rosa Queens.
- */
 export function QueensLogo({ size = 28 }: { size?: number }) {
   return (
     <svg
@@ -19,12 +16,13 @@ export function QueensLogo({ size = 28 }: { size?: number }) {
         d="M 10 16 L 10 14 L 11 11 L 12 13 L 13.5 10 L 15 13 L 16 9 L 17 13 L 18.5 10 L 20 13 L 21 11 L 22 14 L 22 16 Z"
         fill="#0a0a0a"
       />
-      <path d="M 13 22 L 14 24 L 18 24 L 19 22 Z" fill="#ec4899" />
-      <rect x="13.5" y="24" width="5" height="6" rx="0.5" fill="#ec4899" />
-      <g stroke="#0a0a0a" strokeWidth="0.35" strokeLinecap="round">
-        <line x1="13.8" y1="26" x2="18.2" y2="26.4" />
-        <line x1="13.8" y1="27.5" x2="18.2" y2="27.9" />
-        <line x1="13.8" y1="29" x2="18.2" y2="29.4" />
+      <path
+        d="M 12 22 L 11 26 Q 11 29 14 29 L 18 29 Q 21 29 21 26 L 20 22 Z"
+        fill="#ec4899"
+      />
+      <g stroke="#0a0a0a" strokeWidth="0.4" strokeLinecap="round">
+        <line x1="12.5" y1="25" x2="19.5" y2="25" />
+        <line x1="12.3" y1="27" x2="19.7" y2="27" />
       </g>
     </svg>
   );
