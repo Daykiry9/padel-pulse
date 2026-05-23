@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Crown, Globe, Home, Shield, Trophy } from 'lucide-react';
+import { Crown, Globe, Home, Shield, Trophy, Users } from 'lucide-react';
 
 const BASE_ITEMS = [
   { href: '/app', icon: Home, label: 'Inicio' },
   { href: '/tournaments', icon: Trophy, label: 'Torneos' },
+  { href: '/app/matches', icon: Users, label: 'Partidos' },
   { href: '/app/communities', icon: Globe, label: 'Parches' },
   { href: '/rankings', icon: Crown, label: 'Ranking' },
 ];
@@ -22,7 +23,7 @@ export function MobileNav({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) 
       className="border-border/40 bg-background/90 fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-xl md:hidden"
       aria-label="Navegación principal"
     >
-      <div className={`mx-auto grid max-w-md ${isSuperAdmin ? 'grid-cols-5' : 'grid-cols-4'}`}>
+      <div className={`mx-auto grid max-w-md ${isSuperAdmin ? 'grid-cols-6' : 'grid-cols-5'}`}>
         {ITEMS.map((item) => {
           const isActive =
             item.href === '/app'
