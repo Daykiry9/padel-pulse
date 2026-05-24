@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Globe, Plus, Search, Users } from 'lucide-react';
+import { Globe, Plus, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -139,7 +139,7 @@ function CommunityCard({ community, isMember }: { community: Community; isMember
         </div>
 
         <h3 className="font-display mt-4 line-clamp-2 text-lg tracking-tight">
-          {community.name.toUpperCase()}
+          {community.name}
         </h3>
 
         <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">

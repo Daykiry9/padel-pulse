@@ -5,7 +5,7 @@ import { Calendar, MapPin, Plus, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Avatar, AvatarGroup } from '@/components/ui/avatar';
+import { AvatarGroup } from '@/components/ui/avatar';
 import { CategoryBadge } from '@/components/ui/category-badge';
 import { Countdown } from '@/components/ui/countdown';
 import { EmptyState } from '@/components/ui/empty-state';

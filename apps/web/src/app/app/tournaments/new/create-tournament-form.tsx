@@ -29,13 +29,19 @@ const CATEGORY_LABELS: Record<string, string> = {
   queens_e: 'Queens E',
 };
 
-const FORMAT_LABELS: Record<TournamentFormat, string> = {
+// MVP: solo americano_fijo tiene bracket auto-generado funcionando.
+// Los demás formatos quedan en el enum DB para futuros torneos pero
+// se ocultan del UI hasta tener su generador implementado.
+const FORMAT_LABELS: Partial<Record<TournamentFormat, string>> = {
   americano_fijo: 'Americano Pareja Fija (Tier 1)',
-  americano_random: 'Americano Pareja Random (Tier 2)',
-  liguilla_casual: 'Liguilla Casual (Tier 2)',
-  liga: 'Liga (Tier 1)',
-  express: 'Express bracket (Tier 1)',
-  eliminacion: 'Eliminación directa (Tier 1)',
+};
+
+const FORMAT_COMING_SOON: Partial<Record<TournamentFormat, string>> = {
+  americano_random: 'Americano Pareja Random (próximamente)',
+  liguilla_casual: 'Liguilla Casual (próximamente)',
+  liga: 'Liga (próximamente)',
+  express: 'Express bracket (próximamente)',
+  eliminacion: 'Eliminación directa (próximamente)',
 };
 
 const KIND_LABELS: Record<CategoryKind, string> = {
@@ -78,6 +84,11 @@ export function CreateTournamentForm({ clubs, communities }: Props) {
         >
           {Object.entries(FORMAT_LABELS).map(([v, label]) => (
             <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+          {Object.entries(FORMAT_COMING_SOON).map(([v, label]) => (
+            <option key={v} value={v} disabled>
               {label}
             </option>
           ))}

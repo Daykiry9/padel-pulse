@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import {
   ArrowRight,
   Calendar,
@@ -9,7 +8,6 @@ import {
   Plus,
   Sparkles,
   Trophy,
-  Users,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
