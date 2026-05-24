@@ -97,12 +97,15 @@ export default async function LiveTournamentPage({
     ),
   );
 
+  // profiles_public vista nueva — cast hasta regenerar types tras migración.
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const sb = supabase as any;
   const [teamsRes, profilesRes] = await Promise.all([
     teamIds.length
       ? supabase.from('teams').select('id, name').in('id', teamIds)
       : Promise.resolve({ data: [] }),
     profileIds.length
-      ? supabase.from('profiles').select('id, display_name').in('id', profileIds)
+      ? sb.from('profiles_public').select('id, display_name').in('id', profileIds)
       : Promise.resolve({ data: [] }),
   ]);
   const teams = new Map(
@@ -207,7 +210,7 @@ export default async function LiveTournamentPage({
             </span>
           </div>
           <h1 className="font-display text-4xl tracking-tight md:text-6xl">
-            {tournament.name.toUpperCase()}
+            {tournament.name}
           </h1>
           <p className="text-muted-foreground text-sm">
             {completedCount} / {totalCount} matches jugados · {registrations.length} inscritos ·{' '}

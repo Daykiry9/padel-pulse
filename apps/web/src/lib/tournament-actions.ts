@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { applyPaddleElo, generateFixedAmericano, tierOf, weightOf } from '@padelking/domain';
+import { computePaddleEloDeltas, generateFixedAmericano, tierOf, weightOf } from '@padelking/domain';
 import type {
   CategoryKind,
   PairingMode,
@@ -340,6 +340,16 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
 
   const supabase = await getSupabaseServerClient();
 
+  // C5: capturar status previo + elo_applied_at antes del UPDATE para
+  // detectar si esta llamada es una corrección de score (no aplicar ELO 2x).
+  const { data: prevData } = await supabase
+    .from('matches')
+    .select('status, elo_applied_at')
+    .eq('id', matchId)
+    .maybeSingle();
+  const prevMatch = prevData as { status: string; elo_applied_at: string | null } | null;
+  const eloAlreadyApplied = Boolean(prevMatch?.elo_applied_at);
+
   // RLS se encarga de validar que el caller sea owner o participante
   const isCompleted = scoreOne > 0 || scoreTwo > 0;
   const { data, error } = await supabase
@@ -367,7 +377,8 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
   const slug = matchData?.tournaments?.slug;
 
   // Side effects post-completed: notificaciones + ELO
-  if (isCompleted && matchData) {
+  // C5: solo aplicar ELO en transición scheduled→completed, no en correcciones
+  if (isCompleted && matchData && !eloAlreadyApplied) {
     type RegRow = {
       id: string;
       player_one_id: string | null;
@@ -389,6 +400,8 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       regTwo?.player_one_id &&
       regTwo?.player_two_id
     ) {
+      const admin = getServiceRoleClient();
+
       const { data: tData } = await supabase
         .from('tournaments')
         .select('tier')
@@ -397,13 +410,16 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       const tier = (tData as { tier: string } | null)?.tier;
       const k = tier === 'competitivo' ? 32 : 16;
 
+      // Lecturas cross-user de elo_rating via service role (la policy nueva
+      // de profiles ya no permite SELECT cross-user de columnas privadas;
+      // elo_rating está en profiles_public pero usar admin aquí simplifica).
       const playerIds = [
         regOne.player_one_id,
         regOne.player_two_id,
         regTwo.player_one_id,
         regTwo.player_two_id,
       ];
-      const { data: profilesData } = await supabase
+      const { data: profilesData } = await admin
         .from('profiles')
         .select('id, elo_rating')
         .in('id', playerIds);
@@ -419,7 +435,9 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       const beforeTwoPOne = eloMap.get(regTwo.player_one_id) ?? 1000;
       const beforeTwoPTwo = eloMap.get(regTwo.player_two_id) ?? 1000;
 
-      const eloResult = applyPaddleElo({
+      // C6: solo calcular los deltas; la aplicación atómica al rating
+      // (read+write con FOR UPDATE) la hace la RPC apply_elo_delta.
+      const { deltaOne, deltaTwo } = computePaddleEloDeltas({
         pairOne: { p1: beforeOnePOne, p2: beforeOnePTwo },
         pairTwo: { p1: beforeTwoPOne, p2: beforeTwoPTwo },
         scoreOne,
@@ -427,59 +445,40 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
         k,
       });
 
-      const admin = getServiceRoleClient();
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      const rpc = (admin as any).rpc.bind(admin) as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+
       await Promise.all([
-        admin
-          .from('profiles')
-          .update({ elo_rating: eloResult.pairOne.p1 } as never)
-          .eq('id', regOne.player_one_id),
-        admin
-          .from('profiles')
-          .update({ elo_rating: eloResult.pairOne.p2 } as never)
-          .eq('id', regOne.player_two_id),
-        admin
-          .from('profiles')
-          .update({ elo_rating: eloResult.pairTwo.p1 } as never)
-          .eq('id', regTwo.player_one_id),
-        admin
-          .from('profiles')
-          .update({ elo_rating: eloResult.pairTwo.p2 } as never)
-          .eq('id', regTwo.player_two_id),
+        rpc('apply_elo_delta', {
+          p_profile_id: regOne.player_one_id,
+          p_delta: deltaOne,
+          p_match_id: matchId,
+        }),
+        rpc('apply_elo_delta', {
+          p_profile_id: regOne.player_two_id,
+          p_delta: deltaOne,
+          p_match_id: matchId,
+        }),
+        rpc('apply_elo_delta', {
+          p_profile_id: regTwo.player_one_id,
+          p_delta: deltaTwo,
+          p_match_id: matchId,
+        }),
+        rpc('apply_elo_delta', {
+          p_profile_id: regTwo.player_two_id,
+          p_delta: deltaTwo,
+          p_match_id: matchId,
+        }),
       ]);
 
-      // History
-      await (admin as never as { from: (t: string) => { insert: (rows: unknown) => Promise<unknown> } })
-        .from('elo_history')
-        .insert([
-          {
-            profile_id: regOne.player_one_id,
-            match_id: matchId,
-            elo_before: beforeOnePOne,
-            elo_after: eloResult.pairOne.p1,
-            delta: eloResult.pairOne.delta,
-          },
-          {
-            profile_id: regOne.player_two_id,
-            match_id: matchId,
-            elo_before: beforeOnePTwo,
-            elo_after: eloResult.pairOne.p2,
-            delta: eloResult.pairOne.delta,
-          },
-          {
-            profile_id: regTwo.player_one_id,
-            match_id: matchId,
-            elo_before: beforeTwoPOne,
-            elo_after: eloResult.pairTwo.p1,
-            delta: eloResult.pairTwo.delta,
-          },
-          {
-            profile_id: regTwo.player_two_id,
-            match_id: matchId,
-            elo_before: beforeTwoPTwo,
-            elo_after: eloResult.pairTwo.p2,
-            delta: eloResult.pairTwo.delta,
-          },
-        ]);
+      // Marcar idempotencia para que correcciones de score no re-apliquen
+      await admin
+        .from('matches')
+        .update({ elo_applied_at: new Date().toISOString() } as never)
+        .eq('id', matchId);
     }
 
     // Notificaciones a los 4 jugadores

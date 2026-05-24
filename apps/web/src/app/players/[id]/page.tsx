@@ -68,8 +68,12 @@ export default async function PublicPlayerPage({
   const { id } = await params;
   const supabase = await getSupabaseServerClient();
 
-  const { data: profileData } = await supabase
-    .from('profiles')
+  // profiles_public vista nueva — cast hasta regenerar types tras migración.
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const sb = supabase as any;
+
+  const { data: profileData } = await sb
+    .from('profiles_public')
     .select(
       'id, display_name, city, skill_category, gender, instagram_handle, dominant_hand, favorite_position, playing_since_year, elo_rating',
     )
@@ -128,8 +132,8 @@ export default async function PublicPlayerPage({
       .slice(0, 6);
 
     if (topIds.length > 0) {
-      const { data: names } = await supabase
-        .from('profiles')
+      const { data: names } = await sb
+        .from('profiles_public')
         .select('id, display_name')
         .in(
           'id',

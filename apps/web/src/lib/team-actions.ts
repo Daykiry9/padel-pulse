@@ -6,6 +6,7 @@ import { computeTeamCategory, sumOfPair } from '@padelking/domain';
 import type { TeamCategory, Gender } from '@padelking/domain';
 
 import { getSession, getSupabaseServerClient } from './supabase/server';
+import { getServiceRoleClient } from './supabase/admin';
 import type { ActionResult } from './auth-actions';
 
 function slugify(input: string): string {
@@ -107,8 +108,12 @@ export async function createTeam(formData: FormData): Promise<ActionResult> {
 
   if (teamErr || !team) return { ok: false, error: teamErr?.message ?? 'Error creando equipo' };
 
-  // Insertar miembros activos
-  const { error: memberErr } = await supabase.from('team_members').insert([
+  // Insertar miembros activos.
+  // C4: la policy INSERT en team_members fue removida — ahora solo service role.
+  // Justificado: aquí ya validamos que el caller es el creator del team y
+  // que partnerId es un profile real (lookup arriba).
+  const admin = getServiceRoleClient();
+  const { error: memberErr } = await admin.from('team_members').insert([
     { team_id: team.id, profile_id: user.id, invited_by: user.id },
     { team_id: team.id, profile_id: partnerId, invited_by: user.id },
   ] as never);

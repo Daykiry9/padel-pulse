@@ -64,12 +64,30 @@ export default async function MatchesPage({
   const { data: matchesData } = await sb
     .from('open_matches')
     .select(
-      'id, slug, host_id, city, venue, scheduled_at, duration_minutes, category, max_players, current_players, message, status, host:host_id(display_name, skill_category)',
+      'id, slug, host_id, city, venue, scheduled_at, duration_minutes, category, max_players, current_players, message, status',
     )
     .eq('status', 'open')
     .gt('scheduled_at', new Date().toISOString())
     .order('scheduled_at', { ascending: true });
-  const allMatches = (matchesData ?? []) as OpenMatch[];
+  const allMatchesRaw = (matchesData ?? []) as Omit<OpenMatch, 'host'>[];
+
+  // C1: ya no se puede joinear profiles vía embed (profiles cerrado).
+  // Hidratamos host con un lookup separado a profiles_public.
+  const hostIds = Array.from(new Set(allMatchesRaw.map((m) => m.host_id)));
+  const hostMap = new Map<string, { display_name: string; skill_category: string | null }>();
+  if (hostIds.length > 0) {
+    const { data: hosts } = await sb
+      .from('profiles_public')
+      .select('id, display_name, skill_category')
+      .in('id', hostIds);
+    for (const h of (hosts ?? []) as { id: string; display_name: string; skill_category: string | null }[]) {
+      hostMap.set(h.id, { display_name: h.display_name, skill_category: h.skill_category });
+    }
+  }
+  const allMatches: OpenMatch[] = allMatchesRaw.map((m) => ({
+    ...m,
+    host: hostMap.get(m.host_id) ?? null,
+  }));
 
   // City filter client-side
   const matches = cityFilter
@@ -89,13 +107,33 @@ export default async function MatchesPage({
   const participantsByMatch = new Map<string, Participant[]>();
   if (matches.length > 0) {
     const ids = matches.map((m) => m.id);
+    type RawParticipant = { open_match_id: string; profile_id: string };
     const { data: ppl } = await sb
       .from('open_match_participants')
-      .select('open_match_id, profile_id, profiles(display_name)')
+      .select('open_match_id, profile_id')
       .in('open_match_id', ids);
-    for (const p of (ppl ?? []) as Participant[]) {
+    const rawParticipants = (ppl ?? []) as RawParticipant[];
+
+    // C1: hidratar display_name desde profiles_public
+    const partIds = Array.from(new Set(rawParticipants.map((p) => p.profile_id)));
+    const partNameMap = new Map<string, string | null>();
+    if (partIds.length > 0) {
+      const { data: partProfiles } = await sb
+        .from('profiles_public')
+        .select('id, display_name')
+        .in('id', partIds);
+      for (const pp of (partProfiles ?? []) as { id: string; display_name: string }[]) {
+        partNameMap.set(pp.id, pp.display_name);
+      }
+    }
+
+    for (const p of rawParticipants) {
       if (!participantsByMatch.has(p.open_match_id)) participantsByMatch.set(p.open_match_id, []);
-      participantsByMatch.get(p.open_match_id)!.push(p);
+      participantsByMatch.get(p.open_match_id)!.push({
+        open_match_id: p.open_match_id,
+        profile_id: p.profile_id,
+        profiles: { display_name: partNameMap.get(p.profile_id) ?? null },
+      });
     }
   }
 

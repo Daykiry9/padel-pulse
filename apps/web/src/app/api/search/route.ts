@@ -22,6 +22,10 @@ export async function GET(request: Request) {
   const supabase = await getSupabaseServerClient();
   const term = `%${query}%`;
 
+  // profiles_public vista nueva — cast hasta que se regeneren types post-migración.
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const sb = supabase as any;
+
   const [tournamentsRes, communitiesRes, playersRes] = await Promise.all([
     supabase
       .from('tournaments')
@@ -34,8 +38,8 @@ export async function GET(request: Request) {
       .select('id, slug, name, city')
       .ilike('name', term)
       .limit(5),
-    supabase
-      .from('profiles')
+    sb
+      .from('profiles_public')
       .select('id, display_name, city, skill_category')
       .ilike('display_name', term)
       .not('skill_category', 'is', null)

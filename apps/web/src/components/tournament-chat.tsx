@@ -62,9 +62,10 @@ export function TournamentChat({
             created_at: string;
             profile_id: string;
           };
-          // Fetch display_name del autor (no viene en realtime payload)
+          // Fetch display_name del autor (no viene en realtime payload).
+          // C1: profiles ya no es public read — usar la vista profiles_public.
           const { data: p } = await supabase
-            .from('profiles')
+            .from('profiles_public')
             .select('display_name')
             .eq('id', row.profile_id)
             .maybeSingle();

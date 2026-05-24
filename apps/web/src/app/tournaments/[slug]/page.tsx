@@ -125,13 +125,25 @@ export default async function TournamentDetailPage({
       if (!m.teams) continue;
       const membersRes = await supabase
         .from('team_members')
-        .select('profile_id, profiles:profile_id(skill_category, gender)')
+        .select('profile_id')
         .eq('team_id', m.team_id)
         .eq('is_active', true)
         .limit(2);
-      const members = (membersRes.data ?? []) as unknown as MemberWithProfile[];
+      const members = (membersRes.data ?? []) as { profile_id: string }[];
+      if (members.length !== 2) continue;
 
-      const profiles = members.map((mm) => mm.profiles).filter(Boolean) as PartnerProfile[];
+      // C1: profiles ya no es public read. Los partners se leen de profiles_public
+      // (vista filtrada con columnas seguras). Cast hasta regenerar types.
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      const sbView = supabase as any;
+      const partnerIdsRes = await sbView
+        .from('profiles_public')
+        .select('id, skill_category, gender')
+        .in(
+          'id',
+          members.map((mm) => mm.profile_id),
+        );
+      const profiles = (partnerIdsRes.data ?? []) as unknown as PartnerProfile[];
       if (profiles.length !== 2) continue;
       const p1 = profiles[0]!;
       const p2 = profiles[1]!;
@@ -193,14 +205,39 @@ export default async function TournamentDetailPage({
   if (canChat) {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     const sb = supabase as any;
+    type RawChatRow = {
+      id: string;
+      body: string;
+      created_at: string;
+      profile_id: string;
+    };
     const { data: chatData } = await sb
       .from('chat_messages')
-      .select('id, body, created_at, profile_id, profiles:profile_id(display_name)')
+      .select('id, body, created_at, profile_id')
       .eq('target_kind', 'tournament')
       .eq('target_id', tournament.id)
       .order('created_at', { ascending: true })
       .limit(50);
-    initialChatMessages = (chatData ?? []) as ChatMessage[];
+    const rawChats = (chatData ?? []) as RawChatRow[];
+
+    // C1: profile display_name de los autores ahora se trae de profiles_public
+    // (la tabla profiles ya no es public read). Cast hasta regenerar types.
+    const authorIds = Array.from(new Set(rawChats.map((c) => c.profile_id)));
+    const nameMap = new Map<string, string>();
+    if (authorIds.length > 0) {
+      const { data: authors } = await sb
+        .from('profiles_public')
+        .select('id, display_name')
+        .in('id', authorIds);
+      for (const a of (authors ?? []) as { id: string; display_name: string }[]) {
+        nameMap.set(a.id, a.display_name);
+      }
+    }
+
+    initialChatMessages = rawChats.map((c) => ({
+      ...c,
+      profiles: { display_name: nameMap.get(c.profile_id) ?? null },
+    }));
   }
 
   const isIndividual = tournament.competition_unit === 'player';
@@ -242,7 +279,7 @@ export default async function TournamentDetailPage({
               <Badge variant={tournament.status === 'open' ? 'success' : 'muted'}>{tournament.status}</Badge>
             </div>
             <h1 className="font-display mt-4 text-5xl tracking-tight md:text-7xl">
-              {tournament.name.toUpperCase()}
+              {tournament.name}
             </h1>
           </div>
 

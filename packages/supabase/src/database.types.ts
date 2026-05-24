@@ -177,6 +177,62 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          profile_id: string
+          target_id: string
+          target_kind: Database["public"]["Enums"]["chat_target_kind"]
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          target_id: string
+          target_kind: Database["public"]["Enums"]["chat_target_kind"]
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          target_id?: string
+          target_kind?: Database["public"]["Enums"]["chat_target_kind"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "chat_messages_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "chat_messages_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "chat_messages_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cities: {
         Row: {
           active: boolean
@@ -328,6 +384,7 @@ export type Database = {
           owner_id: string
           rating: number
           slug: string
+          status: Database["public"]["Enums"]["community_status"]
         }
         Insert: {
           city: string
@@ -341,6 +398,7 @@ export type Database = {
           owner_id: string
           rating?: number
           slug: string
+          status?: Database["public"]["Enums"]["community_status"]
         }
         Update: {
           city?: string
@@ -354,6 +412,7 @@ export type Database = {
           owner_id?: string
           rating?: number
           slug?: string
+          status?: Database["public"]["Enums"]["community_status"]
         }
         Relationships: [
           {
@@ -387,6 +446,225 @@ export type Database = {
           {
             foreignKeyName: "communities_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_creation_requests: {
+        Row: {
+          approved_community_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          founding_members: Json
+          id: string
+          proposed_city: string
+          proposed_description: string | null
+          proposed_name: string
+          proposed_slug: string
+          requested_by: string
+          status: string
+        }
+        Insert: {
+          approved_community_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          founding_members?: Json
+          id?: string
+          proposed_city: string
+          proposed_description?: string | null
+          proposed_name: string
+          proposed_slug: string
+          requested_by: string
+          status?: string
+        }
+        Update: {
+          approved_community_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          founding_members?: Json
+          id?: string
+          proposed_city?: string
+          proposed_description?: string | null
+          proposed_name?: string
+          proposed_slug?: string
+          requested_by?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_creation_requests_approved_community_id_fkey"
+            columns: ["approved_community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_creation_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_join_requests: {
+        Row: {
+          assigned_category: Database["public"]["Enums"]["team_category"] | null
+          community_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          message: string | null
+          profile_id: string
+          status: string
+        }
+        Insert: {
+          assigned_category?:
+            | Database["public"]["Enums"]["team_category"]
+            | null
+          community_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          message?: string | null
+          profile_id: string
+          status?: string
+        }
+        Update: {
+          assigned_category?:
+            | Database["public"]["Enums"]["team_category"]
+            | null
+          community_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          message?: string | null
+          profile_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_join_requests_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "community_join_requests_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -444,6 +722,140 @@ export type Database = {
           {
             foreignKeyName: "community_members_profile_id_fkey"
             columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      elo_history: {
+        Row: {
+          created_at: string
+          delta: number
+          elo_after: number
+          elo_before: number
+          id: string
+          match_id: string | null
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          elo_after: number
+          elo_before: number
+          id?: string
+          match_id?: string | null
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          elo_after?: number
+          elo_before?: number
+          id?: string
+          match_id?: string | null
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "elo_history_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "elo_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "elo_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "elo_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "elo_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitation_tokens: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["invitation_kind"]
+          max_uses: number | null
+          metadata: Json
+          target_id: string
+          use_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["invitation_kind"]
+          max_uses?: number | null
+          metadata?: Json
+          target_id: string
+          use_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["invitation_kind"]
+          max_uses?: number | null
+          metadata?: Json
+          target_id?: string
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "invitation_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "invitation_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "invitation_tokens_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -591,6 +1003,150 @@ export type Database = {
           },
         ]
       }
+      open_match_participants: {
+        Row: {
+          joined_at: string
+          open_match_id: string
+          profile_id: string
+        }
+        Insert: {
+          joined_at?: string
+          open_match_id: string
+          profile_id: string
+        }
+        Update: {
+          joined_at?: string
+          open_match_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_match_participants_open_match_id_fkey"
+            columns: ["open_match_id"]
+            isOneToOne: false
+            referencedRelation: "open_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_match_participants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "open_match_participants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "open_match_participants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "open_match_participants_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      open_matches: {
+        Row: {
+          cancelled_at: string | null
+          category: Database["public"]["Enums"]["team_category"] | null
+          city: string
+          club_id: string | null
+          created_at: string
+          current_players: number
+          duration_minutes: number
+          host_id: string
+          id: string
+          max_players: number
+          message: string | null
+          scheduled_at: string
+          slug: string
+          status: Database["public"]["Enums"]["open_match_status"]
+          venue: string | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          category?: Database["public"]["Enums"]["team_category"] | null
+          city: string
+          club_id?: string | null
+          created_at?: string
+          current_players?: number
+          duration_minutes?: number
+          host_id: string
+          id?: string
+          max_players?: number
+          message?: string | null
+          scheduled_at: string
+          slug: string
+          status?: Database["public"]["Enums"]["open_match_status"]
+          venue?: string | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          category?: Database["public"]["Enums"]["team_category"] | null
+          city?: string
+          club_id?: string | null
+          created_at?: string
+          current_players?: number
+          duration_minutes?: number
+          host_id?: string
+          id?: string
+          max_players?: number
+          message?: string | null
+          scheduled_at?: string
+          slug?: string
+          status?: Database["public"]["Enums"]["open_match_status"]
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_matches_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_matches_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "open_matches_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "open_matches_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "open_matches_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_points: {
         Row: {
           awarded_at: string
@@ -673,33 +1229,66 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          birthdate: string | null
           city: string | null
           created_at: string
           display_name: string
+          dominant_hand: Database["public"]["Enums"]["dominant_hand"] | null
+          elo_rating: number
+          favorite_position:
+            | Database["public"]["Enums"]["court_position"]
+            | null
           gender: Database["public"]["Enums"]["gender_kind"] | null
           id: string
+          instagram_handle: string | null
+          is_super_admin: boolean
+          marketing_opt_in: boolean
+          phone: string | null
+          playing_since_year: number | null
           rating: number
           skill_category: Database["public"]["Enums"]["team_category"] | null
           skill_level: Database["public"]["Enums"]["skill_level"]
         }
         Insert: {
           avatar_url?: string | null
+          birthdate?: string | null
           city?: string | null
           created_at?: string
           display_name: string
+          dominant_hand?: Database["public"]["Enums"]["dominant_hand"] | null
+          elo_rating?: number
+          favorite_position?:
+            | Database["public"]["Enums"]["court_position"]
+            | null
           gender?: Database["public"]["Enums"]["gender_kind"] | null
           id: string
+          instagram_handle?: string | null
+          is_super_admin?: boolean
+          marketing_opt_in?: boolean
+          phone?: string | null
+          playing_since_year?: number | null
           rating?: number
           skill_category?: Database["public"]["Enums"]["team_category"] | null
           skill_level?: Database["public"]["Enums"]["skill_level"]
         }
         Update: {
           avatar_url?: string | null
+          birthdate?: string | null
           city?: string | null
           created_at?: string
           display_name?: string
+          dominant_hand?: Database["public"]["Enums"]["dominant_hand"] | null
+          elo_rating?: number
+          favorite_position?:
+            | Database["public"]["Enums"]["court_position"]
+            | null
           gender?: Database["public"]["Enums"]["gender_kind"] | null
           id?: string
+          instagram_handle?: string | null
+          is_super_admin?: boolean
+          marketing_opt_in?: boolean
+          phone?: string | null
+          playing_since_year?: number | null
           rating?: number
           skill_category?: Database["public"]["Enums"]["team_category"] | null
           skill_level?: Database["public"]["Enums"]["skill_level"]
@@ -1206,6 +1795,7 @@ export type Database = {
           city_id: string | null
           club_id: string
           competition_unit: Database["public"]["Enums"]["competition_unit"]
+          courts: number
           created_at: string
           description: string | null
           ends_at: string
@@ -1234,6 +1824,7 @@ export type Database = {
           city_id?: string | null
           club_id: string
           competition_unit?: Database["public"]["Enums"]["competition_unit"]
+          courts?: number
           created_at?: string
           description?: string | null
           ends_at: string
@@ -1262,6 +1853,7 @@ export type Database = {
           city_id?: string | null
           club_id?: string
           competition_unit?: Database["public"]["Enums"]["competition_unit"]
+          courts?: number
           created_at?: string
           description?: string | null
           ends_at?: string
@@ -1429,8 +2021,13 @@ export type Database = {
         | "queens_estandar"
         | "queens_suma"
         | "casual"
+      chat_target_kind: "tournament" | "match" | "community"
+      community_status: "pending" | "active" | "rejected"
       competition_unit: "team" | "player"
+      court_position: "drive" | "reves" | "ambos"
+      dominant_hand: "left" | "right"
       gender_kind: "male" | "female" | "nonbinary" | "prefer_not_to_say"
+      invitation_kind: "tournament" | "team" | "community"
       match_status: "scheduled" | "in_progress" | "completed" | "disputed"
       member_role: "owner" | "admin" | "member"
       notification_type:
@@ -1442,6 +2039,7 @@ export type Database = {
         | "category_change_suggested"
         | "announcement"
         | "payment_received"
+      open_match_status: "open" | "full" | "completed" | "cancelled"
       pairing_mode: "fixed" | "random" | "mixed"
       registration_status:
         | "pending_payment"
@@ -2075,8 +2673,13 @@ export const Constants = {
         "queens_suma",
         "casual",
       ],
+      chat_target_kind: ["tournament", "match", "community"],
+      community_status: ["pending", "active", "rejected"],
       competition_unit: ["team", "player"],
+      court_position: ["drive", "reves", "ambos"],
+      dominant_hand: ["left", "right"],
       gender_kind: ["male", "female", "nonbinary", "prefer_not_to_say"],
+      invitation_kind: ["tournament", "team", "community"],
       match_status: ["scheduled", "in_progress", "completed", "disputed"],
       member_role: ["owner", "admin", "member"],
       notification_type: [
@@ -2089,6 +2692,7 @@ export const Constants = {
         "announcement",
         "payment_received",
       ],
+      open_match_status: ["open", "full", "completed", "cancelled"],
       pairing_mode: ["fixed", "random", "mixed"],
       registration_status: [
         "pending_payment",

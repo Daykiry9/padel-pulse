@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { getSession, getSupabaseServerClient } from './supabase/server';
+import { getServiceRoleClient } from './supabase/admin';
 import { translateDbError } from './error-translate';
 import type { ActionResult } from './auth-actions';
 
@@ -86,10 +87,14 @@ export async function createInvitation(
   }
 
   // Generar código único (retry hasta 5 veces ante colisión)
+  // Lectura cross-user via service role: la nueva policy solo deja al
+  // creator ver sus propios invites, así que para chequear colisiones
+  // contra cualquier code hay que bypassar RLS.
+  const admin = getServiceRoleClient();
   let code = '';
   for (let attempt = 0; attempt < 5; attempt++) {
     code = generateCode();
-    const { data: existing } = await (supabase as never as SupaAny)
+    const { data: existing } = await (admin as never as SupaAny)
       .from('invitation_tokens')
       .select('id')
       .eq('code', code)
@@ -124,6 +129,9 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
   }
 
   const supabase = await getSupabaseServerClient();
+  // C2: la tabla invitation_tokens ya no es public read. La lectura por
+  // code se hace con service role (validamos expires_at/max_uses en server).
+  const admin = getServiceRoleClient();
 
   type InviteRow = {
     id: string;
@@ -133,7 +141,7 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
     max_uses: number | null;
     use_count: number;
   };
-  const { data: invData } = await (supabase as never as SupaAny)
+  const { data: invData } = await (admin as never as SupaAny)
     .from('invitation_tokens')
     .select('id, kind, target_id, expires_at, max_uses, use_count')
     .eq('code', code)
@@ -176,14 +184,16 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
       const slug = (c as { slug: string } | null)?.slug;
       return { ok: true, redirectTo: slug ? `/app/communities/${slug}` : '/app/communities' };
     }
-    const { error } = await supabase.from('community_members').insert({
+    // C3: community_members INSERT ya no permitido por authenticated.
+    // Insert via service role tras validar el invite es legítimo.
+    const { error } = await admin.from('community_members').insert({
       community_id: invite.target_id,
       profile_id: user.id,
       role: 'member',
     } as never);
     if (error) return { ok: false, error: translateDbError(error.message) };
 
-    await (supabase as never as SupaAny)
+    await (admin as never as SupaAny)
       .from('invitation_tokens')
       .update({ use_count: invite.use_count + 1 })
       .eq('id', invite.id);
@@ -212,7 +222,9 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
     if (activeMembers.length >= 2) {
       return { ok: false, error: 'El equipo ya tiene 2 jugadores. No hay cupo.' };
     }
-    const { error } = await supabase.from('team_members').insert({
+    // C4: team_members INSERT ya no permitido por authenticated.
+    // Insert via service role tras validar el invite + cupo.
+    const { error } = await admin.from('team_members').insert({
       team_id: invite.target_id,
       profile_id: user.id,
       role: 'member',
@@ -220,7 +232,7 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
     } as never);
     if (error) return { ok: false, error: translateDbError(error.message) };
 
-    await (supabase as never as SupaAny)
+    await (admin as never as SupaAny)
       .from('invitation_tokens')
       .update({ use_count: invite.use_count + 1 })
       .eq('id', invite.id);
@@ -240,7 +252,7 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
     const slug = (t as { slug: string } | null)?.slug;
     if (!slug) return { ok: false, error: 'El torneo ya no existe' };
 
-    await (supabase as never as SupaAny)
+    await (admin as never as SupaAny)
       .from('invitation_tokens')
       .update({ use_count: invite.use_count + 1 })
       .eq('id', invite.id);

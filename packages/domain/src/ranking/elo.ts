@@ -61,6 +61,51 @@ export interface PaddleEloOutput {
   pairTwo: { p1: number; p2: number; delta: number };
 }
 
+export interface PaddleEloDeltasOutput {
+  deltaOne: number;
+  deltaTwo: number;
+}
+
+/**
+ * Como `applyPaddleElo` pero solo retorna los deltas — útil para aplicarlos
+ * atómicamente vía RPC SQL (`apply_elo_delta`) sin race condition en el
+ * read-then-write. Misma fórmula que `applyPaddleElo`.
+ */
+export function computePaddleEloDeltas({
+  pairOne,
+  pairTwo,
+  scoreOne,
+  scoreTwo,
+  k = 24,
+}: PaddleEloInput): PaddleEloDeltasOutput {
+  const ratingOne = (pairOne.p1 + pairOne.p2) / 2;
+  const ratingTwo = (pairTwo.p1 + pairTwo.p2) / 2;
+
+  const expectedOne = 1 / (1 + Math.pow(10, (ratingTwo - ratingOne) / 400));
+  const expectedTwo = 1 - expectedOne;
+
+  let scoreActualOne: number;
+  let scoreActualTwo: number;
+  if (scoreOne > scoreTwo) {
+    scoreActualOne = 1;
+    scoreActualTwo = 0;
+  } else if (scoreTwo > scoreOne) {
+    scoreActualOne = 0;
+    scoreActualTwo = 1;
+  } else {
+    scoreActualOne = 0.5;
+    scoreActualTwo = 0.5;
+  }
+
+  const margin = Math.abs(scoreOne - scoreTwo);
+  const movBoost = margin > 0 ? Math.log(margin + 1) : 1;
+
+  return {
+    deltaOne: Math.round(k * movBoost * (scoreActualOne - expectedOne)),
+    deltaTwo: Math.round(k * movBoost * (scoreActualTwo - expectedTwo)),
+  };
+}
+
 /**
  * Computa el nuevo ELO de los 4 jugadores de un match de padel doubles.
  * Cada pareja se trata como un equipo con rating = promedio de sus 2 jugadores.
