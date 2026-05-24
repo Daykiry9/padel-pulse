@@ -132,7 +132,7 @@ export default async function TeamsPage() {
                 </div>
 
                 <h3 className="font-display mt-4 line-clamp-2 text-lg tracking-tight">
-                  {t.name.toUpperCase()}
+                  {t.name}
                 </h3>
 
                 {t.communities && (

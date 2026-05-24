@@ -135,7 +135,7 @@ export function ShareInviteButton({
   return (
     <Card className="space-y-3 p-4">
       <div>
-        <div className="font-display text-sm tracking-tight">{LABELS[kind].title.toUpperCase()}</div>
+        <div className="font-display text-sm uppercase tracking-tight">{LABELS[kind].title}</div>
         <p className="text-muted-foreground mt-1 text-xs normal-case">{LABELS[kind].body}</p>
       </div>
 

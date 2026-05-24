@@ -177,7 +177,7 @@ export default async function ManageTournamentPage({
           </Badge>
         </div>
         <h1 className="font-display mt-3 text-4xl tracking-tight md:text-5xl">
-          {tournament.name.toUpperCase()}
+          {tournament.name}
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           {tournament.clubs?.name} · {new Date(tournament.starts_at).toLocaleString('es-CO')}

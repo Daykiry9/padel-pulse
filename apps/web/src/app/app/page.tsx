@@ -136,8 +136,8 @@ export default async function DashboardPage() {
     <div className="space-y-10">
       {/* HERO — nombre gigante con stat-line consolidada */}
       <div>
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">
-          {profile?.display_name?.toUpperCase()}
+        <h1 className="font-display text-3xl tracking-tight md:text-4xl">
+          {profile?.display_name}
         </h1>
         <p className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           {profile?.skill_category && (
@@ -229,7 +229,7 @@ export default async function DashboardPage() {
             </Button>
           }
         >
-          <Link href={`/tournaments/${nextTournament.slug}`} className="block">
+          <Link href={`/tournaments/${nextTournament.slug}`} className="focus-card block rounded-xl">
             <Card className="border-gold-400/30 from-gold-400/[0.04] hover:border-gold-400/60 group relative overflow-hidden bg-gradient-to-br to-transparent p-6 transition-all duration-[var(--duration-base)] hover:bg-gold-400/[0.06] md:p-8">
               {/* Decoración esquina */}
               <div className="bg-gold-400/[0.06] absolute -right-12 -top-12 size-48 rounded-full blur-3xl" />
@@ -263,7 +263,7 @@ export default async function DashboardPage() {
               </div>
 
               <h3 className="font-display relative mt-4 text-3xl tracking-tight md:text-4xl">
-                {nextTournament.name.toUpperCase()}
+                {nextTournament.name}
               </h3>
 
               <div className="text-muted-foreground relative mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
@@ -336,7 +336,7 @@ export default async function DashboardPage() {
               <Link
                 key={t.id}
                 href={`/tournaments/${t.slug}`}
-                className="border-border bg-card hover:border-foreground/20 group relative overflow-hidden rounded-xl border p-4 transition-[border-color,background-color] duration-[var(--duration-base)]"
+                className="focus-card border-border bg-card hover:border-foreground/20 group relative overflow-hidden rounded-xl border p-4 transition-[border-color,background-color] duration-[var(--duration-base)]"
               >
                 <div className="flex flex-wrap items-center gap-1.5">
                   <CategoryBadge kind="tier" tier={t.tier as 'competitivo' | 'casual'} size="sm" />
@@ -351,8 +351,8 @@ export default async function DashboardPage() {
                     <CategoryBadge kind="category" category={t.category} size="sm" />
                   ) : null}
                 </div>
-                <div className="font-display mt-2 truncate text-sm tracking-tight">
-                  {t.name.toUpperCase()}
+                <div className="font-display mt-2 truncate text-sm uppercase tracking-tight">
+                  {t.name}
                 </div>
                 <div className="text-muted-foreground mt-1 flex items-center gap-2 text-[10px] uppercase tracking-widest tabular-nums">
                   <Calendar className="size-3" />
@@ -399,7 +399,7 @@ export default async function DashboardPage() {
                   <Link
                     key={c.community_id}
                     href={`/app/communities/${c.communities.slug}`}
-                    className="border-border bg-card hover:border-foreground/30 flex items-center gap-3 rounded-xl border p-3 transition-colors"
+                    className="focus-card border-border bg-card hover:border-foreground/30 flex items-center gap-3 rounded-xl border p-3 transition-colors"
                   >
                     <Avatar seed={c.communities.slug} name={c.communities.name} size="lg" />
                     <div className="min-w-0 flex-1">

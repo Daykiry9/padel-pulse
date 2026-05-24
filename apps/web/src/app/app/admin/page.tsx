@@ -157,7 +157,7 @@ export default async function AdminPage() {
                   <div>
                     <Badge variant="crown">{r.proposed_city}</Badge>
                     <h3 className="font-display mt-2 text-xl tracking-tight">
-                      {r.proposed_name.toUpperCase()}
+                      {r.proposed_name}
                     </h3>
                     <p className="text-muted-foreground mt-1 text-xs">
                       Slug: <code className="font-mono">{r.proposed_slug}</code> · Solicitado{' '}

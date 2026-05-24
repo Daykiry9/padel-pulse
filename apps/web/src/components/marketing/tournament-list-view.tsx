@@ -138,7 +138,7 @@ function HeroTournamentCard({ tournament, brand }: { tournament: TournamentRow; 
       title="Más próximo"
       subtitle="El primer torneo que arranca esta semana"
     >
-      <Link href={`/tournaments/${tournament.slug}`} className="block">
+      <Link href={`/tournaments/${tournament.slug}`} className="focus-card block rounded-xl">
         <Card
           className={cn(
             'relative overflow-hidden p-6 transition-all duration-[var(--duration-base)] md:p-8',
@@ -171,7 +171,7 @@ function HeroTournamentCard({ tournament, brand }: { tournament: TournamentRow; 
           </div>
 
           <h2 className="font-display relative mt-5 text-3xl tracking-tight md:text-5xl">
-            {tournament.name.toUpperCase()}
+            {tournament.name}
           </h2>
 
           <div className="text-muted-foreground relative mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
@@ -233,7 +233,7 @@ function MediumTournamentCard({ tournament, brand }: { tournament: TournamentRow
     : 'hover:border-gold-400/60';
 
   return (
-    <Link href={`/tournaments/${tournament.slug}`}>
+    <Link href={`/tournaments/${tournament.slug}`} className="focus-card block rounded-xl">
       <Card
         className={cn(
           'border-border bg-card group h-full overflow-hidden p-5 transition-[border-color,background-color,transform] duration-[var(--duration-base)]',
@@ -249,7 +249,7 @@ function MediumTournamentCard({ tournament, brand }: { tournament: TournamentRow
         </div>
 
         <h3 className="font-display mt-3 line-clamp-2 text-base tracking-tight md:text-lg">
-          {tournament.name.toUpperCase()}
+          {tournament.name}
         </h3>
 
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -311,7 +311,7 @@ function CompactTournamentCard({ tournament, brand }: { tournament: TournamentRo
     : 'hover:border-gold-400/40';
 
   return (
-    <Link href={`/tournaments/${tournament.slug}`}>
+    <Link href={`/tournaments/${tournament.slug}`} className="focus-card block rounded-xl">
       <Card
         className={cn(
           'border-border bg-card group h-full overflow-hidden p-4 transition-[border-color] duration-[var(--duration-base)]',
@@ -333,7 +333,7 @@ function CompactTournamentCard({ tournament, brand }: { tournament: TournamentRo
           )}
         </div>
         <h4 className="font-display mt-2 line-clamp-2 text-sm tracking-tight">
-          {tournament.name.toUpperCase()}
+          {tournament.name}
         </h4>
         <div className="text-muted-foreground mt-2 flex items-center gap-1.5 text-[10px] uppercase tracking-widest tabular-nums">
           <Calendar className="size-3" />
@@ -357,7 +357,7 @@ function LineTournamentRow({ tournament, brand }: { tournament: TournamentRow; b
   return (
     <Link
       href={`/tournaments/${tournament.slug}`}
-      className="hover:bg-muted/30 flex items-center gap-3 px-4 py-3 transition-colors"
+      className="focus-card hover:bg-muted/30 flex items-center gap-3 rounded-md px-4 py-3 transition-colors"
     >
       <div className="text-muted-foreground hidden w-16 text-xs uppercase tracking-widest tabular-nums sm:block">
         {formatDate(tournament.starts_at, { day: '2-digit', month: 'short' })}

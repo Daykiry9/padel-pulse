@@ -64,8 +64,8 @@ export default async function ProfilePage() {
     <div className="space-y-8">
       <div>
         <Badge variant="crown">Mi perfil</Badge>
-        <h1 className="font-display mt-3 text-4xl tracking-tight md:text-5xl">
-          {profile.display_name.toUpperCase()}
+        <h1 className="font-display mt-3 text-3xl tracking-tight md:text-4xl">
+          {profile.display_name}
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           {user.email}

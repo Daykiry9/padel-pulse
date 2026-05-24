@@ -119,7 +119,7 @@ export default async function CommunityDetailPage({
             {community.city}
           </Badge>
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">
-            {community.name.toUpperCase()}
+            {community.name}
           </h1>
           {community.description && (
             <p className="text-muted-foreground mt-3 max-w-2xl text-sm">

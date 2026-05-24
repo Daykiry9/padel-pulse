@@ -166,8 +166,12 @@
     font-weight: 400;
   }
 
-  *:focus-visible {
-    outline: none;
+  /* Focus-visible default sano. :where() tiene especificidad 0 — cualquier
+     focus-visible:ring-* de Tailwind (Button, Input, Select) gana automático. */
+  :where(:focus-visible) {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
   /* Reduced motion */
@@ -210,6 +214,15 @@
 @utility press {
   transition: transform var(--duration-quick) var(--ease-press);
   &:active { transform: scale(0.97); }
+}
+
+/* Focus ring para Links-as-cards y elementos custom no cubiertos por Button/Input.
+   Usa --ring (que se reescribe a magenta en .theme-queens automáticamente). */
+@utility focus-card {
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
 @utility stagger-fade-in {

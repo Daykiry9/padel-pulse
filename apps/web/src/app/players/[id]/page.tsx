@@ -177,8 +177,8 @@ export default async function PublicPlayerPage({
               {CATEGORY_LABELS[player.skill_category] ?? player.skill_category}
             </Badge>
           )}
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">
-            {player.display_name.toUpperCase()}
+          <h1 className="font-display text-3xl tracking-tight md:text-4xl">
+            {player.display_name}
           </h1>
           {player.city && (
             <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
@@ -341,7 +341,7 @@ export default async function PublicPlayerPage({
                 <li key={p.id}>
                   <Link
                     href={`/players/${p.id}`}
-                    className="hover:bg-muted/30 -mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors"
+                    className="focus-card hover:bg-muted/30 -mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors"
                   >
                     <Avatar seed={p.id} name={p.name} size="sm" />
                     <span className="flex-1 truncate text-sm font-medium">{p.name}</span>

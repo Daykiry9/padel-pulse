@@ -164,7 +164,7 @@ function CityChip({ href, active, label }: { href: string; active: boolean; labe
   return (
     <Link
       href={href}
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs uppercase tracking-[0.15em] transition-colors ${
+      className={`focus-card inline-flex items-center rounded-full border px-3 py-1 text-xs uppercase tracking-[0.15em] transition-colors ${
         active
           ? 'border-gold-400/40 bg-gold-400/15 text-gold-300'
           : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'

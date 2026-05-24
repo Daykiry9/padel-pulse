@@ -58,3 +58,7 @@ supabase/.temp
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Design previews (Claude-generated, never committed)
+_design-preview-*.html
+_design-*.html

@@ -40,7 +40,7 @@ export function EmptyState({
               <Icon className="size-5" />
             </div>
           )}
-          <h3 className="font-display text-2xl tracking-tight md:text-3xl">{title.toUpperCase()}</h3>
+          <h3 className="font-display text-2xl tracking-tight md:text-3xl">{title}</h3>
           {description && (
             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">{description}</p>
           )}

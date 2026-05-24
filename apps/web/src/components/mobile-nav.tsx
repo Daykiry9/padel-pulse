@@ -33,7 +33,7 @@ export function MobileNav({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) 
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+              className={`focus-card flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
                 isActive ? 'text-crown' : 'text-muted-foreground hover:text-foreground'
               }`}
             >

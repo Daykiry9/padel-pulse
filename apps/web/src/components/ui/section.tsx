@@ -32,7 +32,7 @@ export function Section({
           <div>
             {title && (
               <h2 className="font-display text-xl tracking-tight md:text-2xl">
-                {typeof title === 'string' ? title.toUpperCase() : title}
+                {title}
               </h2>
             )}
             {subtitle && (
