@@ -1,30 +1,54 @@
 # Capacitor — wrapper nativo Android/iOS de PadelKing
 
-Capacitor envuelve la web app desplegada en Vercel y la sube a Play Store + App Store sin reescribir nada. Un solo codebase, 3 canales (web + Android + iOS).
+Capacitor envuelve la web app desplegada en Vercel (`padelking.co`) y la publica como app nativa en Play Store + App Store. Un codebase, 3 canales (web + Android + iOS).
 
-## Setup primera vez
+## Estado actual (2026-05-25)
 
-Requisito: tener **Android Studio** instalado con un emulador o un dispositivo Android.
+- ✅ Capacitor 8.3.4 instalado + configurado (`co.padelking.app`, `padelking.co`)
+- ✅ Plugins runtime: `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor/keyboard`, `@capacitor/app`
+- ✅ Devtool: `@capacitor/assets` (genera íconos + splash en todos los tamaños)
+- ✅ Web App Manifest + íconos PWA (apps/web/public/manifest.json + apps/web/public/icons/)
+- ✅ Android project scaffold (apps/web/android/) con plugins registrados
+- ✅ Assets nativos Android generados (mipmap-* + drawable-* para portrait/landscape/day/night)
+- ⏳ Decisiones store-ready (versión, signing, listing): pendientes
+- ⏳ iOS: pendiente (vamos vía EAS Build remoto, sin Mac propio inicialmente)
+
+## Source assets (regenerables)
+
+| Archivo | Tamaño | Para qué |
+|---|---|---|
+| `apps/web/assets/icon-only.png` | 1024×1024 | Source de todos los íconos. Copia del isotipo final-system/01. |
+| `apps/web/assets/splash.png` | 2732×2732 | Source del splash (isotipo centrado al 30% sobre `#0a0a0a`). |
+| `apps/web/assets/splash-dark.png` | 2732×2732 | Variant dark (igual al claro por ahora). |
+
+Si cambia el isotipo: regenerar con:
+```bash
+cd apps/web
+node scripts/generate-splash.mjs              # splash.png + splash-dark.png
+node scripts/generate-pwa-icons.mjs           # public/icons/* + public/apple-touch-icon.png + favicons
+npx capacitor-assets generate --android \
+  --iconBackgroundColor '#0a0a0a' --iconBackgroundColorDark '#0a0a0a' \
+  --splashBackgroundColor '#0a0a0a' --splashBackgroundColorDark '#0a0a0a'
+```
+
+## Workflows habituales
 
 ```bash
 cd apps/web
 
-# Una sola vez: scaffolds /android folder
-pnpm cap:add:android
-
-# Sync (cada vez que cambias capacitor.config.ts o instalas plugins nuevos)
+# Después de instalar plugins nuevos o cambiar capacitor.config.ts
 pnpm cap:sync
 
-# Abre Android Studio para buildear/correr en emulador
+# Abrir Android Studio para buildear/correr
 pnpm cap:open:android
 
-# O directamente correr en device/emulator
+# Correr en device/emulator
 pnpm cap:run:android
 ```
 
-## Modo de operación
+## Modo wrapper
 
-`capacitor.config.ts` apunta a `server.url` (la URL de Vercel en producción). Esto significa que la app nativa **carga remotamente** el sitio — no hay bundle de la web app en el APK. Pros y contras:
+`capacitor.config.ts` apunta a `server.url: 'https://padelking.co'`. La app nativa **carga remotamente** el sitio — no hay bundle de la web app en el APK.
 
 **Pros:**
 - Deploys instantáneos: subes a Vercel y todos los users ven el update inmediato.
@@ -32,55 +56,48 @@ pnpm cap:run:android
 - Cero divergencia entre web y mobile.
 
 **Contras:**
-- Sin internet, la app no funciona. Workaround: agregar Service Worker en la web (PWA) para offline básico.
-- iOS App Store es estricto con "thin wrappers" — pueden rechazar. Workaround: ofrecer features nativos exclusivos (push, biometrics, share sheet) que justifiquen la app.
+- Sin internet, la app no funciona. No usamos service worker offline porque puede servir cache stale al WebView nativo después de deploys de Vercel.
+- iOS App Store es estricto con "thin wrappers" — pueden rechazar. Mitigación: features nativos (splash, status bar, share sheet, deep links) que justifiquen la app.
 
-## Cambiar la URL de producción
+## App ID y dominio
 
-Cuando salgas a stores con dominio final (`padelking.co` o similar), edita `apps/web/capacitor.config.ts`:
-
-```ts
-server: { url: 'https://padelking.co' }
-```
-
-Y re-sync: `pnpm cap:sync`. Luego rebuild el APK desde Android Studio.
+| Campo | Valor |
+|---|---|
+| `appId` (bundle ID) | `co.padelking.app` |
+| `appName` | `PadelKing` |
+| `server.url` | `https://padelking.co` |
+| Dominio | `padelking.co` (Namecheap, DNS a Vercel) |
+| Theme color | `#0a0a0a` (consistente con `--background` de Tailwind) |
 
 ## Publicar a Play Store
 
 1. Crear cuenta de developer en Play Console ($25 USD una vez, persona natural OK).
 2. En Android Studio: `Build > Generate Signed Bundle / APK` → AAB (Android App Bundle).
+   - Generar keystore PRIMERA VEZ. **Backup en 1Password — si se pierde, no podés actualizar la app nunca más.**
 3. Subir el `.aab` a Play Console como nuevo release interno.
-4. Llenar ficha (descripción, screenshots de la web mostrada en el wrapper, política de privacidad).
+4. Llenar ficha (descripción, screenshots, política de privacidad).
 5. Esperar revisión (~3-7 días la primera vez).
 
 ## Publicar a App Store
 
-**Esperar hasta primer sponsor o 100 MAU** — Apple Developer es $99 USD/año y la revisión es más estricta. Cuando tengas ROI:
-
-```bash
-pnpm add -D @capacitor/ios -F web
-pnpm cap:add:ios   # requiere macOS + Xcode
-```
+1. Apple Developer ($99 USD/año).
+2. EAS Build remoto ($29/mes) para los builds iOS sin necesidad de Mac.
+3. App Store Connect → upload via EAS.
+4. Revisión Apple ~1-3 días.
 
 ## Permisos y plugins futuros
 
-Cuando agreguemos push notifications, share, camera (para subir fotos de perfil del jugador), etc., se instalan plugins:
+Cuando agreguemos features nativas:
 
 ```bash
-pnpm add @capacitor/push-notifications @capacitor/share @capacitor/camera -F web
+# Compartir story a Instagram/WhatsApp con share sheet nativo
+pnpm --filter web add @capacitor/share
+
+# Abrir links externos (Wompi, Instagram callback) sin salir de la app
+pnpm --filter web add @capacitor/browser
+
+# Push notifications (v0.3)
+pnpm --filter web add @capacitor/push-notifications
+
 pnpm cap:sync
 ```
-
-Cada plugin requiere configurar permisos en `android/app/src/main/AndroidManifest.xml` (que se autogenera al hacer `cap add android`).
-
-## Gitignore
-
-El folder `apps/web/android/` que crea `cap add android` no debe commitearse completo. Se autogeneran build artifacts pesados. El `.gitignore` de apps/web/ ya cubre estos paths (`.next/`, `node_modules/`); cuando agregues android, también ignorar:
-
-- `android/.gradle/`
-- `android/app/build/`
-- `android/build/`
-- `android/.idea/`
-- `android/local.properties`
-
-Sí commiteable: `android/app/src/main/AndroidManifest.xml`, `android/app/build.gradle`, `android/app/src/main/res/` (íconos, splash).

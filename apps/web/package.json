@@ -15,6 +15,10 @@
     "cap:run:android": "cap run android"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/keyboard": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@padelking/domain": "workspace:*",
     "@padelking/supabase": "workspace:*",
     "@padelking/ui": "workspace:*",
@@ -36,6 +40,7 @@
   },
   "devDependencies": {
     "@capacitor/android": "^8.3.4",
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@padelking/tsconfig": "workspace:*",

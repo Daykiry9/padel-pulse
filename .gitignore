@@ -62,3 +62,27 @@ next-env.d.ts
 # Design previews (Claude-generated, never committed)
 _design-preview-*.html
 _design-*.html
+
+# Capacitor Android — build artifacts y locales
+apps/web/android/.gradle/
+apps/web/android/.idea/
+apps/web/android/build/
+apps/web/android/app/build/
+apps/web/android/app/release/
+apps/web/android/captures/
+apps/web/android/local.properties
+apps/web/android/**/.kotlin/
+apps/web/android/*.iml
+apps/web/android/app/*.iml
+
+# Capacitor iOS — Pods + build artifacts
+apps/web/ios/App/Pods/
+apps/web/ios/App/build/
+apps/web/ios/App/Podfile.lock
+apps/web/ios/.DS_Store
+
+# Keystores (NUNCA commitear; backup en 1Password)
+*.keystore
+*.jks
+*.p12
+*.mobileprovision

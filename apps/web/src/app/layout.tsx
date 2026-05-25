@@ -32,6 +32,8 @@ export const metadata: Metadata = {
   description:
     'PadelKing & PadelQueens: la liga amateur del pádel colombiano. Crea tu equipo, juega torneos americanos y de eliminación, sube en el ranking por categoría.',
   metadataBase: new URL('https://padelking.co'),
+  applicationName: 'PadelKing',
+  manifest: '/manifest.json',
   keywords: [
     'pádel',
     'padel colombia',
@@ -42,6 +44,20 @@ export const metadata: Metadata = {
     'ranking pádel bogotá',
     'comunidades pádel',
   ],
+  icons: {
+    icon: [
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'PadelKing',
+    statusBarStyle: 'black-translucent',
+  },
   openGraph: {
     title: 'PadelKing — la liga amateur del pádel colombiano',
     description:
@@ -49,16 +65,23 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'es_CO',
     siteName: 'PadelKing',
+    images: [{ url: '/icons/icon-512.png', width: 512, height: 512, alt: 'PadelKing' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'PadelKing',
     description: 'La liga amateur del pádel colombiano.',
+    images: ['/icons/icon-512.png'],
   },
 };
 
 export const viewport: Viewport = {
   themeColor: '#0a0a0a',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
