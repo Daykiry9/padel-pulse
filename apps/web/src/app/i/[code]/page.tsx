@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { Card } from '@/components/ui/card';
@@ -12,30 +11,17 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   const { code } = await params;
   const user = await getSession();
 
-  // No autenticado → cookie del invite + redirect a signup
+  // No autenticado → redirect a signup con el code en query param.
+  // (Antes seteábamos una cookie httpOnly como backup, pero en Next 15
+  //  cookies().set() desde un Server Component tira excepción server-side.
+  //  El code en query param es suficiente para preservar el invite a través
+  //  de signup → onboarding → redeem.)
   if (!user) {
-    const cookieStore = await cookies();
-    cookieStore.set('pending_invite', code, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 7 días
-      path: '/',
-    });
     redirect(`/signup?invite=${code}`);
   }
 
   // Autenticado → resolver el invite y redirigir
   const result = await redeemInvitation(code);
-  if (result.ok && result.redirectTo) {
-    // Limpiar la cookie si quedó
-    const cookieStore = await cookies();
-    cookieStore.delete('pending_invite');
-    redirect(result.redirectTo);
-  }
-
-  // Si el redeem requiere onboarding, también limpiamos pero NO seteamos cookie de invite
-  // (el invite se pasa en query param)
   if (result.redirectTo) {
     redirect(result.redirectTo);
   }

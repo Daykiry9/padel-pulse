@@ -224,10 +224,11 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
     }
     // C4: team_members INSERT ya no permitido por authenticated.
     // Insert via service role tras validar el invite + cupo.
+    // Nota: team_members NO tiene columna `role` (esa es de community_members).
+    // Sus columnas son: team_id, profile_id, is_active, joined_at, left_at, invited_by.
     const { error } = await admin.from('team_members').insert({
       team_id: invite.target_id,
       profile_id: user.id,
-      role: 'member',
       is_active: true,
     } as never);
     if (error) return { ok: false, error: translateDbError(error.message) };
