@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   webDir: 'public',
   server: {
     // Modo wrapper: la app nativa carga el sitio en producción.
-    url: 'https://www.padelking.co',
+    url: 'https://padelking.co',
     cleartext: false,
     androidScheme: 'https',
   },
