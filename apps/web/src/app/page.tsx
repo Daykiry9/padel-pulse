@@ -179,9 +179,9 @@ function DualBrand() {
         <div className="relative overflow-hidden border-border/40 px-6 py-10 md:border-r">
           <div className="relative">
             <Badge variant="crown">PadelKing</Badge>
-            <h3 className="font-display mt-4 text-2xl tracking-tight md:text-3xl">
+            <h2 className="font-display mt-4 text-2xl tracking-tight md:text-3xl">
               MASCULINO + MIXTO
-            </h3>
+            </h2>
             <p className="text-muted-foreground mt-2 text-sm">
               5 categorías (1ra a 5ta) + mixto. Circuito principal, sponsors masculinos, premios
               propios.
@@ -191,9 +191,9 @@ function DualBrand() {
         <div className="theme-queens relative overflow-hidden px-6 py-10">
           <div className="relative">
             <Badge variant="queens">PadelQueens</Badge>
-            <h3 className="font-display mt-4 text-2xl tracking-tight md:text-3xl">
+            <h2 className="font-display mt-4 text-2xl tracking-tight md:text-3xl">
               FEMENINO
-            </h3>
+            </h2>
             <p className="text-muted-foreground mt-2 text-sm">
               Queens 1 a 5. Universo paralelo con ranking, sponsors y premios propios. Paridad
               estructural, no afterthought.
@@ -225,7 +225,7 @@ function Marquee() {
       <div className="relative flex overflow-hidden">
         <div className="flex animate-[scroll_40s_linear_infinite] gap-12 px-6 whitespace-nowrap [&>*]:shrink-0">
           {[...items, ...items, ...items].map((item, i) => (
-            <span key={i} className="font-display text-muted-foreground/50 text-2xl uppercase">
+            <span key={i} className="font-display text-muted-foreground text-2xl uppercase">
               {item}
             </span>
           ))}

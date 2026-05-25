@@ -54,7 +54,7 @@ export function CommunityRankingPreview() {
                 </div>
                 {e.crown && <Crown className="text-crown size-3.5 shrink-0" />}
                 {e.queens && (
-                  <Badge variant="queens" className="text-[9px] shrink-0">
+                  <Badge variant="queens" className="text-[9px] shrink-0" aria-hidden="true">
                     Queens
                   </Badge>
                 )}

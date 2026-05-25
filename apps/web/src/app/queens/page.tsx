@@ -236,7 +236,7 @@ function Marquee() {
       <div className="relative flex overflow-hidden">
         <div className="flex animate-[scroll_40s_linear_infinite] gap-12 whitespace-nowrap px-6 [&>*]:shrink-0">
           {[...items, ...items, ...items].map((item, i) => (
-            <span key={i} className="font-display text-muted-foreground/50 text-2xl uppercase">
+            <span key={i} className="font-display text-muted-foreground text-2xl uppercase">
               {item}
             </span>
           ))}
