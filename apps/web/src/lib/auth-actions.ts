@@ -104,9 +104,10 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
 
   const skillCategory = String(formData.get('skill_category') ?? '');
   const gender = String(formData.get('gender') ?? '') || null;
-  const city = String(formData.get('city') ?? '') || null;
+  const city = String(formData.get('city') ?? '').trim() || null;
+  const displayName = String(formData.get('display_name') ?? '').trim() || null;
 
-  // Campos opcionales extendidos (marketing + sponsor visibility)
+  // Datos del jugador (ahora obligatorios para el onboarding completo)
   const phone = String(formData.get('phone') ?? '').trim() || null;
   const birthdate = String(formData.get('birthdate') ?? '').trim() || null;
   const instagramHandle =
@@ -117,12 +118,28 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   const playingSinceYear = playingSinceRaw ? Number(playingSinceRaw) : null;
   const marketingOptIn = formData.get('marketing_opt_in') === 'true';
 
+  // Validación: si vienen del onboarding (display_name presente), exigimos todos
+  // los campos del perfil. Si vienen del /app/profile editando solo unos campos,
+  // permitimos partial update.
+  const isFullOnboarding = Boolean(displayName);
+  if (isFullOnboarding) {
+    if (!phone) return { ok: false, error: 'Teléfono obligatorio' };
+    if (!birthdate) return { ok: false, error: 'Fecha de nacimiento obligatoria' };
+    if (!instagramHandle) return { ok: false, error: 'Instagram obligatorio' };
+    if (!dominantHand) return { ok: false, error: 'Selecciona tu mano dominante' };
+    if (!favoritePosition) return { ok: false, error: 'Selecciona tu posición preferida' };
+    if (!playingSinceYear || Number.isNaN(playingSinceYear)) {
+      return { ok: false, error: 'Indica desde qué año juegas pádel' };
+    }
+  }
+
   const updates: Record<string, unknown> = {
     skill_category: skillCategory,
     gender,
     city,
     marketing_opt_in: marketingOptIn,
   };
+  if (displayName) updates.display_name = displayName;
   if (phone) updates.phone = phone;
   if (birthdate) updates.birthdate = birthdate;
   if (instagramHandle) updates.instagram_handle = instagramHandle;

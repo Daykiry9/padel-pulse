@@ -19,6 +19,7 @@ import { CommunityRankingPreview } from '@/components/marketing/community-rankin
 import { TournamentCardPreview } from '@/components/marketing/tournament-card-preview';
 import { LiveScoreboardPreview } from '@/components/marketing/live-scoreboard-preview';
 import { KingLogo } from '@/components/marketing/king-logo';
+import { getSession } from '@/lib/supabase/server';
 
 const featuredCommunities = [
   { name: 'Bogotá Pádel Circuit', city: 'Bogotá', teams: 38, badge: 'Top BOG' },
@@ -27,10 +28,13 @@ const featuredCommunities = [
   { name: 'Antioquia Pádel', city: 'Medellín', teams: 22, badge: 'Crew' },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getSession();
+  const isAuthed = Boolean(user);
+
   return (
     <main className="bg-background relative min-h-screen overflow-hidden">
-      <SiteHeader />
+      <SiteHeader isAuthed={isAuthed} />
       <Hero />
       <DualBrand />
       <Marquee />
@@ -46,7 +50,7 @@ export default function HomePage() {
   );
 }
 
-function SiteHeader() {
+function SiteHeader({ isAuthed }: { isAuthed: boolean }) {
   return (
     <header className="border-border/40 bg-background/60 sticky top-0 z-50 border-b backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -74,15 +78,26 @@ function SiteHeader() {
           </Link>
         </nav>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/login">Ingresar</Link>
-          </Button>
-          <Button variant="crown" size="sm" asChild>
-            <Link href="/signup">
-              Únete
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
+          {isAuthed ? (
+            <Button variant="crown" size="sm" asChild>
+              <Link href="/app">
+                Mi panel
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/login">Ingresar</Link>
+              </Button>
+              <Button variant="crown" size="sm" asChild>
+                <Link href="/signup">
+                  Únete
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>
