@@ -81,8 +81,11 @@ pnpm cap:run:android
 ## Publicar a App Store
 
 1. Apple Developer ($99 USD/año).
-2. EAS Build remoto ($29/mes) para los builds iOS sin necesidad de Mac.
-3. App Store Connect → upload via EAS.
+2. **Builds iOS sin Mac propio** — orden de preferencia:
+   - **Codemagic plan gratuito** (500 min/mes en macOS M2). Setup 2-3 hs, después builds gratis. Configurar via UI: agregar repo de GitHub + workflow `.yaml` con `ios-capacitor` template.
+   - **GitHub Actions con macOS runner** (~200 min/mes gratis en plan Free) como fallback si se agotan los minutos de Codemagic.
+   - **NO usar EAS Build** ($29/mes) — innecesario hasta validar que el volumen de builds justifica el costo.
+3. App Store Connect → upload via Transporter / Application Loader o directo desde Codemagic CI.
 4. Revisión Apple ~1-3 días.
 
 ## Permisos y plugins futuros
