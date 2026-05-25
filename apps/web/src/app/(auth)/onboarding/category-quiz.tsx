@@ -6,7 +6,7 @@ import { Check, ChevronDown, Sparkles } from 'lucide-react';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
-type Gender = 'male' | 'female' | 'nonbinary' | 'prefer_not_to_say';
+type Gender = 'male' | 'female';
 
 interface Question {
   id: string;
@@ -166,8 +166,6 @@ export function CategoryQuiz() {
         >
           <option value="male">Masculino</option>
           <option value="female">Femenino</option>
-          <option value="nonbinary">No-binario</option>
-          <option value="prefer_not_to_say">Prefiero no decir</option>
         </Select>
       </div>
 

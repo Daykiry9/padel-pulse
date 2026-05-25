@@ -116,8 +116,6 @@ export default async function ProfilePage() {
             <Select name="gender" defaultValue={profile.gender ?? 'male'} required>
               <option value="male">Masculino</option>
               <option value="female">Femenino</option>
-              <option value="nonbinary">No-binario</option>
-              <option value="prefer_not_to_say">Prefiero no decir</option>
             </Select>
           </FormField>
 
