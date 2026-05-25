@@ -44,7 +44,7 @@ const QUESTIONS: Question[] = [
       { label: 'Nunca', score: 0 },
       { label: 'Casual', score: 1 },
       { label: '1+ años amateur', score: 2 },
-      { label: 'Compitiendo / federado', score: 4 },
+      { label: 'Compitiendo / federado', score: 3 },
     ],
   },
   {
@@ -54,9 +54,9 @@ const QUESTIONS: Question[] = [
       { label: 'No he jugado torneos', score: 0 },
       { label: 'Eliminado en primera ronda', score: 1 },
       { label: 'Pasé fase de grupos', score: 2 },
-      { label: 'Cuartos / semis', score: 4 },
-      { label: 'Final', score: 5 },
-      { label: 'Campeón', score: 6 },
+      { label: 'Cuartos / semis', score: 3 },
+      { label: 'Final', score: 3 },
+      { label: 'Campeón', score: 4 },
     ],
   },
   {
@@ -84,15 +84,19 @@ const QUESTIONS: Question[] = [
 
 const MAX_SCORE = QUESTIONS.reduce((acc, q) => acc + Math.max(...q.options.map((o) => o.score)), 0);
 
-// Score → level 1..7 (1=novato, 7=pro)
+// Score → level 1..7 (1=7ma novato, 7=1ra elite amateur)
+// Calibracion conservadora: sugerencia tiende a banda BAJA. El organizador
+// puede subirla con un click. Es peor inflar al jugador que pecar de cauto.
+// MAX_SCORE = 29 con pesos actuales. Thresholds calibrados para que un
+// score "alto pero no perfecto" (24-27) sugiera 3ra-2da, no 1ra directo.
 function scoreToLevel(score: number): number {
-  if (score <= 5) return 1;
-  if (score <= 10) return 2;
-  if (score <= 14) return 3;
-  if (score <= 18) return 4;
-  if (score <= 22) return 5;
-  if (score <= 26) return 6;
-  return 7;
+  if (score <= 3) return 1;   // 7ma — novato real
+  if (score <= 7) return 2;   // 6ta
+  if (score <= 12) return 3;  // 5ta
+  if (score <= 17) return 4;  // 4ta
+  if (score <= 23) return 5;  // 3ra
+  if (score <= 27) return 6;  // 2da
+  return 7;                   // 1ra solo con score casi perfecto
 }
 
 const KING_LEVELS = ['septima', 'sexta', 'quinta', 'cuarta', 'tercera', 'segunda', 'primera'];
@@ -231,6 +235,9 @@ export function CategoryQuiz() {
                   </div>
                   <div className="font-display text-crown mt-1 text-2xl tracking-tight">
                     {suggested && (CATEGORY_LABELS[suggested] ?? suggested)}
+                  </div>
+                  <div className="text-muted-foreground mt-1 text-[10px] normal-case">
+                    Si dudas, mejor 1 banda más baja. El organizador la sube si te queda chica.
                   </div>
                 </div>
                 {chosen === suggested ? (
