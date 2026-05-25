@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 
+import { translateDbError } from './error-translate';
 import { getSupabaseServerClient } from './supabase/server';
 
 export interface ActionResult {
@@ -151,7 +152,10 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
 
   const { error } = await supabase.from('profiles').update(updates as never).eq('id', user.id);
 
-  if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
+  if (error) {
+    console.error('[updateProfile] supabase error:', error);
+    return { ok: false, error: translateDbError(error.message) };
+  }
 
   // Si vienen del flujo de invitación, redirigir a resolverlo en vez de /app
   const nextInvite = String(formData.get('next_invite') ?? '').trim();
