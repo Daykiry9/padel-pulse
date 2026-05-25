@@ -148,5 +148,11 @@ comment on function public.apply_elo_delta is
 
 -- El RPC se invoca con service role (BYPASS RLS), pero por seguridad
 -- explicitamos revoke público y grant a service_role.
-revoke all on function public.apply_elo_delta(uuid, int, uuid) from public;
+--
+-- IMPORTANTE: en Supabase, `anon` y `authenticated` NO son miembros de PUBLIC.
+-- Tienen grants explícitos que hay que revokear por separado, sino cualquier
+-- user autenticado podría llamar apply_elo_delta desde DevTools y, como la
+-- función es SECURITY DEFINER (bypass RLS), inflar su propio ELO sin jugar.
+revoke all on function public.apply_elo_delta(uuid, int, uuid)
+  from public, anon, authenticated;
 grant execute on function public.apply_elo_delta(uuid, int, uuid) to service_role;

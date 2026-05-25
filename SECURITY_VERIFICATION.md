@@ -209,8 +209,24 @@ select grantee, privilege_type
   from information_schema.routine_privileges
  where routine_name = 'apply_elo_delta'
    and specific_schema = 'public';
--- ✅ Esperado: solo service_role con EXECUTE. NO PUBLIC ni authenticated.
+-- ✅ Esperado: SOLO 2 rows — postgres (owner) + service_role.
+-- ❌ Si aparecen `anon` o `authenticated`, hay que revokear:
+--    revoke execute on function public.apply_elo_delta(uuid, int, uuid)
+--      from anon, authenticated, public;
 ```
+
+> **Nota crítica para aplicadores manuales en SQL Editor:**
+>
+> En Supabase, `anon` y `authenticated` **NO son miembros del rol `PUBLIC`**.
+> Tienen grants explícitos por default. `REVOKE ALL FROM public` no los toca.
+>
+> La función `apply_elo_delta` es `SECURITY DEFINER`, así que si `anon` o
+> `authenticated` mantienen EXECUTE, cualquier user autenticado puede inflar
+> su ELO desde DevTools llamando al RPC directamente.
+>
+> La migración ya incluye `revoke ... from public, anon, authenticated` para
+> instalaciones limpias. Pero si aplicaste por chunks en SQL Editor antes
+> del fix, verificá los grantees y corré el revoke explícito si hace falta.
 
 Test de concurrencia (opcional, en psql):
 
