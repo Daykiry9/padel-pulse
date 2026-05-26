@@ -58,18 +58,15 @@ const CATEGORY_LABELS: Record<string, string> = {
   tercera: '3ra',
   cuarta: '4ta',
   quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
   queens_libre: 'Queens Libre',
   queens_a: 'Queens A',
   queens_b: 'Queens B',
   queens_c: 'Queens C',
   queens_d: 'Queens D',
-  queens_e: 'Queens E',
 };
 
-const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'septima'];
-const QUEENS_CATS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d', 'queens_e'];
+const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta'];
+const QUEENS_CATS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d'];
 
 type RankRow = {
   profile_id: string;
@@ -131,16 +128,16 @@ export default async function RankingsPage({
             RANKING <span className="text-crown">NACIONAL</span>
           </h1>
           <p className="text-muted-foreground mt-3 text-sm">
-            Sistema híbrido: Tier 1 (torneos oficiales, x1.0) + Tier 2 (americanos casuales, x0.5).
-            Decay lineal a 12 meses. Solo cuentan los últimos 12.
+            <strong className="text-foreground">General</strong>: todos los torneos.{' '}
+            <strong className="text-foreground">Americanos</strong>: solo torneos americanos
+            casuales. Los puntos decaen a 12 meses para premiar consistencia.
           </p>
         </div>
 
         {/* Filtros */}
         <div className="border-border/40 mt-8 flex flex-wrap gap-2 border-b pb-6">
-          <FilterChip href="/rankings" active={!category && !tier} label="Top general" />
-          <FilterChip href="/rankings?tier=1" active={tier === '1'} label="Solo Tier 1" />
-          <FilterChip href="/rankings?tier=2" active={tier === '2'} label="Solo Tier 2" />
+          <FilterChip href="/rankings" active={!tier} label="General" />
+          <FilterChip href="/rankings?tier=2" active={tier === '2'} label="Americanos" />
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">

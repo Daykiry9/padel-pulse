@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Crown, Github, Instagram } from 'lucide-react';
 
 import { KingLogo } from '@/components/marketing/king-logo';
+import { isNativeApp } from '@/lib/native';
 
 const COLUMNS = [
   {
@@ -40,7 +41,9 @@ const COLUMNS = [
   },
 ];
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  if (await isNativeApp()) return null;
+
   return (
     <footer className="border-border/40 bg-ink-900 border-t">
       <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">

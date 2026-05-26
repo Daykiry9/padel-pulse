@@ -35,6 +35,15 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
   const isAuthPage = AUTH_PAGES.some((p) => path.startsWith(p));
+  const isNative = (request.headers.get('user-agent') ?? '').includes('PadelKingApp');
+
+  // App nativa: no mostramos la landing marketing. Entrar siempre a /app
+  // (que redirige a /login si no hay sesión).
+  if (isNative && path === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/app';
+    return NextResponse.redirect(url);
+  }
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();

@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo_Black, JetBrains_Mono, Manrope } from 'next/font/google';
 
+import { MobileNav } from '@/components/mobile-nav';
 import { getBrandFromCookie } from '@/lib/brand';
+import { isNativeApp } from '@/lib/native';
+import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 import './globals.css';
 
@@ -81,13 +84,30 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const brand = await getBrandFromCookie();
+  const [brand, native, user] = await Promise.all([
+    getBrandFromCookie(),
+    isNativeApp(),
+    getSession(),
+  ]);
+
+  let isSuperAdmin = false;
+  if (user) {
+    const supabase = await getSupabaseServerClient();
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_super_admin')
+      .eq('id', user.id)
+      .single();
+    isSuperAdmin = (data as { is_super_admin: boolean } | null)?.is_super_admin === true;
+  }
+
   return (
     <html lang="es" suppressHydrationWarning>
       <body
         className={`${archivoBlack.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased ${brand === 'queens' ? 'theme-queens' : ''}`}
       >
         {children}
+        <MobileNav isNative={native} isAuthed={Boolean(user)} isSuperAdmin={isSuperAdmin} />
       </body>
     </html>
   );

@@ -5,6 +5,8 @@ const config: CapacitorConfig = {
   appName: 'PadelKing',
   // webDir es ignorado cuando usamos server.url, pero Capacitor lo exige.
   webDir: 'public',
+  // Token en el User-Agent para que el server distinga app nativa de web.
+  appendUserAgent: 'PadelKingApp',
   server: {
     // Modo wrapper: la app nativa carga el sitio en producción.
     url: 'https://padelking.co',

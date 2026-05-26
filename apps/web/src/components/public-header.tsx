@@ -6,11 +6,13 @@ import { BrandSwitcher } from '@/components/brand-switcher';
 import { CommandPalette } from '@/components/command-palette';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { getBrandFromCookie } from '@/lib/brand';
+import { isNativeApp } from '@/lib/native';
 import { getSession } from '@/lib/supabase/server';
 
 /**
  * Header para páginas públicas. Detecta auth state + brand cookie y
- * muestra el switcher Kings/Queens.
+ * muestra el switcher Kings/Queens. Se oculta en la app nativa (que usa
+ * su propio shell con bottom nav).
  */
 export async function PublicHeader({
   brand,
@@ -18,6 +20,8 @@ export async function PublicHeader({
   /** Override del brand cookie (ej. queens page force-Queens). */
   brand?: 'kings' | 'queens';
 }) {
+  if (await isNativeApp()) return null;
+
   const user = await getSession();
   const cookieBrand = await getBrandFromCookie();
   const effectiveBrand = brand ?? cookieBrand;

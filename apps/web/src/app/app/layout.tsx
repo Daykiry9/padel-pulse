@@ -4,7 +4,6 @@ import { Crown, Globe, Shield, Trophy, Users } from 'lucide-react';
 
 import { CommandPalette } from '@/components/command-palette';
 import { KingLogo } from '@/components/marketing/king-logo';
-import { MobileNav } from '@/components/mobile-nav';
 import { NotificationsBell, type NotificationItem } from '@/components/notifications-bell';
 import { UserMenu } from '@/components/user-menu';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
@@ -93,8 +92,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-10 pb-24 md:py-14 md:pb-14">{children}</main>
-      <MobileNav isSuperAdmin={isSuperAdmin} />
+      <main className="mx-auto max-w-7xl px-6 py-10 md:py-14">{children}</main>
     </div>
   );
 }
