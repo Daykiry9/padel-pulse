@@ -156,9 +156,10 @@ export function CategoryQuiz() {
 
   return (
     <div className="space-y-6">
-      {/* Hidden inputs que ActionForm captura */}
+      {/* Hidden inputs que ActionForm captura. (required no aplica a hidden;
+          la categoría se valida server-side en updateProfile.) */}
       <input type="hidden" name="gender" value={gender} />
-      <input type="hidden" name="skill_category" value={effectiveCategory} required />
+      <input type="hidden" name="skill_category" value={effectiveCategory} />
 
       {/* Género */}
       <div>

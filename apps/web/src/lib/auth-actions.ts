@@ -124,6 +124,12 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   // permitimos partial update.
   const isFullOnboarding = Boolean(displayName);
   if (isFullOnboarding) {
+    if (!skillCategory) {
+      return {
+        ok: false,
+        error: 'Elige tu categoría: completa el quiz o usa "Prefiero elegir manualmente".',
+      };
+    }
     if (!phone) return { ok: false, error: 'Teléfono obligatorio' };
     if (!birthdate) return { ok: false, error: 'Fecha de nacimiento obligatoria' };
     if (!instagramHandle) return { ok: false, error: 'Instagram obligatorio' };
