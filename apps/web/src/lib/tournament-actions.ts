@@ -316,6 +316,220 @@ export async function closeRegistrationsAndGenerateBracket(
 // ============================================================
 // Reporte de marcadores (organizador-only en MVP)
 // ============================================================
+// ============================================================
+// Scoring: reporte + confirmación por las 2 parejas + override organizador
+// ============================================================
+
+type MatchCtx = {
+  id: string;
+  tournament_id: string;
+  registration_one_id: string;
+  registration_two_id: string;
+  status: string;
+  score_one: number | null;
+  score_two: number | null;
+  confirmed_by_one: boolean;
+  confirmed_by_two: boolean;
+  reported_by_registration_id: string | null;
+};
+type RegCtx = {
+  id: string;
+  team_id: string | null;
+  player_one_id: string | null;
+  player_two_id: string | null;
+  player_id: string | null;
+};
+
+/**
+ * Determina el rol del caller respecto a un match: si es el organizador
+ * (owner del club del torneo) y de qué pareja (registration) es participante.
+ */
+async function getMatchContext(
+  matchId: string,
+  userId: string,
+): Promise<{ match: MatchCtx; slug: string | null; isOrganizer: boolean; side: 'one' | 'two' | null } | null> {
+  const supabase = await getSupabaseServerClient();
+  const { data: m } = await supabase
+    .from('matches')
+    .select(
+      'id, tournament_id, registration_one_id, registration_two_id, status, score_one, score_two, confirmed_by_one, confirmed_by_two, reported_by_registration_id',
+    )
+    .eq('id', matchId)
+    .maybeSingle();
+  const match = m as unknown as MatchCtx | null;
+  if (!match) return null;
+
+  const { data: t } = await supabase
+    .from('tournaments')
+    .select('slug, clubs(owner_id)')
+    .eq('id', match.tournament_id)
+    .single();
+  const tour = t as unknown as { slug: string; clubs: { owner_id: string } | null } | null;
+  const isOrganizer = Boolean(tour?.clubs?.owner_id) && tour?.clubs?.owner_id === userId;
+
+  const { data: regsData } = await supabase
+    .from('tournament_registrations')
+    .select('id, team_id, player_one_id, player_two_id, player_id')
+    .in('id', [match.registration_one_id, match.registration_two_id]);
+  const regs = (regsData ?? []) as RegCtx[];
+
+  const teamIds = regs.map((r) => r.team_id).filter(Boolean) as string[];
+  let userTeamIds = new Set<string>();
+  if (teamIds.length) {
+    const { data: tmData } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('profile_id', userId)
+      .eq('is_active', true)
+      .in('team_id', teamIds);
+    userTeamIds = new Set(((tmData ?? []) as { team_id: string }[]).map((x) => x.team_id));
+  }
+
+  const isMember = (r: RegCtx | undefined): boolean => {
+    if (!r) return false;
+    if (r.player_one_id === userId || r.player_two_id === userId || r.player_id === userId) return true;
+    return Boolean(r.team_id && userTeamIds.has(r.team_id));
+  };
+  const side: 'one' | 'two' | null = isMember(regs.find((r) => r.id === match.registration_one_id))
+    ? 'one'
+    : isMember(regs.find((r) => r.id === match.registration_two_id))
+      ? 'two'
+      : null;
+
+  return { match, slug: tour?.slug ?? null, isOrganizer, side };
+}
+
+function revalidateMatch(slug: string | null) {
+  if (!slug) return;
+  revalidatePath(`/tournaments/${slug}`);
+  revalidatePath(`/tournaments/${slug}/live`);
+  revalidatePath(`/app/tournaments/${slug}/manage`);
+}
+
+/**
+ * Aplica ELO a los 4 jugadores del match + notifica. Idempotente: no
+ * re-aplica si elo_applied_at ya está seteado. Se invoca al completar un
+ * match (confirmación de ambas parejas, override del organizador, o cron).
+ * Exportada para que el cron de auto-confirm la reutilice.
+ */
+export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
+  // service role en todas las lecturas para que el cron (sin sesión) funcione.
+  const admin = getServiceRoleClient();
+  const { data } = await admin
+    .from('matches')
+    .select(
+      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, tournaments(slug)',
+    )
+    .eq('id', matchId)
+    .single();
+  const matchData = data as unknown as {
+    tournament_id: string;
+    registration_one_id: string;
+    registration_two_id: string;
+    score_one: number | null;
+    score_two: number | null;
+    elo_applied_at: string | null;
+    tournaments: { slug: string } | null;
+  } | null;
+  if (!matchData || matchData.elo_applied_at) return;
+
+  const scoreOne = matchData.score_one ?? 0;
+  const scoreTwo = matchData.score_two ?? 0;
+
+  type RegRow = {
+    id: string;
+    player_one_id: string | null;
+    player_two_id: string | null;
+    player_id: string | null;
+  };
+  const { data: regsData } = await admin
+    .from('tournament_registrations')
+    .select('id, player_one_id, player_two_id, player_id')
+    .in('id', [matchData.registration_one_id, matchData.registration_two_id]);
+  const regs = (regsData ?? []) as RegRow[];
+  const regOne = regs.find((r) => r.id === matchData.registration_one_id);
+  const regTwo = regs.find((r) => r.id === matchData.registration_two_id);
+
+  if (regOne?.player_one_id && regOne?.player_two_id && regTwo?.player_one_id && regTwo?.player_two_id) {
+    const { data: tData } = await admin
+      .from('tournaments')
+      .select('tier')
+      .eq('id', matchData.tournament_id)
+      .single();
+    const tier = (tData as { tier: string } | null)?.tier;
+    const k = tier === 'competitivo' ? 32 : 16;
+
+    const playerIds = [
+      regOne.player_one_id,
+      regOne.player_two_id,
+      regTwo.player_one_id,
+      regTwo.player_two_id,
+    ];
+    const { data: profilesData } = await admin
+      .from('profiles')
+      .select('id, elo_rating')
+      .in('id', playerIds);
+    const eloMap = new Map(
+      ((profilesData ?? []) as unknown as { id: string; elo_rating: number }[]).map((p) => [
+        p.id,
+        p.elo_rating,
+      ]),
+    );
+
+    const { deltaOne, deltaTwo } = computePaddleEloDeltas({
+      pairOne: { p1: eloMap.get(regOne.player_one_id) ?? 1000, p2: eloMap.get(regOne.player_two_id) ?? 1000 },
+      pairTwo: { p1: eloMap.get(regTwo.player_one_id) ?? 1000, p2: eloMap.get(regTwo.player_two_id) ?? 1000 },
+      scoreOne,
+      scoreTwo,
+      k,
+    });
+
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const rpc = (admin as any).rpc.bind(admin) as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>;
+
+    await Promise.all([
+      rpc('apply_elo_delta', { p_profile_id: regOne.player_one_id, p_delta: deltaOne, p_match_id: matchId }),
+      rpc('apply_elo_delta', { p_profile_id: regOne.player_two_id, p_delta: deltaOne, p_match_id: matchId }),
+      rpc('apply_elo_delta', { p_profile_id: regTwo.player_one_id, p_delta: deltaTwo, p_match_id: matchId }),
+      rpc('apply_elo_delta', { p_profile_id: regTwo.player_two_id, p_delta: deltaTwo, p_match_id: matchId }),
+    ]);
+
+    await admin
+      .from('matches')
+      .update({ elo_applied_at: new Date().toISOString() } as never)
+      .eq('id', matchId);
+  }
+
+  const slug = matchData.tournaments?.slug ?? null;
+  const pids = new Set<string>();
+  for (const r of regs) {
+    if (r.player_one_id) pids.add(r.player_one_id);
+    if (r.player_two_id) pids.add(r.player_two_id);
+    if (r.player_id) pids.add(r.player_id);
+  }
+  if (pids.size > 0 && slug) {
+    await createNotifications(
+      [...pids].map((pid) => ({
+        profileId: pid,
+        type: 'match_result',
+        title: `Resultado confirmado: ${scoreOne} - ${scoreTwo}`,
+        body: 'Revisa el bracket en vivo.',
+        link: `/tournaments/${slug}/live`,
+      })),
+    );
+  }
+  revalidateMatch(slug);
+}
+
+/**
+ * Reporta el marcador de un partido.
+ * - Organizador (owner del club): cierra directo → completed + ELO.
+ * - Jugador participante: queda pending_confirmation (sin ELO) hasta que
+ *   la otra pareja confirme o el organizador fuerce el cierre.
+ */
 export async function reportMatchScore(formData: FormData): Promise<ActionResult> {
   const user = await getSession();
   if (!user) return { ok: false, error: 'No autenticado' };
@@ -328,7 +542,6 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
   if (scoreOneRaw === '' || scoreTwoRaw === '') {
     return { ok: false, error: 'Faltan los dos marcadores' };
   }
-
   const scoreOne = Number(scoreOneRaw);
   const scoreTwo = Number(scoreTwoRaw);
   if (!Number.isInteger(scoreOne) || !Number.isInteger(scoreTwo)) {
@@ -338,172 +551,158 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
     return { ok: false, error: 'Marcador fuera de rango (0-99)' };
   }
 
-  const supabase = await getSupabaseServerClient();
+  const ctx = await getMatchContext(matchId, user.id);
+  if (!ctx) return { ok: false, error: 'Partido no encontrado' };
+  if (!ctx.isOrganizer && !ctx.side) {
+    return { ok: false, error: 'No participás en este partido' };
+  }
 
-  // C5: capturar status previo + elo_applied_at antes del UPDATE para
-  // detectar si esta llamada es una corrección de score (no aplicar ELO 2x).
-  const { data: prevData } = await supabase
-    .from('matches')
-    .select('status, elo_applied_at')
-    .eq('id', matchId)
-    .maybeSingle();
-  const prevMatch = prevData as { status: string; elo_applied_at: string | null } | null;
-  const eloAlreadyApplied = Boolean(prevMatch?.elo_applied_at);
+  // Validación + autorización ya resueltas en getMatchContext → usamos
+  // service role para el UPDATE (las parejas ad-hoc no pasan la RLS de
+  // matches, que solo cubre team_members).
+  const admin = getServiceRoleClient();
 
-  // RLS se encarga de validar que el caller sea owner o participante
-  const isCompleted = scoreOne > 0 || scoreTwo > 0;
-  const { data, error } = await supabase
+  // Organizador: autoridad, cierra directo.
+  if (ctx.isOrganizer) {
+    const { error } = await admin
+      .from('matches')
+      .update({
+        score_one: scoreOne,
+        score_two: scoreTwo,
+        status: 'completed',
+        confirmed_by_one: true,
+        confirmed_by_two: true,
+        reported_by_registration_id: null,
+        reported_at: new Date().toISOString(),
+        ended_at: new Date().toISOString(),
+      } as never)
+      .eq('id', matchId);
+    if (error) return { ok: false, error: translateDbError(error.message) };
+    await applyMatchEloAndNotify(matchId);
+    return { ok: true };
+  }
+
+  // Jugador: reporta → pending_confirmation, marca su lado, sin ELO.
+  const myReg = ctx.side === 'one' ? ctx.match.registration_one_id : ctx.match.registration_two_id;
+  const otherReg = ctx.side === 'one' ? ctx.match.registration_two_id : ctx.match.registration_one_id;
+  const { error } = await admin
     .from('matches')
     .update({
       score_one: scoreOne,
       score_two: scoreTwo,
-      status: isCompleted ? 'completed' : 'scheduled',
-      ended_at: isCompleted ? new Date().toISOString() : null,
+      status: 'pending_confirmation',
+      reported_by_registration_id: myReg,
+      reported_at: new Date().toISOString(),
+      confirmed_by_one: ctx.side === 'one',
+      confirmed_by_two: ctx.side === 'two',
+      ended_at: null,
     } as never)
-    .eq('id', matchId)
-    .select(
-      'tournament_id, registration_one_id, registration_two_id, tournaments(slug)',
-    )
-    .single();
-
+    .eq('id', matchId);
   if (error) return { ok: false, error: translateDbError(error.message) };
 
-  const matchData = data as unknown as {
-    tournament_id: string;
-    registration_one_id: string;
-    registration_two_id: string;
-    tournaments: { slug: string } | null;
+  // Notificar a la otra pareja para que confirme
+  const { data: otherRegData } = await admin
+    .from('tournament_registrations')
+    .select('player_one_id, player_two_id, player_id')
+    .eq('id', otherReg)
+    .maybeSingle();
+  const other = otherRegData as {
+    player_one_id: string | null;
+    player_two_id: string | null;
+    player_id: string | null;
   } | null;
-  const slug = matchData?.tournaments?.slug;
-
-  // Side effects post-completed: notificaciones + ELO
-  // C5: solo aplicar ELO en transición scheduled→completed, no en correcciones
-  if (isCompleted && matchData && !eloAlreadyApplied) {
-    type RegRow = {
-      id: string;
-      player_one_id: string | null;
-      player_two_id: string | null;
-      player_id: string | null;
-    };
-    const { data: regsData } = await supabase
-      .from('tournament_registrations')
-      .select('id, player_one_id, player_two_id, player_id')
-      .in('id', [matchData.registration_one_id, matchData.registration_two_id]);
-    const regs = (regsData ?? []) as RegRow[];
-    const regOne = regs.find((r) => r.id === matchData.registration_one_id);
-    const regTwo = regs.find((r) => r.id === matchData.registration_two_id);
-
-    // ELO update — solo si ambas registrations son parejas (2 players cada)
-    if (
-      regOne?.player_one_id &&
-      regOne?.player_two_id &&
-      regTwo?.player_one_id &&
-      regTwo?.player_two_id
-    ) {
-      const admin = getServiceRoleClient();
-
-      const { data: tData } = await supabase
-        .from('tournaments')
-        .select('tier')
-        .eq('id', matchData.tournament_id)
-        .single();
-      const tier = (tData as { tier: string } | null)?.tier;
-      const k = tier === 'competitivo' ? 32 : 16;
-
-      // Lecturas cross-user de elo_rating via service role (la policy nueva
-      // de profiles ya no permite SELECT cross-user de columnas privadas;
-      // elo_rating está en profiles_public pero usar admin aquí simplifica).
-      const playerIds = [
-        regOne.player_one_id,
-        regOne.player_two_id,
-        regTwo.player_one_id,
-        regTwo.player_two_id,
-      ];
-      const { data: profilesData } = await admin
-        .from('profiles')
-        .select('id, elo_rating')
-        .in('id', playerIds);
-      const eloMap = new Map(
-        ((profilesData ?? []) as unknown as { id: string; elo_rating: number }[]).map((p) => [
-          p.id,
-          p.elo_rating,
-        ]),
-      );
-
-      const beforeOnePOne = eloMap.get(regOne.player_one_id) ?? 1000;
-      const beforeOnePTwo = eloMap.get(regOne.player_two_id) ?? 1000;
-      const beforeTwoPOne = eloMap.get(regTwo.player_one_id) ?? 1000;
-      const beforeTwoPTwo = eloMap.get(regTwo.player_two_id) ?? 1000;
-
-      // C6: solo calcular los deltas; la aplicación atómica al rating
-      // (read+write con FOR UPDATE) la hace la RPC apply_elo_delta.
-      const { deltaOne, deltaTwo } = computePaddleEloDeltas({
-        pairOne: { p1: beforeOnePOne, p2: beforeOnePTwo },
-        pairTwo: { p1: beforeTwoPOne, p2: beforeTwoPTwo },
-        scoreOne,
-        scoreTwo,
-        k,
-      });
-
-      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-      const rpc = (admin as any).rpc.bind(admin) as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ error: { message: string } | null }>;
-
-      await Promise.all([
-        rpc('apply_elo_delta', {
-          p_profile_id: regOne.player_one_id,
-          p_delta: deltaOne,
-          p_match_id: matchId,
-        }),
-        rpc('apply_elo_delta', {
-          p_profile_id: regOne.player_two_id,
-          p_delta: deltaOne,
-          p_match_id: matchId,
-        }),
-        rpc('apply_elo_delta', {
-          p_profile_id: regTwo.player_one_id,
-          p_delta: deltaTwo,
-          p_match_id: matchId,
-        }),
-        rpc('apply_elo_delta', {
-          p_profile_id: regTwo.player_two_id,
-          p_delta: deltaTwo,
-          p_match_id: matchId,
-        }),
-      ]);
-
-      // Marcar idempotencia para que correcciones de score no re-apliquen
-      await admin
-        .from('matches')
-        .update({ elo_applied_at: new Date().toISOString() } as never)
-        .eq('id', matchId);
-    }
-
-    // Notificaciones a los 4 jugadores
-    const playerIds = new Set<string>();
-    for (const r of regs) {
-      if (r.player_one_id) playerIds.add(r.player_one_id);
-      if (r.player_two_id) playerIds.add(r.player_two_id);
-      if (r.player_id) playerIds.add(r.player_id);
-    }
-    if (playerIds.size > 0 && slug) {
-      await createNotifications(
-        [...playerIds].map((pid) => ({
-          profileId: pid,
-          type: 'match_result',
-          title: `Marcador reportado: ${scoreOne} - ${scoreTwo}`,
-          body: 'Revisa el bracket en vivo.',
-          link: `/tournaments/${slug}/live`,
-        })),
-      );
-    }
+  const otherPids = [other?.player_one_id, other?.player_two_id, other?.player_id].filter(
+    Boolean,
+  ) as string[];
+  if (otherPids.length && ctx.slug) {
+    await createNotifications(
+      otherPids.map((pid) => ({
+        profileId: pid,
+        type: 'match_result',
+        title: `Confirma el marcador: ${scoreOne} - ${scoreTwo}`,
+        body: 'La otra pareja reportó el resultado. Confírmalo o repórtalo distinto.',
+        link: `/tournaments/${ctx.slug}/live`,
+      })),
+    );
   }
-  if (slug) {
-    revalidatePath(`/tournaments/${slug}`);
-    revalidatePath(`/tournaments/${slug}/live`);
-    revalidatePath(`/app/tournaments/${slug}/manage`);
+  revalidateMatch(ctx.slug);
+  return { ok: true };
+}
+
+/**
+ * La otra pareja confirma o disputa el marcador reportado.
+ * - confirm=true: ambos confirmados → completed + ELO.
+ * - confirm=false: queda disputed → lo resuelve el organizador.
+ */
+export async function confirmMatchScore(matchId: string, confirm: boolean): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const ctx = await getMatchContext(matchId, user.id);
+  if (!ctx) return { ok: false, error: 'Partido no encontrado' };
+  if (!ctx.side) return { ok: false, error: 'No participás en este partido' };
+  if (ctx.match.status !== 'pending_confirmation') {
+    return { ok: false, error: 'Este partido no está pendiente de confirmación' };
   }
+  const myReg = ctx.side === 'one' ? ctx.match.registration_one_id : ctx.match.registration_two_id;
+  if (ctx.match.reported_by_registration_id === myReg) {
+    return { ok: false, error: 'Vos reportaste este marcador. Espera que la otra pareja confirme.' };
+  }
+
+  const admin = getServiceRoleClient();
+
+  if (!confirm) {
+    const { error } = await admin
+      .from('matches')
+      .update({ status: 'disputed' } as never)
+      .eq('id', matchId);
+    if (error) return { ok: false, error: translateDbError(error.message) };
+    revalidateMatch(ctx.slug);
+    return { ok: true };
+  }
+
+  const { error } = await admin
+    .from('matches')
+    .update({
+      status: 'completed',
+      confirmed_by_one: true,
+      confirmed_by_two: true,
+      ended_at: new Date().toISOString(),
+    } as never)
+    .eq('id', matchId);
+  if (error) return { ok: false, error: translateDbError(error.message) };
+  await applyMatchEloAndNotify(matchId);
+  return { ok: true };
+}
+
+/**
+ * El organizador fuerza el cierre de un partido (desbloquea ragequit /
+ * disputa). Requiere que haya un marcador reportado.
+ */
+export async function forceCompleteMatch(matchId: string): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const ctx = await getMatchContext(matchId, user.id);
+  if (!ctx) return { ok: false, error: 'Partido no encontrado' };
+  if (!ctx.isOrganizer) {
+    return { ok: false, error: 'Solo el organizador puede forzar el cierre' };
+  }
+  if (ctx.match.score_one == null || ctx.match.score_two == null) {
+    return { ok: false, error: 'No hay marcador reportado para cerrar' };
+  }
+
+  const admin = getServiceRoleClient();
+  const { error } = await admin
+    .from('matches')
+    .update({
+      status: 'completed',
+      confirmed_by_one: true,
+      confirmed_by_two: true,
+      ended_at: new Date().toISOString(),
+    } as never)
+    .eq('id', matchId);
+  if (error) return { ok: false, error: translateDbError(error.message) };
+  await applyMatchEloAndNotify(matchId);
   return { ok: true };
 }
