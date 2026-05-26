@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
+import { PlayerMatchActions } from './player-match-actions';
 import { RealtimeRefresh } from './realtime-refresh';
 
 type TournamentRow = {
@@ -40,6 +41,7 @@ type MatchRow = {
   score_one: number | null;
   score_two: number | null;
   status: string;
+  reported_by_registration_id: string | null;
 };
 
 interface Standing {
@@ -60,6 +62,7 @@ export default async function LiveTournamentPage({
 }) {
   const { slug } = await params;
   const supabase = await getSupabaseServerClient();
+  const user = await getSession();
 
   const { data: tData } = await supabase
     .from('tournaments')
@@ -78,7 +81,7 @@ export default async function LiveTournamentPage({
     supabase
       .from('matches')
       .select(
-        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status',
+        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id',
       )
       .eq('tournament_id', tournament.id)
       .order('round_number')
@@ -86,6 +89,28 @@ export default async function LiveTournamentPage({
   ]);
   const registrations = (regsRes.data ?? []) as unknown as RegRow[];
   const matches = (matchesRes.data ?? []) as unknown as MatchRow[];
+
+  // Registrations en las que participa el usuario actual (para mostrarle
+  // controles de reportar/confirmar en sus partidos).
+  const myRegIds = new Set<string>();
+  if (user) {
+    for (const r of registrations) {
+      if (r.player_one_id === user.id || r.player_two_id === user.id || r.player_id === user.id) {
+        myRegIds.add(r.id);
+      }
+    }
+    const myTeamRegs = registrations.filter((r) => r.team_id);
+    if (myTeamRegs.length) {
+      const { data: tmData } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', user.id)
+        .eq('is_active', true)
+        .in('team_id', myTeamRegs.map((r) => r.team_id) as string[]);
+      const myTeams = new Set(((tmData ?? []) as { team_id: string }[]).map((x) => x.team_id));
+      for (const r of myTeamRegs) if (r.team_id && myTeams.has(r.team_id)) myRegIds.add(r.id);
+    }
+  }
 
   // Etiquetas de inscripciones (team name o "p1 / p2" o "player single")
   const teamIds = Array.from(new Set(registrations.map((r) => r.team_id).filter(Boolean) as string[]));
@@ -352,6 +377,27 @@ export default async function LiveTournamentPage({
                                     dim={!isDone}
                                   />
                                 </div>
+                                {(() => {
+                                  const mineOne = myRegIds.has(m.registration_one_id);
+                                  const mineTwo = myRegIds.has(m.registration_two_id);
+                                  if (!mineOne && !mineTwo) return null;
+                                  const reportedBySide =
+                                    m.reported_by_registration_id === m.registration_one_id
+                                      ? 'one'
+                                      : m.reported_by_registration_id === m.registration_two_id
+                                        ? 'two'
+                                        : null;
+                                  return (
+                                    <PlayerMatchActions
+                                      matchId={m.id}
+                                      status={m.status}
+                                      mySide={mineOne ? 'one' : 'two'}
+                                      reportedBySide={reportedBySide}
+                                      scoreOne={m.score_one}
+                                      scoreTwo={m.score_two}
+                                    />
+                                  );
+                                })()}
                               </Card>
                             );
                           })}

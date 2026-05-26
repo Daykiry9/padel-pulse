@@ -10,6 +10,14 @@ import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { GenerateBracketButton } from './generate-bracket-button';
 import { MatchScoreForm } from './match-score-form';
 
+const STATUS_LABELS: Record<string, string> = {
+  scheduled: 'programado',
+  pending_confirmation: 'por confirmar',
+  completed: 'jugado',
+  disputed: 'en disputa',
+  in_progress: 'en curso',
+};
+
 type TournamentRow = {
   id: string;
   slug: string;
@@ -40,6 +48,7 @@ type MatchRow = {
   score_one: number | null;
   score_two: number | null;
   status: string;
+  reported_by_registration_id: string | null;
 };
 
 export default async function ManageTournamentPage({
@@ -133,7 +142,7 @@ export default async function ManageTournamentPage({
   const { data: matchesData } = await supabase
     .from('matches')
     .select(
-      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status',
+      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id',
     )
     .eq('tournament_id', tournament.id)
     .order('round_number')
@@ -244,10 +253,18 @@ export default async function ManageTournamentPage({
                         <div className="text-muted-foreground mb-3 flex items-center justify-between text-[10px] uppercase tracking-widest">
                           <span>Cancha {m.court_number}</span>
                           <Badge
-                            variant={m.status === 'completed' ? 'success' : 'muted'}
+                            variant={
+                              m.status === 'completed'
+                                ? 'success'
+                                : m.status === 'disputed'
+                                  ? 'live'
+                                  : m.status === 'pending_confirmation'
+                                    ? 'crown'
+                                    : 'muted'
+                            }
                             className="text-[9px]"
                           >
-                            {m.status}
+                            {STATUS_LABELS[m.status] ?? m.status}
                           </Badge>
                         </div>
                         <MatchScoreForm
@@ -256,6 +273,12 @@ export default async function ManageTournamentPage({
                           labelTwo={regLabels.get(m.registration_two_id) ?? '?'}
                           initialScoreOne={m.score_one}
                           initialScoreTwo={m.score_two}
+                          status={m.status}
+                          reportedByLabel={
+                            m.reported_by_registration_id
+                              ? (regLabels.get(m.reported_by_registration_id) ?? null)
+                              : null
+                          }
                         />
                       </Card>
                     ))}
