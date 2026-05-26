@@ -60,7 +60,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   const brand = isQueens ? 'PADELQUEENS' : 'PADELKING';
 
   const categoryLabel = t.category_kind.includes('suma')
-    ? `SUMA ≥ ${t.min_sum}`
+    ? `SUMA ${t.min_sum}+`
     : t.category
       ? (CATEGORY_LABELS[t.category] ?? t.category).toUpperCase()
       : 'CATEGORÍA ABIERTA';
@@ -145,7 +145,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
               color: '#0a0a0a',
             }}
           >
-            ♕
+            {brand.slice(5, 6)}
           </div>
           <div
             style={{
