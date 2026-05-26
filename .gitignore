@@ -81,8 +81,10 @@ apps/web/ios/App/build/
 apps/web/ios/App/Podfile.lock
 apps/web/ios/.DS_Store
 
-# Keystores (NUNCA commitear; backup en 1Password)
+# Keystores y signing secrets (NUNCA commitear; backup en Bitwarden)
 *.keystore
 *.jks
 *.p12
 *.mobileprovision
+keystore.properties
+apps/web/android/app/keystore.properties
