@@ -58,6 +58,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   tercera: '3ra',
   cuarta: '4ta',
   quinta: '5ta',
+  sexta: '6ta',
   queens_libre: 'Queens Libre',
   queens_a: 'Queens A',
   queens_b: 'Queens B',
@@ -65,7 +66,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   queens_d: 'Queens D',
 };
 
-const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta'];
+const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta'];
 const QUEENS_CATS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d'];
 
 type RankRow = {
