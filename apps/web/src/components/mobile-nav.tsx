@@ -37,10 +37,11 @@ export function MobileNav({
   const hiddenRoute = HIDE_ON.some((p) => pathname.startsWith(p));
   const show = isAuthed && !hiddenRoute && (isNative || pathname.startsWith('/app'));
 
-  // Reserva espacio al final del body para que el nav fixed no tape contenido.
+  // Reserva espacio al final del body para que el nav fixed no tape contenido
+  // (incluye el safe-area inferior de la barra de gestos en nativo).
   useEffect(() => {
     if (!show) return;
-    document.body.style.paddingBottom = '4rem';
+    document.body.style.paddingBottom = 'calc(4rem + env(safe-area-inset-bottom))';
     return () => {
       document.body.style.paddingBottom = '';
     };

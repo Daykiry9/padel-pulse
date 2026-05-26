@@ -104,7 +104,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${archivoBlack.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased ${brand === 'queens' ? 'theme-queens' : ''}`}
+        className={`${archivoBlack.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased ${brand === 'queens' ? 'theme-queens' : ''} ${native ? 'native-app' : ''}`}
       >
         {children}
         <MobileNav isNative={native} isAuthed={Boolean(user)} isSuperAdmin={isSuperAdmin} />
