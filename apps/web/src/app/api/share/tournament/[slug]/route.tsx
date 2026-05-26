@@ -76,6 +76,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     minute: '2-digit',
     timeZone: TZ,
   });
+  // Satori exige que un <div> con >1 hijo tenga display:flex. Precomputamos
+  // los textos compuestos como string único para evitarlo.
+  const dateTimeStr = `${dateStr} · ${timeStr}`;
+  const venueStr = t.clubs ? `${t.clubs.name} · ${t.clubs.city}` : null;
+  const priceStr =
+    t.price_per_team > 0 ? `$${t.price_per_team.toLocaleString('es-CO')} COP / equipo` : 'GRATIS';
+  const inviteUrl = `padelking.co/tournaments/${slug}`;
 
   const statusLabel =
     t.status === 'finished'
@@ -232,19 +239,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
               FECHA
             </span>
             <span style={{ fontSize: '40px', fontWeight: 700, textTransform: 'capitalize' }}>
-              {dateStr} · {timeStr}
+              {dateTimeStr}
             </span>
           </div>
 
           {/* Venue */}
-          {t.clubs && (
+          {venueStr && (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '24px' }}>
               <span style={{ fontSize: '20px', color: '#a8a6a0', letterSpacing: '0.18em', fontWeight: 600 }}>
                 SEDE
               </span>
-              <span style={{ fontSize: '40px', fontWeight: 700 }}>
-                {t.clubs.name} · {t.clubs.city}
-              </span>
+              <span style={{ fontSize: '40px', fontWeight: 700 }}>{venueStr}</span>
             </div>
           )}
 
@@ -253,11 +258,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
             <span style={{ fontSize: '20px', color: '#a8a6a0', letterSpacing: '0.18em', fontWeight: 600 }}>
               ENTRADA
             </span>
-            <span style={{ fontSize: '40px', fontWeight: 700 }}>
-              {t.price_per_team > 0
-                ? `$${t.price_per_team.toLocaleString('es-CO')} COP / equipo`
-                : 'GRATIS'}
-            </span>
+            <span style={{ fontSize: '40px', fontWeight: 700 }}>{priceStr}</span>
           </div>
 
           {/* CTA */}
@@ -274,9 +275,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
             <div style={{ fontSize: '22px', color: '#a8a6a0', letterSpacing: '0.18em', fontWeight: 600 }}>
               INSCRÍBETE EN
             </div>
-            <div style={{ fontSize: '36px', fontWeight: 700, color: accent }}>
-              padelking.co/tournaments/{slug}
-            </div>
+            <div style={{ fontSize: '36px', fontWeight: 700, color: accent }}>{inviteUrl}</div>
           </div>
         </div>
       </div>
