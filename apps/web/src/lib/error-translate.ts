@@ -49,7 +49,20 @@ export function translateDbError(message: string): string {
     if (m.includes('registration_modality')) return 'Modalidad de inscripción incompleta. Faltan los jugadores o el equipo.';
     if (m.includes('distinct_players')) return 'Los dos jugadores deben ser personas distintas.';
     if (m.includes('distinct_registrations')) return 'Una pareja no puede jugar contra sí misma.';
-    return 'Algún dato no cumple las reglas del torneo. Revisa los campos marcados.';
+    // Perfil (onboarding) — campos con formato/rango específico.
+    if (m.includes('phone_format')) {
+      return 'Teléfono inválido: 7 a 20 caracteres, solo números, espacios y + ( ) -.';
+    }
+    if (m.includes('birthdate_reasonable')) {
+      return 'Fecha de nacimiento inválida: revisá el año (debés tener al menos 5 años).';
+    }
+    if (m.includes('playing_since_reasonable')) {
+      return 'El año desde que juegas no es válido (debe estar entre 1990 y el año actual).';
+    }
+    if (m.includes('instagram_handle_format')) {
+      return 'Instagram inválido: solo letras, números, punto y guion bajo (sin @ ni espacios).';
+    }
+    return 'Algún dato no cumple el formato esperado. Revisá los campos marcados.';
   }
 
   // NOT NULL

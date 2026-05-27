@@ -141,6 +141,36 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
     }
   }
 
+  // Validaciones de formato (mismos límites que los CHECK de la DB, pero con
+  // mensaje claro de QUÉ corregir en vez del genérico "reglas del torneo").
+  if (phone && !/^[+0-9 ()-]{7,20}$/.test(phone)) {
+    return {
+      ok: false,
+      error: 'Teléfono inválido: 7 a 20 caracteres, solo números, espacios y + ( ) - (ej: +57 300 123 4567).',
+    };
+  }
+  if (instagramHandle && !/^[A-Za-z0-9._]{1,30}$/.test(instagramHandle)) {
+    return {
+      ok: false,
+      error: 'Instagram inválido: solo letras, números, punto y guion bajo, sin @ ni espacios (ej: juanesp_padel).',
+    };
+  }
+  const currentYear = new Date().getFullYear();
+  if (playingSinceYear != null && (playingSinceYear < 1990 || playingSinceYear > currentYear)) {
+    return { ok: false, error: `El año desde que juegas debe estar entre 1990 y ${currentYear}.` };
+  }
+  if (birthdate) {
+    const bd = new Date(birthdate);
+    const maxBirth = new Date();
+    maxBirth.setFullYear(maxBirth.getFullYear() - 5);
+    if (Number.isNaN(bd.getTime()) || bd < new Date('1920-01-02') || bd > maxBirth) {
+      return {
+        ok: false,
+        error: 'Fecha de nacimiento inválida: revisá el año (debés tener al menos 5 años y haber nacido después de 1920).',
+      };
+    }
+  }
+
   const updates: Record<string, unknown> = {
     skill_category: skillCategory,
     gender,
