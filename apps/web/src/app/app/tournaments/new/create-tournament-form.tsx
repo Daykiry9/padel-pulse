@@ -57,9 +57,11 @@ const KIND_LABELS: Record<CategoryKind, string> = {
 interface Props {
   clubs: { id: string; name: string; city: string }[];
   communities: { id: string; name: string }[];
+  /** Si viene, el torneo lo organiza esta comunidad directamente (sin club). */
+  community?: { id: string; name: string } | null;
 }
 
-export function CreateTournamentForm({ clubs, communities }: Props) {
+export function CreateTournamentForm({ clubs, communities, community }: Props) {
   const [format, setFormat] = useState<TournamentFormat>('americano_fijo');
   const [categoryKind, setCategoryKind] = useState<CategoryKind>('estandar');
 
@@ -152,15 +154,26 @@ export function CreateTournamentForm({ clubs, communities }: Props) {
         </>
       )}
 
-      <FormField label="Sede (club)">
-        <Select name="club_id" required>
-          {venues.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      {community ? (
+        <>
+          <input type="hidden" name="community_id" value={community.id} />
+          <FormField label="Organiza">
+            <div className="border-border bg-muted/30 text-foreground flex h-10 items-center rounded-md border px-3 text-sm">
+              {community.name}
+            </div>
+          </FormField>
+        </>
+      ) : (
+        <FormField label="Sede (club)">
+          <Select name="club_id" required>
+            {venues.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      )}
 
       <FormField label="Fecha y hora de inicio">
         <Input name="starts_at" type="datetime-local" required />

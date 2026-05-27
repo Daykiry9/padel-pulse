@@ -63,18 +63,22 @@ export default async function TournamentDetailPage({
 
   const tournamentRes = await supabase
     .from('tournaments')
-    .select('*, clubs(owner_id)')
+    .select('*, clubs(owner_id), communities(owner_id)')
     .eq('slug', slug)
     .single();
 
   const tournament = tournamentRes.data as unknown as (TournamentRow & {
-    club_id: string;
+    club_id: string | null;
     clubs: { owner_id: string } | null;
+    communities: { owner_id: string } | null;
   }) | null;
   if (!tournament) notFound();
 
   const user = await getSession();
-  const isOrganizer = Boolean(user && tournament.clubs?.owner_id === user.id);
+  const isOrganizer = Boolean(
+    user &&
+      (tournament.clubs?.owner_id === user.id || tournament.communities?.owner_id === user.id),
+  );
   const myTeams: { id: string; name: string; category: TeamCategory | null; eligibility: { ok: boolean; reason?: string } }[] = [];
   let myProfile: { skillCategory: TeamCategory | null; gender: Gender | null; eligibility: { ok: boolean; reason?: string } } | null = null;
 

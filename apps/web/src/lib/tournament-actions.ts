@@ -36,7 +36,8 @@ export async function createTournament(formData: FormData): Promise<ActionResult
   const category = String(formData.get('category') ?? '') as TeamCategory | '';
   const minSumRaw = String(formData.get('min_sum') ?? '').trim();
   const maxPlayerCategoryRaw = String(formData.get('max_player_category_value') ?? '').trim();
-  const clubId = String(formData.get('club_id') ?? '');
+  const clubId = String(formData.get('club_id') ?? '') || null;
+  const communityId = String(formData.get('community_id') ?? '') || null;
   const startsAt = String(formData.get('starts_at') ?? '');
   const maxTeams = Number(formData.get('max_teams') ?? 16);
   const pricePerTeam = Number(formData.get('price_per_team') ?? 0);
@@ -45,7 +46,7 @@ export async function createTournament(formData: FormData): Promise<ActionResult
 
   if (!name || name.length < 4) return { ok: false, error: 'Nombre del torneo muy corto' };
   if (!format) return { ok: false, error: 'Selecciona un formato' };
-  if (!clubId) return { ok: false, error: 'Selecciona una sede' };
+  if (!clubId && !communityId) return { ok: false, error: 'Selecciona una sede o comunidad' };
   if (!startsAt) return { ok: false, error: 'Fecha de inicio requerida' };
 
   if (categoryKind === 'estandar' || categoryKind === 'queens_estandar') {
@@ -84,6 +85,7 @@ export async function createTournament(formData: FormData): Promise<ActionResult
       competition_unit: competitionUnit,
       pairing_mode: pairingMode,
       club_id: clubId,
+      community_id: communityId,
       starts_at: startsDate.toISOString(),
       ends_at: endsDate.toISOString(),
       registration_deadline: registrationDeadline.toISOString(),
@@ -207,18 +209,20 @@ export async function closeRegistrationsAndGenerateBracket(
     status: string;
     format: string;
     courts: number;
-    club_id: string;
     clubs: { owner_id: string } | null;
+    communities: { owner_id: string } | null;
   };
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, slug, status, format, courts, club_id, clubs(owner_id)')
+    .select('id, slug, status, format, courts, clubs(owner_id), communities(owner_id)')
     .eq('id', tournamentId)
     .single();
   const tournament = tData as unknown as TournamentForBracket | null;
   if (!tournament) return { ok: false, error: 'Torneo no existe' };
-  if (tournament.clubs?.owner_id !== user.id) {
-    return { ok: false, error: 'Solo el dueño del club puede cerrar las inscripciones' };
+  const isOrganizer =
+    tournament.clubs?.owner_id === user.id || tournament.communities?.owner_id === user.id;
+  if (!isOrganizer) {
+    return { ok: false, error: 'Solo el organizador puede cerrar las inscripciones' };
   }
   if (tournament.status !== 'open') {
     return { ok: false, error: `El torneo está "${tournament.status}", no se puede generar bracket.` };
@@ -265,11 +269,14 @@ export async function closeRegistrationsAndGenerateBracket(
     return { ok: false, error: 'No se generaron matches (revisar #equipos vs canchas)' };
   }
 
-  // 4. Limpiar matches viejos (idempotencia: si re-generan, empieza limpio)
-  await supabase.from('matches').delete().eq('tournament_id', tournamentId);
+  // 4. Limpiar matches viejos (idempotencia: si re-generan, empieza limpio).
+  //    Service role: la RLS de insert/delete de matches exige club owner, pero
+  //    un torneo de comunidad no tiene club. La autorización ya se validó arriba.
+  const admin = getServiceRoleClient();
+  await admin.from('matches').delete().eq('tournament_id', tournamentId);
 
   // 5. Insertar todos
-  const { error: insertErr } = await supabase.from('matches').insert(matchRows as never);
+  const { error: insertErr } = await admin.from('matches').insert(matchRows as never);
   if (insertErr) return { ok: false, error: translateDbError(insertErr.message) };
 
   // 6. Pasar a in_progress
@@ -361,11 +368,17 @@ async function getMatchContext(
 
   const { data: t } = await supabase
     .from('tournaments')
-    .select('slug, clubs(owner_id)')
+    .select('slug, clubs(owner_id), communities(owner_id)')
     .eq('id', match.tournament_id)
     .single();
-  const tour = t as unknown as { slug: string; clubs: { owner_id: string } | null } | null;
-  const isOrganizer = Boolean(tour?.clubs?.owner_id) && tour?.clubs?.owner_id === userId;
+  const tour = t as unknown as {
+    slug: string;
+    clubs: { owner_id: string } | null;
+    communities: { owner_id: string } | null;
+  } | null;
+  const isOrganizer =
+    (Boolean(tour?.clubs?.owner_id) && tour?.clubs?.owner_id === userId) ||
+    (Boolean(tour?.communities?.owner_id) && tour?.communities?.owner_id === userId);
 
   const { data: regsData } = await supabase
     .from('tournament_registrations')

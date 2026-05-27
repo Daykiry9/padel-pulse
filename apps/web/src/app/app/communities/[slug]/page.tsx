@@ -49,8 +49,9 @@ export default async function CommunityDetailPage({
     supabase
       .from('tournaments')
       .select('id, name, slug, format, status, starts_at, category, category_kind, min_sum')
-      .eq('club_id', community.id) // shortcut MVP; real schema usa club aliado
-      .limit(5),
+      .eq('community_id', community.id)
+      .order('starts_at', { ascending: false })
+      .limit(10),
     supabase
       .from('community_members')
       .select('community_id')
@@ -208,11 +209,21 @@ export default async function CommunityDetailPage({
 
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-xl tracking-tight">TORNEOS</h2>
+            <h2 className="font-display text-xl tracking-tight">TORNEOS DE COMUNIDAD</h2>
+            {isOwner && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/app/tournaments/new?community=${community.id}`}>
+                  <Plus className="size-3" />
+                  Nuevo
+                </Link>
+              </Button>
+            )}
           </div>
           {tournaments.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">
-              No hay torneos próximos en esta comunidad.
+              {isOwner
+                ? 'Aún no creaste torneos en esta comunidad. Tocá "Nuevo" para armar el primero.'
+                : 'No hay torneos en esta comunidad todavía.'}
             </Card>
           ) : (
             <div className="grid gap-2">

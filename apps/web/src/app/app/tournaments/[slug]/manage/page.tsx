@@ -27,8 +27,8 @@ type TournamentRow = {
   courts: number;
   max_teams: number;
   starts_at: string;
-  club_id: string;
   clubs: { name: string; owner_id: string } | null;
+  communities: { name: string; owner_id: string } | null;
 };
 
 type RegRow = {
@@ -65,14 +65,16 @@ export default async function ManageTournamentPage({
   // 1. Torneo + ownership check
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, slug, name, status, format, courts, max_teams, starts_at, club_id, clubs(name, owner_id)')
+    .select('id, slug, name, status, format, courts, max_teams, starts_at, clubs(name, owner_id), communities(name, owner_id)')
     .eq('slug', slug)
     .single();
 
   const tournament = tData as unknown as TournamentRow | null;
   if (!tournament) notFound();
 
-  if (tournament.clubs?.owner_id !== user.id) {
+  const isOrganizer =
+    tournament.clubs?.owner_id === user.id || tournament.communities?.owner_id === user.id;
+  if (!isOrganizer) {
     return (
       <Card className="p-12 text-center">
         <Crown className="text-muted-foreground mx-auto size-10" />
@@ -189,7 +191,8 @@ export default async function ManageTournamentPage({
           {tournament.name}
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          {tournament.clubs?.name} · {new Date(tournament.starts_at).toLocaleString('es-CO')}
+          {tournament.clubs?.name ?? tournament.communities?.name} ·{' '}
+          {new Date(tournament.starts_at).toLocaleString('es-CO')}
         </p>
       </div>
 
