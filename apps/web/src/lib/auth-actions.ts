@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { translateDbError } from './error-translate';
 import { getSupabaseServerClient } from './supabase/server';
+import { getServiceRoleClient } from './supabase/admin';
 
 export interface ActionResult {
   ok: boolean;
@@ -156,11 +157,25 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
     updates.playing_since_year = playingSinceYear;
   }
 
-  const { error } = await supabase.from('profiles').update(updates as never).eq('id', user.id);
+  // Auth ya validada arriba (getUser). Escribimos con service role: un UPDATE
+  // con contexto de usuario sobre profiles estaba afectando 0 filas en silencio
+  // (sin error), dejando el perfil sin skill_category y rompiendo el onboarding
+  // en loop. Solo tocamos la fila del propio usuario (eq id). El .select()
+  // confirma que efectivamente se escribió: si vuelve vacío, devolvemos error
+  // en vez de "éxito" silencioso.
+  const admin = getServiceRoleClient();
+  const { data: updated, error } = await admin
+    .from('profiles')
+    .update(updates as never)
+    .eq('id', user.id)
+    .select('id');
 
   if (error) {
     console.error('[updateProfile] supabase error:', error);
     return { ok: false, error: translateDbError(error.message) };
+  }
+  if (!updated || updated.length === 0) {
+    return { ok: false, error: 'No encontramos tu perfil. Recargá la página e intentá de nuevo.' };
   }
 
   // Si vienen del flujo de invitación, redirigir a resolverlo en vez de /app
