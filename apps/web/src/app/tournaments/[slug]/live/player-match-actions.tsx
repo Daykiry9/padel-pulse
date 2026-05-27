@@ -2,18 +2,16 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Check, Flag, X } from 'lucide-react';
+import { Check, Flag, Gavel, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { confirmMatchScore, reportMatchScore } from '@/lib/tournament-actions';
+import { confirmMatchScore, forceCompleteMatch, reportMatchScore } from '@/lib/tournament-actions';
 
 /**
- * Controles para un jugador participante de un partido (en la página en vivo):
- * - sin reporte → reportar marcador
- * - reportado por la otra pareja → confirmar o disputar
- * - reportado por mí → esperando confirmación
- * - disputado → el organizador resuelve
+ * Controles de marcador de un partido, en la misma página en vivo:
+ * - organizador (isOrganizer) → edita y cierra cualquier partido directo;
+ * - jugador participante → reporta / confirma / disputa su propio partido.
  */
 export function PlayerMatchActions({
   matchId,
@@ -22,13 +20,15 @@ export function PlayerMatchActions({
   reportedBySide,
   scoreOne,
   scoreTwo,
+  isOrganizer = false,
 }: {
   matchId: string;
   status: string;
-  mySide: 'one' | 'two';
+  mySide?: 'one' | 'two';
   reportedBySide: 'one' | 'two' | null;
   scoreOne: number | null;
   scoreTwo: number | null;
+  isOrganizer?: boolean;
 }) {
   const router = useRouter();
   const [s1, setS1] = useState(scoreOne?.toString() ?? '');
@@ -36,7 +36,8 @@ export function PlayerMatchActions({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  if (status === 'completed') return null;
+  // El organizador puede re-editar incluso partidos cerrados (corregir).
+  if (status === 'completed' && !isOrganizer) return null;
 
   function report() {
     setError(null);
@@ -58,6 +59,61 @@ export function PlayerMatchActions({
       if (!r.ok) return setError(r.error ?? 'Error');
       router.refresh();
     });
+  }
+
+  function forceClose() {
+    setError(null);
+    startTransition(async () => {
+      const r = await forceCompleteMatch(matchId);
+      if (!r.ok) return setError(r.error ?? 'Error');
+      router.refresh();
+    });
+  }
+
+  // Organizador: editor directo (carga marcador y cierra) en la misma vista.
+  if (isOrganizer) {
+    const pending = status === 'pending_confirmation' || status === 'disputed';
+    return (
+      <div className="border-border/40 mt-2 space-y-2 border-t pt-2">
+        <div className="text-muted-foreground flex items-center gap-1 text-[9px] uppercase tracking-widest">
+          <Gavel className="size-2.5" />
+          Organizador
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={0}
+            max={99}
+            inputMode="numeric"
+            className="h-9 w-14 text-center font-display"
+            value={s1}
+            onChange={(e) => setS1(e.target.value)}
+            aria-label="Marcador pareja 1"
+          />
+          <span className="text-muted-foreground text-xs">–</span>
+          <Input
+            type="number"
+            min={0}
+            max={99}
+            inputMode="numeric"
+            className="h-9 w-14 text-center font-display"
+            value={s2}
+            onChange={(e) => setS2(e.target.value)}
+            aria-label="Marcador pareja 2"
+          />
+          <Button size="sm" variant="crown" onClick={report} disabled={isPending}>
+            <Check className="size-3" />
+            {isPending ? '…' : status === 'completed' ? 'Actualizar' : 'Guardar y cerrar'}
+          </Button>
+          {pending && (
+            <Button size="sm" variant="outline" onClick={forceClose} disabled={isPending}>
+              Aceptar lo reportado
+            </Button>
+          )}
+        </div>
+        {error && <p className="text-destructive text-[11px]">{error}</p>}
+      </div>
+    );
   }
 
   if (status === 'disputed') {

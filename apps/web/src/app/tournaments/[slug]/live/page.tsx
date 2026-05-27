@@ -23,6 +23,8 @@ type TournamentRow = {
   category_kind: string;
   category: string | null;
   min_sum: number | null;
+  clubs: { owner_id: string } | null;
+  communities: { owner_id: string } | null;
 };
 
 type RegRow = {
@@ -72,12 +74,18 @@ export default async function LiveTournamentPage({
 
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, name, slug, status, format, courts, starts_at, category_kind, category, min_sum')
+    .select(
+      'id, name, slug, status, format, courts, starts_at, category_kind, category, min_sum, clubs(owner_id), communities(owner_id)',
+    )
     .eq('slug', slug)
     .single();
   const tournament = tData as unknown as TournamentRow | null;
   if (!tournament) notFound();
   const isRandom = tournament.format === 'americano_random';
+  const isOwner = Boolean(
+    user &&
+      (tournament.clubs?.owner_id === user.id || tournament.communities?.owner_id === user.id),
+  );
 
   const [regsRes, matchesRes] = await Promise.all([
     supabase
@@ -456,9 +464,22 @@ export default async function LiveTournamentPage({
                                   />
                                 </div>
                                 {(() => {
+                                  const reportedBySide = reportedSideOf(m);
+                                  // Owner: editor directo en cada partido (solo lo ve él).
+                                  if (isOwner) {
+                                    return (
+                                      <PlayerMatchActions
+                                        matchId={m.id}
+                                        status={m.status}
+                                        isOrganizer
+                                        reportedBySide={reportedBySide}
+                                        scoreOne={m.score_one}
+                                        scoreTwo={m.score_two}
+                                      />
+                                    );
+                                  }
                                   const { mineOne, mineTwo } = myParticipation(m);
                                   if (!mineOne && !mineTwo) return null;
-                                  const reportedBySide = reportedSideOf(m);
                                   return (
                                     <PlayerMatchActions
                                       matchId={m.id}
