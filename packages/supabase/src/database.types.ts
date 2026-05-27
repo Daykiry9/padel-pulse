@@ -930,10 +930,15 @@ export type Database = {
           elo_applied_at: string | null
           ended_at: string | null
           id: string
-          registration_one_id: string
-          registration_two_id: string
+          pair_one_player_one_id: string | null
+          pair_one_player_two_id: string | null
+          pair_two_player_one_id: string | null
+          pair_two_player_two_id: string | null
+          registration_one_id: string | null
+          registration_two_id: string | null
           reported_at: string | null
           reported_by_registration_id: string | null
+          reported_by_side: number | null
           round_number: number
           scheduled_at: string | null
           score_one: number | null
@@ -951,10 +956,15 @@ export type Database = {
           elo_applied_at?: string | null
           ended_at?: string | null
           id?: string
-          registration_one_id: string
-          registration_two_id: string
+          pair_one_player_one_id?: string | null
+          pair_one_player_two_id?: string | null
+          pair_two_player_one_id?: string | null
+          pair_two_player_two_id?: string | null
+          registration_one_id?: string | null
+          registration_two_id?: string | null
           reported_at?: string | null
           reported_by_registration_id?: string | null
+          reported_by_side?: number | null
           round_number: number
           scheduled_at?: string | null
           score_one?: number | null
@@ -972,10 +982,15 @@ export type Database = {
           elo_applied_at?: string | null
           ended_at?: string | null
           id?: string
-          registration_one_id?: string
-          registration_two_id?: string
+          pair_one_player_one_id?: string | null
+          pair_one_player_two_id?: string | null
+          pair_two_player_one_id?: string | null
+          pair_two_player_two_id?: string | null
+          registration_one_id?: string | null
+          registration_two_id?: string | null
           reported_at?: string | null
           reported_by_registration_id?: string | null
+          reported_by_side?: number | null
           round_number?: number
           scheduled_at?: string | null
           score_one?: number | null
@@ -986,6 +1001,146 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "matches_pair_one_player_one_id_fkey"
+            columns: ["pair_one_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_one_id_fkey"
+            columns: ["pair_one_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_one_id_fkey"
+            columns: ["pair_one_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_one_id_fkey"
+            columns: ["pair_one_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_one_id_fkey"
+            columns: ["pair_one_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_two_id_fkey"
+            columns: ["pair_one_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_two_id_fkey"
+            columns: ["pair_one_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_two_id_fkey"
+            columns: ["pair_one_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_two_id_fkey"
+            columns: ["pair_one_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_pair_one_player_two_id_fkey"
+            columns: ["pair_one_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_one_id_fkey"
+            columns: ["pair_two_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_one_id_fkey"
+            columns: ["pair_two_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_one_id_fkey"
+            columns: ["pair_two_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_one_id_fkey"
+            columns: ["pair_two_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_one_id_fkey"
+            columns: ["pair_two_player_one_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_two_id_fkey"
+            columns: ["pair_two_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_casual"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_two_id_fkey"
+            columns: ["pair_two_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_consolidated"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_two_id_fkey"
+            columns: ["pair_two_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "player_ranking_official"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_two_id_fkey"
+            columns: ["pair_two_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_pair_two_player_two_id_fkey"
+            columns: ["pair_two_player_two_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matches_registration_one_id_fkey"
             columns: ["registration_one_id"]
@@ -1953,6 +2108,7 @@ export type Database = {
           min_teams: number
           name: string
           pairing_mode: Database["public"]["Enums"]["pairing_mode"] | null
+          points_per_match: number
           price_per_team: number
           registration_deadline: string
           rotation_games: number
@@ -1960,6 +2116,7 @@ export type Database = {
           starts_at: string
           status: Database["public"]["Enums"]["tournament_status"]
           tier: Database["public"]["Enums"]["tournament_tier"]
+          total_rounds: number | null
           weight: number
         }
         Insert: {
@@ -1983,6 +2140,7 @@ export type Database = {
           min_teams?: number
           name: string
           pairing_mode?: Database["public"]["Enums"]["pairing_mode"] | null
+          points_per_match?: number
           price_per_team?: number
           registration_deadline: string
           rotation_games?: number
@@ -1990,6 +2148,7 @@ export type Database = {
           starts_at: string
           status?: Database["public"]["Enums"]["tournament_status"]
           tier?: Database["public"]["Enums"]["tournament_tier"]
+          total_rounds?: number | null
           weight?: number
         }
         Update: {
@@ -2013,6 +2172,7 @@ export type Database = {
           min_teams?: number
           name?: string
           pairing_mode?: Database["public"]["Enums"]["pairing_mode"] | null
+          points_per_match?: number
           price_per_team?: number
           registration_deadline?: string
           rotation_games?: number
@@ -2020,6 +2180,7 @@ export type Database = {
           starts_at?: string
           status?: Database["public"]["Enums"]["tournament_status"]
           tier?: Database["public"]["Enums"]["tournament_tier"]
+          total_rounds?: number | null
           weight?: number
         }
         Relationships: [
