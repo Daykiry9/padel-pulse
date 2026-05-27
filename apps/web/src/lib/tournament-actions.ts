@@ -2,13 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { computePaddleEloDeltas, generateFixedAmericano, tierOf, weightOf } from '@padelking/domain';
-import type {
-  CategoryKind,
-  PairingMode,
-  TeamCategory,
-  TournamentFormat,
+import {
+  computePaddleEloDeltas,
+  generateFixedAmericano,
+  generateRandomAmericano,
+  tierOf,
+  weightOf,
 } from '@padelking/domain';
+import type { CategoryKind, TeamCategory, TournamentFormat } from '@padelking/domain';
 
 import { getSession, getSupabaseServerClient } from './supabase/server';
 import { getServiceRoleClient } from './supabase/admin';
@@ -41,7 +42,8 @@ export async function createTournament(formData: FormData): Promise<ActionResult
   const startsAt = String(formData.get('starts_at') ?? '');
   const maxTeams = Number(formData.get('max_teams') ?? 16);
   const pricePerTeam = Number(formData.get('price_per_team') ?? 0);
-  const pairingMode = (String(formData.get('pairing_mode') ?? '') || null) as PairingMode | null;
+  const pointsPerMatchRaw = String(formData.get('points_per_match') ?? '').trim();
+  const totalRoundsRaw = String(formData.get('total_rounds') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim() || null;
 
   if (!name || name.length < 4) return { ok: false, error: 'Nombre del torneo muy corto' };
@@ -83,7 +85,10 @@ export async function createTournament(formData: FormData): Promise<ActionResult
       min_sum: minSumRaw ? Number(minSumRaw) : null,
       max_player_category_value: maxPlayerCategoryRaw ? Number(maxPlayerCategoryRaw) : null,
       competition_unit: competitionUnit,
-      pairing_mode: pairingMode,
+      pairing_mode:
+        format === 'americano_random' ? 'random' : format === 'americano_fijo' ? 'fixed' : null,
+      points_per_match: pointsPerMatchRaw ? Number(pointsPerMatchRaw) : 12,
+      total_rounds: totalRoundsRaw ? Number(totalRoundsRaw) : null,
       club_id: clubId,
       community_id: communityId,
       starts_at: startsDate.toISOString(),
@@ -209,12 +214,13 @@ export async function closeRegistrationsAndGenerateBracket(
     status: string;
     format: string;
     courts: number;
+    total_rounds: number | null;
     clubs: { owner_id: string } | null;
     communities: { owner_id: string } | null;
   };
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, slug, status, format, courts, clubs(owner_id), communities(owner_id)')
+    .select('id, slug, status, format, courts, total_rounds, clubs(owner_id), communities(owner_id)')
     .eq('id', tournamentId)
     .single();
   const tournament = tData as unknown as TournamentForBracket | null;
@@ -233,40 +239,66 @@ export async function closeRegistrationsAndGenerateBracket(
       error: 'Solo torneos Americano soportan bracket auto-generado por ahora.',
     };
   }
-  if (tournament.format === 'americano_random') {
-    return { ok: false, error: 'Americano Random aún no soportado en bracket auto. Próximamente.' };
-  }
+  const isRandom = tournament.format === 'americano_random';
 
   // 2. Inscripciones confirmadas
   const { data: regs } = await supabase
     .from('tournament_registrations')
-    .select('id')
+    .select('id, player_id')
     .eq('tournament_id', tournamentId)
     .eq('status', 'confirmed');
-  const registrations = (regs ?? []) as { id: string }[];
-  if (registrations.length < 2) {
-    return { ok: false, error: 'Mínimo 2 equipos inscritos para generar bracket' };
+  const registrations = (regs ?? []) as { id: string; player_id: string | null }[];
+
+  // 3. Generar pareo + filas de matches según formato
+  let matchRows: Record<string, unknown>[];
+
+  if (isRandom) {
+    // Random (social): los participantes son jugadores individuales y las
+    // parejas rotan cada ronda → guardamos los 4 jugadores por partido.
+    const playerIds = registrations.map((r) => r.player_id).filter(Boolean) as string[];
+    if (playerIds.length < 4) {
+      return { ok: false, error: 'Mínimo 4 jugadores inscritos para un Americano Random' };
+    }
+    const rounds = generateRandomAmericano({
+      participantIds: playerIds,
+      courts: tournament.courts ?? 2,
+      rounds: tournament.total_rounds ?? undefined,
+    });
+    matchRows = rounds.flatMap((round) =>
+      round.matches.map((m) => ({
+        tournament_id: tournamentId,
+        round_number: m.roundNumber,
+        court_number: m.courtNumber,
+        pair_one_player_one_id: m.pairOne.playerOneId,
+        pair_one_player_two_id: m.pairOne.playerTwoId,
+        pair_two_player_one_id: m.pairTwo.playerOneId,
+        pair_two_player_two_id: m.pairTwo.playerTwoId,
+        status: 'scheduled' as const,
+      })),
+    );
+  } else {
+    // Fijo: los participantes son parejas (registrations). Round-robin Berger.
+    if (registrations.length < 2) {
+      return { ok: false, error: 'Mínimo 2 parejas inscritas para generar bracket' };
+    }
+    const rounds = generateFixedAmericano({
+      participantIds: registrations.map((r) => r.id),
+      courts: tournament.courts ?? 2,
+    });
+    matchRows = rounds.flatMap((round) =>
+      round.matches.map((m) => ({
+        tournament_id: tournamentId,
+        round_number: m.roundNumber,
+        court_number: m.courtNumber,
+        registration_one_id: m.pairOne.playerOneId,
+        registration_two_id: m.pairTwo.playerOneId,
+        status: 'scheduled' as const,
+      })),
+    );
   }
 
-  // 3. Generar pareo con Berger
-  const rounds = generateFixedAmericano({
-    participantIds: registrations.map((r) => r.id),
-    courts: tournament.courts ?? 2,
-  });
-
-  const matchRows = rounds.flatMap((round) =>
-    round.matches.map((m) => ({
-      tournament_id: tournamentId,
-      round_number: m.roundNumber,
-      court_number: m.courtNumber,
-      registration_one_id: m.pairOne.playerOneId,
-      registration_two_id: m.pairTwo.playerOneId,
-      status: 'scheduled' as const,
-    })),
-  );
-
   if (matchRows.length === 0) {
-    return { ok: false, error: 'No se generaron matches (revisar #equipos vs canchas)' };
+    return { ok: false, error: 'No se generaron matches (revisar #jugadores/parejas vs canchas)' };
   }
 
   // 4. Limpiar matches viejos (idempotencia: si re-generan, empieza limpio).
@@ -330,14 +362,19 @@ export async function closeRegistrationsAndGenerateBracket(
 type MatchCtx = {
   id: string;
   tournament_id: string;
-  registration_one_id: string;
-  registration_two_id: string;
+  registration_one_id: string | null;
+  registration_two_id: string | null;
   status: string;
   score_one: number | null;
   score_two: number | null;
   confirmed_by_one: boolean;
   confirmed_by_two: boolean;
   reported_by_registration_id: string | null;
+  reported_by_side: number | null;
+  pair_one_player_one_id: string | null;
+  pair_one_player_two_id: string | null;
+  pair_two_player_one_id: string | null;
+  pair_two_player_two_id: string | null;
 };
 type RegCtx = {
   id: string;
@@ -349,17 +386,27 @@ type RegCtx = {
 
 /**
  * Determina el rol del caller respecto a un match: si es el organizador
- * (owner del club del torneo) y de qué pareja (registration) es participante.
+ * (owner del club o de la comunidad) y de qué lado juega. Funciona para:
+ *  - fijo: el lado sale de las registrations (jugador directo o team member);
+ *  - random: el lado sale de los 4 jugadores del partido (parejas efímeras).
+ * `reportedBySide` unifica quién reportó (registration en fijo, side en random).
  */
 async function getMatchContext(
   matchId: string,
   userId: string,
-): Promise<{ match: MatchCtx; slug: string | null; isOrganizer: boolean; side: 'one' | 'two' | null } | null> {
+): Promise<{
+  match: MatchCtx;
+  slug: string | null;
+  isOrganizer: boolean;
+  side: 'one' | 'two' | null;
+  isRandom: boolean;
+  reportedBySide: 'one' | 'two' | null;
+} | null> {
   const supabase = await getSupabaseServerClient();
   const { data: m } = await supabase
     .from('matches')
     .select(
-      'id, tournament_id, registration_one_id, registration_two_id, status, score_one, score_two, confirmed_by_one, confirmed_by_two, reported_by_registration_id',
+      'id, tournament_id, registration_one_id, registration_two_id, status, score_one, score_two, confirmed_by_one, confirmed_by_two, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
     )
     .eq('id', matchId)
     .maybeSingle();
@@ -380,36 +427,63 @@ async function getMatchContext(
     (Boolean(tour?.clubs?.owner_id) && tour?.clubs?.owner_id === userId) ||
     (Boolean(tour?.communities?.owner_id) && tour?.communities?.owner_id === userId);
 
-  const { data: regsData } = await supabase
-    .from('tournament_registrations')
-    .select('id, team_id, player_one_id, player_two_id, player_id')
-    .in('id', [match.registration_one_id, match.registration_two_id]);
-  const regs = (regsData ?? []) as RegCtx[];
+  const isRandom = Boolean(match.pair_one_player_one_id);
+  let side: 'one' | 'two' | null = null;
 
-  const teamIds = regs.map((r) => r.team_id).filter(Boolean) as string[];
-  let userTeamIds = new Set<string>();
-  if (teamIds.length) {
-    const { data: tmData } = await supabase
-      .from('team_members')
-      .select('team_id')
-      .eq('profile_id', userId)
-      .eq('is_active', true)
-      .in('team_id', teamIds);
-    userTeamIds = new Set(((tmData ?? []) as { team_id: string }[]).map((x) => x.team_id));
+  if (isRandom) {
+    if (match.pair_one_player_one_id === userId || match.pair_one_player_two_id === userId) {
+      side = 'one';
+    } else if (
+      match.pair_two_player_one_id === userId ||
+      match.pair_two_player_two_id === userId
+    ) {
+      side = 'two';
+    }
+  } else {
+    const regIds = [match.registration_one_id, match.registration_two_id].filter(Boolean) as string[];
+    const { data: regsData } = await supabase
+      .from('tournament_registrations')
+      .select('id, team_id, player_one_id, player_two_id, player_id')
+      .in('id', regIds);
+    const regs = (regsData ?? []) as RegCtx[];
+
+    const teamIds = regs.map((r) => r.team_id).filter(Boolean) as string[];
+    let userTeamIds = new Set<string>();
+    if (teamIds.length) {
+      const { data: tmData } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('profile_id', userId)
+        .eq('is_active', true)
+        .in('team_id', teamIds);
+      userTeamIds = new Set(((tmData ?? []) as { team_id: string }[]).map((x) => x.team_id));
+    }
+
+    const isMember = (r: RegCtx | undefined): boolean => {
+      if (!r) return false;
+      if (r.player_one_id === userId || r.player_two_id === userId || r.player_id === userId) return true;
+      return Boolean(r.team_id && userTeamIds.has(r.team_id));
+    };
+    side = isMember(regs.find((r) => r.id === match.registration_one_id))
+      ? 'one'
+      : isMember(regs.find((r) => r.id === match.registration_two_id))
+        ? 'two'
+        : null;
   }
 
-  const isMember = (r: RegCtx | undefined): boolean => {
-    if (!r) return false;
-    if (r.player_one_id === userId || r.player_two_id === userId || r.player_id === userId) return true;
-    return Boolean(r.team_id && userTeamIds.has(r.team_id));
-  };
-  const side: 'one' | 'two' | null = isMember(regs.find((r) => r.id === match.registration_one_id))
-    ? 'one'
-    : isMember(regs.find((r) => r.id === match.registration_two_id))
-      ? 'two'
-      : null;
+  const reportedBySide: 'one' | 'two' | null = isRandom
+    ? match.reported_by_side === 1
+      ? 'one'
+      : match.reported_by_side === 2
+        ? 'two'
+        : null
+    : match.reported_by_registration_id === match.registration_one_id
+      ? 'one'
+      : match.reported_by_registration_id === match.registration_two_id
+        ? 'two'
+        : null;
 
-  return { match, slug: tour?.slug ?? null, isOrganizer, side };
+  return { match, slug: tour?.slug ?? null, isOrganizer, side, isRandom, reportedBySide };
 }
 
 function revalidateMatch(slug: string | null) {
@@ -431,17 +505,21 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
   const { data } = await admin
     .from('matches')
     .select(
-      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, tournaments(slug)',
+      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, tournaments(slug)',
     )
     .eq('id', matchId)
     .single();
   const matchData = data as unknown as {
     tournament_id: string;
-    registration_one_id: string;
-    registration_two_id: string;
+    registration_one_id: string | null;
+    registration_two_id: string | null;
     score_one: number | null;
     score_two: number | null;
     elo_applied_at: string | null;
+    pair_one_player_one_id: string | null;
+    pair_one_player_two_id: string | null;
+    pair_two_player_one_id: string | null;
+    pair_two_player_two_id: string | null;
     tournaments: { slug: string } | null;
   } | null;
   if (!matchData || matchData.elo_applied_at) return;
@@ -455,10 +533,15 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     player_two_id: string | null;
     player_id: string | null;
   };
-  const { data: regsData } = await admin
-    .from('tournament_registrations')
-    .select('id, player_one_id, player_two_id, player_id')
-    .in('id', [matchData.registration_one_id, matchData.registration_two_id]);
+  const regIds = [matchData.registration_one_id, matchData.registration_two_id].filter(
+    Boolean,
+  ) as string[];
+  const { data: regsData } = regIds.length
+    ? await admin
+        .from('tournament_registrations')
+        .select('id, player_one_id, player_two_id, player_id')
+        .in('id', regIds)
+    : { data: [] };
   const regs = (regsData ?? []) as RegRow[];
   const regOne = regs.find((r) => r.id === matchData.registration_one_id);
   const regTwo = regs.find((r) => r.id === matchData.registration_two_id);
@@ -522,6 +605,15 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     if (r.player_one_id) pids.add(r.player_one_id);
     if (r.player_two_id) pids.add(r.player_two_id);
     if (r.player_id) pids.add(r.player_id);
+  }
+  // Random: los jugadores no salen de registrations sino de los 4 del partido.
+  for (const pid of [
+    matchData.pair_one_player_one_id,
+    matchData.pair_one_player_two_id,
+    matchData.pair_two_player_one_id,
+    matchData.pair_two_player_two_id,
+  ]) {
+    if (pid) pids.add(pid);
   }
   if (pids.size > 0 && slug) {
     await createNotifications(
@@ -596,37 +688,50 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
   }
 
   // Jugador: reporta → pending_confirmation, marca su lado, sin ELO.
-  const myReg = ctx.side === 'one' ? ctx.match.registration_one_id : ctx.match.registration_two_id;
-  const otherReg = ctx.side === 'one' ? ctx.match.registration_two_id : ctx.match.registration_one_id;
-  const { error } = await admin
-    .from('matches')
-    .update({
-      score_one: scoreOne,
-      score_two: scoreTwo,
-      status: 'pending_confirmation',
-      reported_by_registration_id: myReg,
-      reported_at: new Date().toISOString(),
-      confirmed_by_one: ctx.side === 'one',
-      confirmed_by_two: ctx.side === 'two',
-      ended_at: null,
-    } as never)
-    .eq('id', matchId);
+  const reportUpdate: Record<string, unknown> = {
+    score_one: scoreOne,
+    score_two: scoreTwo,
+    status: 'pending_confirmation',
+    reported_at: new Date().toISOString(),
+    confirmed_by_one: ctx.side === 'one',
+    confirmed_by_two: ctx.side === 'two',
+    ended_at: null,
+  };
+  if (ctx.isRandom) {
+    // Random: no hay registration-pareja; marcamos el lado que reportó.
+    reportUpdate.reported_by_side = ctx.side === 'one' ? 1 : 2;
+  } else {
+    reportUpdate.reported_by_registration_id =
+      ctx.side === 'one' ? ctx.match.registration_one_id : ctx.match.registration_two_id;
+  }
+  const { error } = await admin.from('matches').update(reportUpdate as never).eq('id', matchId);
   if (error) return { ok: false, error: translateDbError(error.message) };
 
-  // Notificar a la otra pareja para que confirme
-  const { data: otherRegData } = await admin
-    .from('tournament_registrations')
-    .select('player_one_id, player_two_id, player_id')
-    .eq('id', otherReg)
-    .maybeSingle();
-  const other = otherRegData as {
-    player_one_id: string | null;
-    player_two_id: string | null;
-    player_id: string | null;
-  } | null;
-  const otherPids = [other?.player_one_id, other?.player_two_id, other?.player_id].filter(
-    Boolean,
-  ) as string[];
+  // Jugadores de la otra pareja, para notificarles que confirmen.
+  let otherPids: string[];
+  if (ctx.isRandom) {
+    otherPids = (
+      ctx.side === 'one'
+        ? [ctx.match.pair_two_player_one_id, ctx.match.pair_two_player_two_id]
+        : [ctx.match.pair_one_player_one_id, ctx.match.pair_one_player_two_id]
+    ).filter(Boolean) as string[];
+  } else {
+    const otherReg =
+      ctx.side === 'one' ? ctx.match.registration_two_id : ctx.match.registration_one_id;
+    const { data: otherRegData } = await admin
+      .from('tournament_registrations')
+      .select('player_one_id, player_two_id, player_id')
+      .eq('id', otherReg ?? '')
+      .maybeSingle();
+    const other = otherRegData as {
+      player_one_id: string | null;
+      player_two_id: string | null;
+      player_id: string | null;
+    } | null;
+    otherPids = [other?.player_one_id, other?.player_two_id, other?.player_id].filter(
+      Boolean,
+    ) as string[];
+  }
   if (otherPids.length && ctx.slug) {
     await createNotifications(
       otherPids.map((pid) => ({
@@ -657,8 +762,7 @@ export async function confirmMatchScore(matchId: string, confirm: boolean): Prom
   if (ctx.match.status !== 'pending_confirmation') {
     return { ok: false, error: 'Este partido no está pendiente de confirmación' };
   }
-  const myReg = ctx.side === 'one' ? ctx.match.registration_one_id : ctx.match.registration_two_id;
-  if (ctx.match.reported_by_registration_id === myReg) {
+  if (ctx.reportedBySide && ctx.reportedBySide === ctx.side) {
     return { ok: false, error: 'Vos reportaste este marcador. Espera que la otra pareja confirme.' };
   }
 

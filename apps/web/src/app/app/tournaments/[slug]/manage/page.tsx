@@ -43,12 +43,17 @@ type MatchRow = {
   id: string;
   round_number: number;
   court_number: number;
-  registration_one_id: string;
-  registration_two_id: string;
+  registration_one_id: string | null;
+  registration_two_id: string | null;
   score_one: number | null;
   score_two: number | null;
   status: string;
   reported_by_registration_id: string | null;
+  reported_by_side: number | null;
+  pair_one_player_one_id: string | null;
+  pair_one_player_two_id: string | null;
+  pair_two_player_one_id: string | null;
+  pair_two_player_two_id: string | null;
 };
 
 export default async function ManageTournamentPage({
@@ -140,11 +145,35 @@ export default async function ManageTournamentPage({
   }
   const regLabels = new Map(registrations.map((r) => [r.id, labelOf(r)]));
 
+  const isRandom = tournament.format === 'americano_random';
+  const playerName = (id: string | null): string => (id ? (profiles.get(id) ?? '?') : '?');
+  const sideLabel = (m: MatchRow, side: 'one' | 'two'): string => {
+    if (isRandom) {
+      const [p1, p2] =
+        side === 'one'
+          ? [m.pair_one_player_one_id, m.pair_one_player_two_id]
+          : [m.pair_two_player_one_id, m.pair_two_player_two_id];
+      return `${playerName(p1)} / ${playerName(p2)}`;
+    }
+    const regId = side === 'one' ? m.registration_one_id : m.registration_two_id;
+    return (regId && regLabels.get(regId)) || '?';
+  };
+  const reportedByLabelOf = (m: MatchRow): string | null => {
+    if (isRandom) {
+      if (m.reported_by_side === 1) return sideLabel(m, 'one');
+      if (m.reported_by_side === 2) return sideLabel(m, 'two');
+      return null;
+    }
+    return m.reported_by_registration_id
+      ? (regLabels.get(m.reported_by_registration_id) ?? null)
+      : null;
+  };
+
   // 3. Matches
   const { data: matchesData } = await supabase
     .from('matches')
     .select(
-      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id',
+      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
     )
     .eq('tournament_id', tournament.id)
     .order('round_number')
@@ -272,16 +301,12 @@ export default async function ManageTournamentPage({
                         </div>
                         <MatchScoreForm
                           matchId={m.id}
-                          labelOne={regLabels.get(m.registration_one_id) ?? '?'}
-                          labelTwo={regLabels.get(m.registration_two_id) ?? '?'}
+                          labelOne={sideLabel(m, 'one')}
+                          labelTwo={sideLabel(m, 'two')}
                           initialScoreOne={m.score_one}
                           initialScoreTwo={m.score_two}
                           status={m.status}
-                          reportedByLabel={
-                            m.reported_by_registration_id
-                              ? (regLabels.get(m.reported_by_registration_id) ?? null)
-                              : null
-                          }
+                          reportedByLabel={reportedByLabelOf(m)}
                         />
                       </Card>
                     ))}

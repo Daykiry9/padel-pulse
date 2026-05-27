@@ -29,19 +29,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   queens_e: 'Queens E',
 };
 
-// MVP: solo americano_fijo tiene bracket auto-generado funcionando.
-// Los demás formatos quedan en el enum DB para futuros torneos pero
-// se ocultan del UI hasta tener su generador implementado.
+// El formato YA define la modalidad: "Pareja Fija" = parejas fijas round-robin,
+// "Pareja Random" = social, los jugadores rotan de compañero cada ronda.
+// Los formatos sin generador implementado quedan deshabilitados ("próximamente").
 const FORMAT_LABELS: Partial<Record<TournamentFormat, string>> = {
-  americano_fijo: 'Americano Pareja Fija (Tier 1)',
+  americano_fijo: 'Americano Pareja Fija',
+  americano_random: 'Americano Pareja Random',
 };
 
 const FORMAT_COMING_SOON: Partial<Record<TournamentFormat, string>> = {
-  americano_random: 'Americano Pareja Random (próximamente)',
-  liguilla_casual: 'Liguilla Casual (próximamente)',
-  liga: 'Liga (próximamente)',
-  express: 'Express bracket (próximamente)',
   eliminacion: 'Eliminación directa (próximamente)',
+  liga: 'Liga (próximamente)',
 };
 
 const KIND_LABELS: Record<CategoryKind, string> = {
@@ -65,7 +63,7 @@ export function CreateTournamentForm({ clubs, communities, community }: Props) {
   const [format, setFormat] = useState<TournamentFormat>('americano_fijo');
   const [categoryKind, setCategoryKind] = useState<CategoryKind>('estandar');
 
-  const isAmericano = format === 'americano_fijo' || format === 'americano_random';
+  const isRandom = format === 'americano_random';
   const isSuma = categoryKind === 'suma' || categoryKind === 'mixto_suma' || categoryKind === 'queens_suma';
   const isQueens = categoryKind === 'queens_estandar' || categoryKind === 'queens_suma';
   const isEstandar = categoryKind === 'estandar' || categoryKind === 'queens_estandar';
@@ -97,14 +95,15 @@ export function CreateTournamentForm({ clubs, communities, community }: Props) {
         </Select>
       </FormField>
 
-      {isAmericano && (
-        <FormField label="Modalidad del americano">
-          <Select name="pairing_mode" defaultValue={format === 'americano_random' ? 'random' : 'fixed'}>
-            <option value="fixed">Pareja fija</option>
-            <option value="random">Pareja random</option>
-            <option value="mixed">Mixto (slots fijos + random)</option>
-          </Select>
-        </FormField>
+      {isRandom && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Puntos por partido" hint="A cuántos puntos juega cada cancha por ronda. Típico: 12.">
+            <Input name="points_per_match" type="number" min={4} max={64} defaultValue={12} />
+          </FormField>
+          <FormField label="Número de rondas" hint="Vacío = automático según # de jugadores.">
+            <Input name="total_rounds" type="number" min={1} max={30} placeholder="Automático" />
+          </FormField>
+        </div>
       )}
 
       <FormField label="Tipo de categoría">

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
+import { computeAmericanoStandings } from '@padelking/domain';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 import { PlayerMatchActions } from './player-match-actions';
@@ -36,12 +37,17 @@ type MatchRow = {
   id: string;
   round_number: number;
   court_number: number;
-  registration_one_id: string;
-  registration_two_id: string;
+  registration_one_id: string | null;
+  registration_two_id: string | null;
   score_one: number | null;
   score_two: number | null;
   status: string;
   reported_by_registration_id: string | null;
+  reported_by_side: number | null;
+  pair_one_player_one_id: string | null;
+  pair_one_player_two_id: string | null;
+  pair_two_player_one_id: string | null;
+  pair_two_player_two_id: string | null;
 };
 
 interface Standing {
@@ -71,6 +77,7 @@ export default async function LiveTournamentPage({
     .single();
   const tournament = tData as unknown as TournamentRow | null;
   if (!tournament) notFound();
+  const isRandom = tournament.format === 'americano_random';
 
   const [regsRes, matchesRes] = await Promise.all([
     supabase
@@ -81,7 +88,7 @@ export default async function LiveTournamentPage({
     supabase
       .from('matches')
       .select(
-        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id',
+        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
       )
       .eq('tournament_id', tournament.id)
       .order('round_number')
@@ -143,6 +150,8 @@ export default async function LiveTournamentPage({
     ]),
   );
 
+  const playerName = (id: string | null): string => (id ? (profiles.get(id) ?? '?') : '?');
+
   const labelOf = (reg: RegRow): string => {
     if (reg.team_id && teams.has(reg.team_id)) return teams.get(reg.team_id)!;
     if (reg.player_one_id && reg.player_two_id) {
@@ -153,36 +162,105 @@ export default async function LiveTournamentPage({
   };
   const regLabels = new Map(registrations.map((r) => [r.id, labelOf(r)]));
 
-  // Standings calculados desde matches completados
-  const standings: Standing[] = registrations.map((r) => ({
-    regId: r.id,
-    label: regLabels.get(r.id) ?? '?',
-    played: 0,
-    wins: 0,
-    losses: 0,
-    gamesFor: 0,
-    gamesAgainst: 0,
-    diff: 0,
-  }));
-  const standingsByReg = new Map(standings.map((s) => [s.regId, s]));
+  // Etiqueta de cada lado de un partido (pareja). En random son los 2 jugadores
+  // de esa cancha en esa ronda; en fijo es la inscripción-pareja.
+  const sideLabel = (m: MatchRow, side: 'one' | 'two'): string => {
+    if (isRandom) {
+      const [p1, p2] =
+        side === 'one'
+          ? [m.pair_one_player_one_id, m.pair_one_player_two_id]
+          : [m.pair_two_player_one_id, m.pair_two_player_two_id];
+      return `${playerName(p1)} / ${playerName(p2)}`;
+    }
+    const regId = side === 'one' ? m.registration_one_id : m.registration_two_id;
+    return (regId && regLabels.get(regId)) || '?';
+  };
 
-  for (const m of matches) {
-    if (m.status !== 'completed' || m.score_one == null || m.score_two == null) continue;
-    const a = standingsByReg.get(m.registration_one_id);
-    const b = standingsByReg.get(m.registration_two_id);
-    if (!a || !b) continue;
-    a.played++; b.played++;
-    a.gamesFor += m.score_one; a.gamesAgainst += m.score_two;
-    b.gamesFor += m.score_two; b.gamesAgainst += m.score_one;
-    if (m.score_one > m.score_two) { a.wins++; b.losses++; }
-    else if (m.score_two > m.score_one) { b.wins++; a.losses++; }
+  // ¿En qué lado juega el usuario? (random: por jugador; fijo: por registration)
+  const myParticipation = (m: MatchRow): { mineOne: boolean; mineTwo: boolean } => {
+    if (isRandom) {
+      const inOne = Boolean(
+        user && (m.pair_one_player_one_id === user.id || m.pair_one_player_two_id === user.id),
+      );
+      const inTwo = Boolean(
+        user && (m.pair_two_player_one_id === user.id || m.pair_two_player_two_id === user.id),
+      );
+      return { mineOne: inOne, mineTwo: inTwo };
+    }
+    return {
+      mineOne: Boolean(m.registration_one_id && myRegIds.has(m.registration_one_id)),
+      mineTwo: Boolean(m.registration_two_id && myRegIds.has(m.registration_two_id)),
+    };
+  };
+  const reportedSideOf = (m: MatchRow): 'one' | 'two' | null => {
+    if (isRandom) return m.reported_by_side === 1 ? 'one' : m.reported_by_side === 2 ? 'two' : null;
+    return m.reported_by_registration_id === m.registration_one_id
+      ? 'one'
+      : m.reported_by_registration_id === m.registration_two_id
+        ? 'two'
+        : null;
+  };
+
+  // Tabla de posiciones (unificada para fijo y random)
+  type DisplayStanding = { key: string; label: string; wins: number; diff: number; points: number };
+  let displayStandings: DisplayStanding[];
+
+  if (isRandom) {
+    const results = matches
+      .filter((m) => m.status === 'completed' && m.score_one != null && m.score_two != null)
+      .map((m) => ({
+        pairOnePlayerOneId: m.pair_one_player_one_id ?? '',
+        pairOnePlayerTwoId: m.pair_one_player_two_id ?? '',
+        pairTwoPlayerOneId: m.pair_two_player_one_id ?? '',
+        pairTwoPlayerTwoId: m.pair_two_player_two_id ?? '',
+        scoreOne: m.score_one as number,
+        scoreTwo: m.score_two as number,
+      }));
+    const allPlayerIds = registrations.map((r) => r.player_id).filter(Boolean) as string[];
+    displayStandings = computeAmericanoStandings(results, allPlayerIds).map((s) => ({
+      key: s.playerId,
+      label: playerName(s.playerId),
+      wins: s.wins,
+      diff: s.diff,
+      points: s.points,
+    }));
+  } else {
+    const standings: Standing[] = registrations.map((r) => ({
+      regId: r.id,
+      label: regLabels.get(r.id) ?? '?',
+      played: 0,
+      wins: 0,
+      losses: 0,
+      gamesFor: 0,
+      gamesAgainst: 0,
+      diff: 0,
+    }));
+    const standingsByReg = new Map(standings.map((s) => [s.regId, s]));
+    for (const m of matches) {
+      if (m.status !== 'completed' || m.score_one == null || m.score_two == null) continue;
+      const a = m.registration_one_id ? standingsByReg.get(m.registration_one_id) : undefined;
+      const b = m.registration_two_id ? standingsByReg.get(m.registration_two_id) : undefined;
+      if (!a || !b) continue;
+      a.played++; b.played++;
+      a.gamesFor += m.score_one; a.gamesAgainst += m.score_two;
+      b.gamesFor += m.score_two; b.gamesAgainst += m.score_one;
+      if (m.score_one > m.score_two) { a.wins++; b.losses++; }
+      else if (m.score_two > m.score_one) { b.wins++; a.losses++; }
+    }
+    for (const s of standings) s.diff = s.gamesFor - s.gamesAgainst;
+    standings.sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      if (b.diff !== a.diff) return b.diff - a.diff;
+      return b.gamesFor - a.gamesFor;
+    });
+    displayStandings = standings.map((s) => ({
+      key: s.regId,
+      label: s.label,
+      wins: s.wins,
+      diff: s.diff,
+      points: s.gamesFor,
+    }));
   }
-  for (const s of standings) s.diff = s.gamesFor - s.gamesAgainst;
-  standings.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    if (b.diff !== a.diff) return b.diff - a.diff;
-    return b.gamesFor - a.gamesFor;
-  });
 
   // Match en cancha (in_progress) + próximos (scheduled)
   const inProgress = matches.filter((m) => m.status === 'in_progress');
@@ -269,9 +347,9 @@ export default async function LiveTournamentPage({
                   </span>
                 </div>
                 <Card className="divide-border/30 divide-y overflow-hidden p-0">
-                  {standings.map((s, idx) => (
+                  {displayStandings.map((s, idx) => (
                     <div
-                      key={s.regId}
+                      key={s.key}
                       className={`grid grid-cols-[2rem_1fr_auto_auto_auto] items-center gap-3 px-4 py-3 text-sm ${
                         idx === 0 ? 'bg-crown/[0.04]' : ''
                       }`}
@@ -307,7 +385,7 @@ export default async function LiveTournamentPage({
                         {s.diff}
                       </span>
                       <span className="text-muted-foreground tabular-nums text-xs">
-                        {s.gamesFor}
+                        {s.points}
                       </span>
                     </div>
                   ))}
@@ -365,28 +443,22 @@ export default async function LiveTournamentPage({
                                 </div>
                                 <div className="space-y-1">
                                   <Row
-                                    label={regLabels.get(m.registration_one_id) ?? '?'}
+                                    label={sideLabel(m, 'one')}
                                     score={m.score_one}
                                     winner={oneWon}
                                     dim={!isDone}
                                   />
                                   <Row
-                                    label={regLabels.get(m.registration_two_id) ?? '?'}
+                                    label={sideLabel(m, 'two')}
                                     score={m.score_two}
                                     winner={twoWon}
                                     dim={!isDone}
                                   />
                                 </div>
                                 {(() => {
-                                  const mineOne = myRegIds.has(m.registration_one_id);
-                                  const mineTwo = myRegIds.has(m.registration_two_id);
+                                  const { mineOne, mineTwo } = myParticipation(m);
                                   if (!mineOne && !mineTwo) return null;
-                                  const reportedBySide =
-                                    m.reported_by_registration_id === m.registration_one_id
-                                      ? 'one'
-                                      : m.reported_by_registration_id === m.registration_two_id
-                                        ? 'two'
-                                        : null;
+                                  const reportedBySide = reportedSideOf(m);
                                   return (
                                     <PlayerMatchActions
                                       matchId={m.id}
