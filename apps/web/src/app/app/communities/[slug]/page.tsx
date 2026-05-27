@@ -9,6 +9,7 @@ import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { ShareInviteButton } from '@/components/share-invite-button';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { joinCommunity } from '@/lib/community-actions';
+import { getCommunityPlayerRanking } from '@/lib/community-ranking';
 import { JoinRequestRow } from './join-request-row';
 
 export default async function CommunityDetailPage({
@@ -110,6 +111,7 @@ export default async function CommunityDetailPage({
   const hasPendingRequest = !!myPendingRes.data;
   const pendingRequests = (joinReqsRes.data ?? []) as JoinReq[];
   const isOwner = community.owner_id === user.id;
+  const communityRanking = await getCommunityPlayerRanking(supabase, community.id);
 
   return (
     <div className="space-y-10">
@@ -251,6 +253,42 @@ export default async function CommunityDetailPage({
           )}
         </section>
       </div>
+
+      {communityRanking.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-display text-xl tracking-tight">RANKING DE LA COMUNIDAD</h2>
+            <span className="text-muted-foreground text-[10px] uppercase tracking-widest">Puntos</span>
+          </div>
+          <Card className="divide-border/30 divide-y overflow-hidden p-0">
+            {communityRanking.map((r, idx) => (
+              <div
+                key={r.playerId}
+                className={`grid grid-cols-[2rem_1fr_auto_auto] items-center gap-3 px-4 py-2.5 text-sm ${
+                  idx === 0 ? 'bg-crown/[0.04]' : ''
+                }`}
+              >
+                <span
+                  className={`font-display text-base tabular-nums ${
+                    idx === 0 ? 'text-crown' : 'text-muted-foreground'
+                  }`}
+                >
+                  {idx + 1}
+                </span>
+                <span className="truncate">
+                  {idx === 0 && <Crown className="text-crown mr-1 inline size-3" />}
+                  {r.name}
+                </span>
+                <span className="text-muted-foreground tabular-nums text-xs">{r.matches}</span>
+                <span className="font-display tabular-nums">{r.points}</span>
+              </div>
+            ))}
+          </Card>
+          <p className="text-muted-foreground mt-2 text-[10px] uppercase tracking-widest">
+            Puntos acumulados en los torneos de la comunidad · PJ = partidos jugados
+          </p>
+        </section>
+      )}
 
       <section>
         <h2 className="font-display mb-3 text-xl tracking-tight">MIEMBROS</h2>

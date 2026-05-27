@@ -10,6 +10,7 @@ import { computeAmericanoStandings } from '@padelking/domain';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 import { PlayerMatchActions } from './player-match-actions';
+import { FinishTournamentButton } from './finish-tournament-button';
 import { RealtimeRefresh } from './realtime-refresh';
 
 type TournamentRow = {
@@ -327,6 +328,11 @@ export default async function LiveTournamentPage({
             {completedCount} / {totalCount} matches jugados · {registrations.length} inscritos ·{' '}
             {tournament.courts} canchas
           </p>
+          {isOwner && tournament.status === 'in_progress' && (
+            <div className="pt-2">
+              <FinishTournamentButton tournamentId={tournament.id} />
+            </div>
+          )}
         </div>
 
         {tournament.status === 'open' && (

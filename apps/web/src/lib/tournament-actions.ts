@@ -352,6 +352,51 @@ export async function closeRegistrationsAndGenerateBracket(
   return { ok: true };
 }
 
+/**
+ * Finaliza el torneo (organizador). Pasa a 'finished'; el ranking de la
+ * comunidad lo toma desde sus matches completados.
+ */
+export async function finishTournament(formData: FormData): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const tournamentId = String(formData.get('tournament_id') ?? '');
+  if (!tournamentId) return { ok: false, error: 'Torneo inválido' };
+
+  const supabase = await getSupabaseServerClient();
+  const { data: tData } = await supabase
+    .from('tournaments')
+    .select('id, slug, status, community_id, clubs(owner_id), communities(owner_id, slug)')
+    .eq('id', tournamentId)
+    .single();
+  const t = tData as unknown as {
+    id: string;
+    slug: string;
+    status: string;
+    community_id: string | null;
+    clubs: { owner_id: string } | null;
+    communities: { owner_id: string; slug: string } | null;
+  } | null;
+  if (!t) return { ok: false, error: 'Torneo no existe' };
+  const isOrganizer = t.clubs?.owner_id === user.id || t.communities?.owner_id === user.id;
+  if (!isOrganizer) return { ok: false, error: 'Solo el organizador puede finalizar el torneo' };
+  if (t.status !== 'in_progress') {
+    return { ok: false, error: `El torneo está "${t.status}", no se puede finalizar.` };
+  }
+
+  const { error } = await supabase
+    .from('tournaments')
+    .update({ status: 'finished' } as never)
+    .eq('id', tournamentId);
+  if (error) return { ok: false, error: translateDbError(error.message) };
+
+  revalidatePath(`/tournaments/${t.slug}`);
+  revalidatePath(`/tournaments/${t.slug}/live`);
+  if (t.communities?.slug) revalidatePath(`/app/communities/${t.communities.slug}`);
+  revalidatePath('/app/communities');
+  return { ok: true };
+}
+
 // ============================================================
 // Reporte de marcadores (organizador-only en MVP)
 // ============================================================
