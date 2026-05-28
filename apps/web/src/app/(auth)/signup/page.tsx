@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
+import { OAuthButtons } from '@/components/oauth-buttons';
 import { signUp } from '@/lib/auth-actions';
 
 export default async function SignupPage({
@@ -32,6 +33,17 @@ export default async function SignupPage({
             / equipo / comunidad.
           </div>
         )}
+      </div>
+
+      <OAuthButtons next={invite ? `/i/${invite}` : '/onboarding'} />
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="border-border w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background text-muted-foreground px-2 tracking-widest">o</span>
+        </div>
       </div>
 
       <ActionForm action={signUp}>

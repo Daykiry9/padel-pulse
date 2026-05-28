@@ -1,5 +1,6 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { translateDbError } from './error-translate';
@@ -95,6 +96,36 @@ export async function signOut() {
   const supabase = await getSupabaseServerClient();
   await supabase.auth.signOut();
   redirect('/');
+}
+
+/**
+ * Inicia el flujo OAuth con Apple o Google. Lee `provider` y `next` del form,
+ * pide a Supabase la URL del proveedor (con redirectTo a /auth/callback) y
+ * redirige al usuario allá. La sesión se establece en el callback.
+ */
+export async function signInWithOAuthProvider(formData: FormData): Promise<void> {
+  const provider = String(formData.get('provider') ?? '');
+  if (provider !== 'apple' && provider !== 'google') {
+    redirect('/login?oauth_error=invalid_provider');
+  }
+
+  const hdrs = await headers();
+  const host = hdrs.get('host') ?? 'padelking.co';
+  const proto = hdrs.get('x-forwarded-proto') ?? 'https';
+  const origin = `${proto}://${host}`;
+  const nextRaw = String(formData.get('next') ?? '/app');
+  const next = nextRaw.startsWith('/') ? nextRaw : '/app';
+  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: provider as 'apple' | 'google',
+    options: { redirectTo, skipBrowserRedirect: true },
+  });
+  if (error || !data?.url) {
+    redirect(`/login?oauth_error=${encodeURIComponent(error?.message ?? 'oauth_failed')}`);
+  }
+  redirect(data.url);
 }
 
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
