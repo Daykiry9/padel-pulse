@@ -1,13 +1,20 @@
+import { computePaddleEloDeltas } from '@padelking/domain';
+
 import type { ServerSupabase } from './supabase/server';
 
 export interface CommunityRankingEntry {
   playerId: string;
   name: string;
-  points: number;
+  elo: number;
+  tournaments: number;
   matches: number;
+  wins: number;
 }
 
 type MatchRow = {
+  tournament_id: string;
+  ended_at: string | null;
+  created_at: string;
   score_one: number | null;
   score_two: number | null;
   registration_one_id: string | null;
@@ -25,11 +32,14 @@ type RegRow = {
   player_id: string | null;
 };
 
+const START_ELO = 1000;
+const K = 24; // casual/comunidad: movimiento moderado por partido
+
 /**
- * Ranking interno de la comunidad: por jugador, suma de puntos/games a favor
- * en todos los partidos COMPLETED de los torneos organizados por la comunidad
- * (fijo y random). Para fijo resuelve los jugadores de cada inscripción; para
- * random usa los 4 jugadores del partido.
+ * Ranking interno de la comunidad por ELO. Simula todos los partidos COMPLETED
+ * de los torneos de la comunidad en orden cronológico (cada uno pareja vs
+ * pareja) y acumula el rating por jugador, más torneos y partidos jugados.
+ * Funciona para fijo (parejas/registrations) y random (4 jugadores del partido).
  */
 export async function getCommunityPlayerRanking(
   supabase: ServerSupabase,
@@ -45,14 +55,21 @@ export async function getCommunityPlayerRanking(
   const { data: mData } = await supabase
     .from('matches')
     .select(
-      'score_one, score_two, registration_one_id, registration_two_id, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
+      'tournament_id, ended_at, created_at, score_one, score_two, registration_one_id, registration_two_id, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
     )
     .in('tournament_id', tIds)
     .eq('status', 'completed');
   const matches = (mData ?? []) as MatchRow[];
   if (!matches.length) return [];
 
-  // Resolver inscripción → jugadores (para partidos de formato fijo).
+  // Orden cronológico (por cuándo se cerró el partido) para un ELO coherente.
+  matches.sort(
+    (a, b) =>
+      new Date(a.ended_at ?? a.created_at).getTime() -
+      new Date(b.ended_at ?? b.created_at).getTime(),
+  );
+
+  // Resolver inscripción → jugadores (partidos de formato fijo).
   const regIds = [
     ...new Set(
       matches.flatMap((m) => [m.registration_one_id, m.registration_two_id]).filter(Boolean) as string[],
@@ -87,13 +104,6 @@ export async function getCommunityPlayerRanking(
     }
   }
 
-  const acc = new Map<string, { points: number; matches: number }>();
-  const add = (pid: string, n: number) => {
-    const e = acc.get(pid) ?? { points: 0, matches: 0 };
-    e.points += n;
-    e.matches += 1;
-    acc.set(pid, e);
-  };
   const sidePlayers = (m: MatchRow, side: 'one' | 'two'): string[] => {
     if (side === 'one') {
       if (m.pair_one_player_one_id) {
@@ -107,14 +117,50 @@ export async function getCommunityPlayerRanking(
     return m.registration_two_id ? (regPlayers.get(m.registration_two_id) ?? []) : [];
   };
 
+  const elo = new Map<string, number>();
+  const getElo = (id: string) => elo.get(id) ?? START_ELO;
+  const stats = new Map<string, { tournaments: Set<string>; matches: number; wins: number }>();
+  const ensureStats = (id: string) => {
+    let s = stats.get(id);
+    if (!s) {
+      s = { tournaments: new Set<string>(), matches: 0, wins: 0 };
+      stats.set(id, s);
+    }
+    return s;
+  };
+
   for (const m of matches) {
+    const one = sidePlayers(m, 'one');
+    const two = sidePlayers(m, 'two');
+    if (!one.length || !two.length) continue;
     const s1 = m.score_one ?? 0;
     const s2 = m.score_two ?? 0;
-    for (const p of sidePlayers(m, 'one')) add(p, s1);
-    for (const p of sidePlayers(m, 'two')) add(p, s2);
+
+    const { deltaOne, deltaTwo } = computePaddleEloDeltas({
+      pairOne: { p1: getElo(one[0]!), p2: getElo(one[1] ?? one[0]!) },
+      pairTwo: { p1: getElo(two[0]!), p2: getElo(two[1] ?? two[0]!) },
+      scoreOne: s1,
+      scoreTwo: s2,
+      k: K,
+    });
+
+    for (const p of one) {
+      elo.set(p, getElo(p) + deltaOne);
+      const st = ensureStats(p);
+      st.tournaments.add(m.tournament_id);
+      st.matches += 1;
+      if (s1 > s2) st.wins += 1;
+    }
+    for (const p of two) {
+      elo.set(p, getElo(p) + deltaTwo);
+      const st = ensureStats(p);
+      st.tournaments.add(m.tournament_id);
+      st.matches += 1;
+      if (s2 > s1) st.wins += 1;
+    }
   }
 
-  const ids = [...acc.keys()];
+  const ids = [...stats.keys()];
   if (!ids.length) return [];
   const { data: profData } = await supabase
     .from('profiles')
@@ -128,9 +174,11 @@ export async function getCommunityPlayerRanking(
     .map((id) => ({
       playerId: id,
       name: nameMap.get(id) ?? '?',
-      points: acc.get(id)!.points,
-      matches: acc.get(id)!.matches,
+      elo: Math.round(getElo(id)),
+      tournaments: stats.get(id)!.tournaments.size,
+      matches: stats.get(id)!.matches,
+      wins: stats.get(id)!.wins,
     }))
-    .sort((a, b) => b.points - a.points || b.matches - a.matches)
+    .sort((a, b) => b.elo - a.elo || b.wins - a.wins)
     .slice(0, 20);
 }
