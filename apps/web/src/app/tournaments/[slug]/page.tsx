@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, Crown, Trophy, Users } from 'lucide-react';
 
-import { checkEligibility } from '@padelking/domain';
 import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
 
 import { Badge } from '@/components/ui/badge';
@@ -89,25 +88,13 @@ export default async function TournamentDetailPage({
       .eq('id', user.id)
       .single();
 
-    if (profile?.skill_category) {
-      // Eligibility individual (para Tier 2 random)
-      const playerOne = {
-        skillCategory: profile.skill_category as TeamCategory,
-        gender: profile.gender as Gender | null,
-      };
-      const indResult = checkEligibility({
-        tournament: {
-          categoryKind: tournament.category_kind as CategoryKind,
-          category: tournament.category as TeamCategory | null,
-          minSum: tournament.min_sum,
-          maxPlayerCategoryValue: tournament.max_player_category_value,
-        },
-        playerOne,
-      });
+    if (profile) {
+      // Categoría es OPCIONAL: cualquier usuario autenticado puede inscribirse,
+      // no se filtra por elegibilidad.
       myProfile = {
-        skillCategory: profile.skill_category as TeamCategory | null,
-        gender: profile.gender as Gender | null,
-        eligibility: indResult,
+        skillCategory: (profile.skill_category as TeamCategory | null) ?? null,
+        gender: (profile.gender as Gender | null) ?? null,
+        eligibility: { ok: true },
       };
     }
 
@@ -115,8 +102,6 @@ export default async function TournamentDetailPage({
       team_id: string;
       teams: { id: string; name: string; category: TeamCategory | null } | null;
     };
-    type PartnerProfile = { skill_category: TeamCategory | null; gender: Gender | null };
-    type MemberWithProfile = { profile_id: string; profiles: PartnerProfile | null };
 
     const memsRes = await supabase
       .from('team_members')
@@ -127,6 +112,7 @@ export default async function TournamentDetailPage({
 
     for (const m of myMems) {
       if (!m.teams) continue;
+      // Categoría opcional: cualquier equipo con 2 miembros activos califica.
       const membersRes = await supabase
         .from('team_members')
         .select('profile_id')
@@ -136,39 +122,11 @@ export default async function TournamentDetailPage({
       const members = (membersRes.data ?? []) as { profile_id: string }[];
       if (members.length !== 2) continue;
 
-      // C1: profiles ya no es public read. Los partners se leen de profiles_public
-      // (vista filtrada con columnas seguras). Cast hasta regenerar types.
-      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-      const sbView = supabase as any;
-      const partnerIdsRes = await sbView
-        .from('profiles_public')
-        .select('id, skill_category, gender')
-        .in(
-          'id',
-          members.map((mm) => mm.profile_id),
-        );
-      const profiles = (partnerIdsRes.data ?? []) as unknown as PartnerProfile[];
-      if (profiles.length !== 2) continue;
-      const p1 = profiles[0]!;
-      const p2 = profiles[1]!;
-      if (!p1.skill_category || !p2.skill_category) continue;
-
-      const result = checkEligibility({
-        tournament: {
-          categoryKind: tournament.category_kind as CategoryKind,
-          category: tournament.category as TeamCategory | null,
-          minSum: tournament.min_sum,
-          maxPlayerCategoryValue: tournament.max_player_category_value,
-        },
-        playerOne: { skillCategory: p1.skill_category as TeamCategory, gender: p1.gender as Gender | null },
-        playerTwo: { skillCategory: p2.skill_category as TeamCategory, gender: p2.gender as Gender | null },
-      });
-
       myTeams.push({
         id: m.teams.id,
         name: m.teams.name,
         category: m.teams.category as TeamCategory | null,
-        eligibility: result,
+        eligibility: { ok: true },
       });
     }
   }

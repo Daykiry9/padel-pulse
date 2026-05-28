@@ -2447,6 +2447,20 @@ export type Database = {
         | "queens_c"
         | "queens_d"
         | "queens_e"
+        | "1"
+        | "2"
+        | "3"
+        | "4"
+        | "5"
+        | "6"
+        | "mixto_a"
+        | "mixto_b"
+        | "mixto_c"
+        | "mixto_d"
+        | "femenino_a"
+        | "femenino_b"
+        | "femenino_c"
+        | "femenino_d"
       tournament_format:
         | "americano_fijo"
         | "americano_random"
@@ -2654,6 +2668,20 @@ export const Constants = {
         "queens_c",
         "queens_d",
         "queens_e",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "mixto_a",
+        "mixto_b",
+        "mixto_c",
+        "mixto_d",
+        "femenino_a",
+        "femenino_b",
+        "femenino_c",
+        "femenino_d",
       ],
       tournament_format: [
         "americano_fijo",

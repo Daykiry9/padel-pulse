@@ -6,7 +6,24 @@ export type ISODate = string;
 // ============================================================
 
 export type TeamCategory =
-  // Masculino estándar (8 niveles)
+  // Masculino (estructura nueva, 1-6)
+  | '1'
+  | '2'
+  | '3'
+  | '4'
+  | '5'
+  | '6'
+  // Mixto (estructura nueva, A-D)
+  | 'mixto_a'
+  | 'mixto_b'
+  | 'mixto_c'
+  | 'mixto_d'
+  // Femenino (estructura nueva, A-D)
+  | 'femenino_a'
+  | 'femenino_b'
+  | 'femenino_c'
+  | 'femenino_d'
+  // Legacy masculino (queda por compatibilidad de data antigua, no se ofrece en UI)
   | 'libre'
   | 'primera'
   | 'segunda'
@@ -15,7 +32,7 @@ export type TeamCategory =
   | 'quinta'
   | 'sexta'
   | 'septima'
-  // Queens estándar (6 niveles)
+  // Legacy Queens (queda por compatibilidad)
   | 'queens_libre'
   | 'queens_a'
   | 'queens_b'
@@ -35,6 +52,24 @@ export type CategoryKind =
 export type CategoryValue = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 const CATEGORY_VALUES: Record<TeamCategory, CategoryValue> = {
+  // Masculino nuevo (1 = mejor, 6 = principiante)
+  '1': 1,
+  '2': 2,
+  '3': 3,
+  '4': 4,
+  '5': 5,
+  '6': 6,
+  // Mixto
+  mixto_a: 2,
+  mixto_b: 3,
+  mixto_c: 4,
+  mixto_d: 5,
+  // Femenino
+  femenino_a: 2,
+  femenino_b: 3,
+  femenino_c: 4,
+  femenino_d: 5,
+  // Legacy (data antigua)
   libre: 1,
   primera: 2,
   segunda: 3,
@@ -56,9 +91,21 @@ export function categoryValue(c: TeamCategory): CategoryValue {
 }
 
 export function isQueensCategory(c: TeamCategory): boolean {
-  return c.startsWith('queens_');
+  return c.startsWith('queens_') || c.startsWith('femenino_');
 }
 
+// Sets actuales (los que ofrece el UI desde 2026-05-28).
+export const MASCULINO_CATEGORIES: TeamCategory[] = ['1', '2', '3', '4', '5', '6'];
+export const MIXTO_CATEGORIES: TeamCategory[] = ['mixto_a', 'mixto_b', 'mixto_c', 'mixto_d'];
+export const FEMENINO_CATEGORIES: TeamCategory[] = [
+  'femenino_a',
+  'femenino_b',
+  'femenino_c',
+  'femenino_d',
+];
+
+// Legacy (data anterior; el UI no los muestra como opción, pero quedan para
+// renderizar perfiles/torneos viejos).
 export const KING_CATEGORIES: TeamCategory[] = [
   'libre',
   'primera',
@@ -69,7 +116,6 @@ export const KING_CATEGORIES: TeamCategory[] = [
   'sexta',
   'septima',
 ];
-
 export const QUEENS_CATEGORIES: TeamCategory[] = [
   'queens_libre',
   'queens_a',
@@ -79,7 +125,13 @@ export const QUEENS_CATEGORIES: TeamCategory[] = [
   'queens_e',
 ];
 
-export const ALL_CATEGORIES: TeamCategory[] = [...KING_CATEGORIES, ...QUEENS_CATEGORIES];
+export const ALL_CATEGORIES: TeamCategory[] = [
+  ...MASCULINO_CATEGORIES,
+  ...MIXTO_CATEGORIES,
+  ...FEMENINO_CATEGORIES,
+  ...KING_CATEGORIES,
+  ...QUEENS_CATEGORIES,
+];
 
 // ============================================================
 // Tier y formato

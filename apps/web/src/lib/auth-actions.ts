@@ -186,12 +186,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   // permitimos partial update.
   const isFullOnboarding = Boolean(displayName);
   if (isFullOnboarding) {
-    if (!skillCategory) {
-      return {
-        ok: false,
-        error: 'Elige tu categoría: completa el quiz o usa "Prefiero elegir manualmente".',
-      };
-    }
+    // skill_category es OPCIONAL (dato interno, no limita inscripciones).
     if (!phone) return { ok: false, error: 'Teléfono obligatorio' };
     if (!birthdate) return { ok: false, error: 'Fecha de nacimiento obligatoria' };
     if (!instagramHandle) return { ok: false, error: 'Instagram obligatorio' };
@@ -233,7 +228,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   }
 
   const updates: Record<string, unknown> = {
-    skill_category: skillCategory,
+    skill_category: skillCategory || null,
     gender,
     city,
     marketing_opt_in: marketingOptIn,

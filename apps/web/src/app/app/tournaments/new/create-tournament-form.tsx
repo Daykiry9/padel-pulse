@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { KING_CATEGORIES, QUEENS_CATEGORIES } from '@padelking/domain';
+import { FEMENINO_CATEGORIES, MASCULINO_CATEGORIES, MIXTO_CATEGORIES } from '@padelking/domain';
 import type { CategoryKind, TournamentFormat } from '@padelking/domain';
 
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,24 @@ import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { createTournament } from '@/lib/tournament-actions';
 
 const CATEGORY_LABELS: Record<string, string> = {
+  // Masculino (nuevo, 1-6)
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  '5': '5',
+  '6': '6',
+  // Mixto (nuevo, A-D)
+  mixto_a: 'Mixto A',
+  mixto_b: 'Mixto B',
+  mixto_c: 'Mixto C',
+  mixto_d: 'Mixto D',
+  // Femenino (nuevo, A-D)
+  femenino_a: 'Femenino A',
+  femenino_b: 'Femenino B',
+  femenino_c: 'Femenino C',
+  femenino_d: 'Femenino D',
+  // Legacy (data antigua, no se ofrece en UI)
   libre: 'Libre / Pro',
   primera: '1ra',
   segunda: '2da',
@@ -42,13 +60,11 @@ const FORMAT_COMING_SOON: Partial<Record<TournamentFormat, string>> = {
   liga: 'Liga (próximamente)',
 };
 
-const KIND_LABELS: Record<CategoryKind, string> = {
-  estandar: 'Estándar masculino',
-  suma: 'Suma masculina',
-  mixto_estandar: 'Mixto estándar',
-  mixto_suma: 'Mixto Suma',
-  queens_estandar: 'Queens estándar',
-  queens_suma: 'Queens Suma',
+// Sets visibles en el UI. Suma queda en el enum por compatibilidad pero no se ofrece.
+const KIND_LABELS: Partial<Record<CategoryKind, string>> = {
+  estandar: 'Masculino',
+  mixto_estandar: 'Mixto',
+  queens_estandar: 'Femenino',
   casual: 'Casual (sin categoría)',
 };
 
@@ -64,9 +80,12 @@ export function CreateTournamentForm({ clubs, communities, community }: Props) {
   const [categoryKind, setCategoryKind] = useState<CategoryKind>('estandar');
 
   const isRandom = format === 'americano_random';
-  const isSuma = categoryKind === 'suma' || categoryKind === 'mixto_suma' || categoryKind === 'queens_suma';
-  const isQueens = categoryKind === 'queens_estandar' || categoryKind === 'queens_suma';
-  const isEstandar = categoryKind === 'estandar' || categoryKind === 'queens_estandar';
+  const isMasculino = categoryKind === 'estandar';
+  const isFemenino = categoryKind === 'queens_estandar';
+  const isMixto = categoryKind === 'mixto_estandar';
+  const hasCategory = isMasculino || isFemenino || isMixto;
+  // Suma queda en el enum por compatibilidad de data pero no se ofrece en UI nueva.
+  const isSuma = false as boolean;
 
   const venues = clubs.length > 0 ? clubs : communities.map((c) => ({ id: c.id, name: `Club de ${c.name}`, city: '' }));
 
@@ -120,10 +139,18 @@ export function CreateTournamentForm({ clubs, communities, community }: Props) {
         </Select>
       </FormField>
 
-      {isEstandar && (
-        <FormField label="Categoría estándar">
-          <Select name="category" defaultValue={isQueens ? 'queens_c' : 'tercera'}>
-            {(isQueens ? QUEENS_CATEGORIES : KING_CATEGORIES).map((c) => (
+      {hasCategory && (
+        <FormField label="Categoría">
+          <Select
+            name="category"
+            defaultValue={isMasculino ? '3' : isFemenino ? 'femenino_b' : 'mixto_b'}
+          >
+            {(isMasculino
+              ? MASCULINO_CATEGORIES
+              : isFemenino
+                ? FEMENINO_CATEGORIES
+                : MIXTO_CATEGORIES
+            ).map((c) => (
               <option key={c} value={c}>
                 {CATEGORY_LABELS[c]}
               </option>
