@@ -99,6 +99,36 @@ export async function signOut() {
 }
 
 /**
+ * Elimina la cuenta del usuario actual: borra el registro de auth.users via
+ * service role (cascadea a profiles + datos personales) y cierra la sesión.
+ * Requisito de App Store: la baja debe poder hacerse desde dentro de la app.
+ * Exige confirmación tipeada ("ELIMINAR") como guard adicional.
+ */
+export async function deleteMyAccount(formData: FormData): Promise<void> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const confirmation = String(formData.get('confirmation') ?? '').trim();
+  if (confirmation !== 'ELIMINAR') {
+    redirect('/app/profile?delete_error=confirmation');
+  }
+
+  const admin = getServiceRoleClient();
+  const adminAuth = (admin as unknown as { auth: { admin: { deleteUser: (id: string) => Promise<{ error: { message: string } | null }> } } }).auth.admin;
+  const { error } = await adminAuth.deleteUser(user.id);
+  if (error) {
+    console.error('[deleteMyAccount] supabase error:', error);
+    redirect('/app/profile?delete_error=server');
+  }
+
+  await supabase.auth.signOut();
+  redirect('/?account_deleted=1');
+}
+
+/**
  * Inicia el flujo OAuth con Apple o Google. Lee `provider` y `next` del form,
  * pide a Supabase la URL del proveedor (con redirectTo a /auth/callback) y
  * redirige al usuario allá. La sesión se establece en el callback.

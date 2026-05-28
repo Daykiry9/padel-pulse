@@ -282,8 +282,8 @@ export default function PrivacyPage() {
           </p>
           <ol>
             <li>
-              Desde la app: Perfil → Configuración → <em>Eliminar mi cuenta</em>. (Próximamente.
-              Mientras tanto usá los canales de abajo.)
+              Desde la app o la web: <strong>Perfil → Zona peligrosa → Eliminar mi cuenta</strong>.
+              Te pide confirmación tipeada y borra tus datos personales y tu acceso.
             </li>
             <li>
               Por email a{' '}

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
+import { DeleteAccountSection } from '@/components/delete-account-section';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { updateProfile } from '@/lib/auth-actions';
 
@@ -47,7 +48,14 @@ type Profile = {
   elo_rating: number;
 };
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ delete_error?: string }>;
+}) {
+  const { delete_error: deleteError } = await searchParams;
+  const deleteErrorTyped =
+    deleteError === 'confirmation' || deleteError === 'server' ? deleteError : null;
   const user = await getSession();
   if (!user) redirect('/login?next=/app/profile');
 
@@ -191,6 +199,8 @@ export default async function ProfilePage() {
           </SubmitButton>
         </ActionForm>
       </Card>
+
+      <DeleteAccountSection showError={deleteErrorTyped} />
     </div>
   );
 }
