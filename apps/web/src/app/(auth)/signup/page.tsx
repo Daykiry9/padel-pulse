@@ -66,6 +66,18 @@ export default async function SignupPage({
         <SubmitButton variant="crown" size="lg" className="w-full" pendingLabel="Creando…">
           Crear cuenta
         </SubmitButton>
+
+        <p className="text-muted-foreground text-center text-xs normal-case">
+          Al crear tu cuenta aceptás los{' '}
+          <Link href="/terms" target="_blank" className="text-crown underline">
+            Términos
+          </Link>{' '}
+          y la{' '}
+          <Link href="/privacy" target="_blank" className="text-crown underline">
+            Política de Privacidad
+          </Link>
+          .
+        </p>
       </ActionForm>
     </div>
   );

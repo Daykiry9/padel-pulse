@@ -256,20 +256,10 @@ export default async function TournamentDetailPage({
               PADEL<span className="text-crown">KING</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2">
-            {isOrganizer && (
-              <Button variant="crown" size="sm" asChild>
-                <Link href={`/app/tournaments/${tournament.slug}/manage`}>
-                  <Crown className="size-3" />
-                  <span className="hidden sm:inline">Administrar</span>
-                </Link>
-              </Button>
-            )}
-            <Link href="/tournaments" className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest">
-              <ArrowLeft className="inline size-3 mr-1" />
-              Volver
-            </Link>
-          </div>
+          <Link href="/tournaments" className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest">
+            <ArrowLeft className="inline size-3 mr-1" />
+            Volver
+          </Link>
         </div>
       </header>
 
@@ -285,6 +275,16 @@ export default async function TournamentDetailPage({
             <h1 className="font-display mt-4 text-5xl tracking-tight md:text-7xl">
               {tournament.name}
             </h1>
+            {isOrganizer && (
+              <div className="mt-5">
+                <Button variant="crown" size="sm" asChild>
+                  <Link href={`/app/tournaments/${tournament.slug}/manage`}>
+                    <Crown className="size-3" />
+                    Administrar torneo
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">

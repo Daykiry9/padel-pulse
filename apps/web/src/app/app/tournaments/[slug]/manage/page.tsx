@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
+import { FinishTournamentButton } from '@/components/finish-tournament-button';
 import { GenerateBracketButton } from './generate-bracket-button';
 import { MatchScoreForm } from './match-score-form';
 
@@ -234,6 +235,15 @@ export default async function ManageTournamentPage({
           value={totalCount > 0 ? `${completedCount}/${totalCount} (${progress}%)` : '—'}
         />
       </div>
+
+      {tournament.status === 'in_progress' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-crown/30 bg-crown/[0.03] px-4 py-3">
+          <p className="text-muted-foreground text-sm">
+            Cuando termines de cargar los marcadores, cerrá el torneo.
+          </p>
+          <FinishTournamentButton tournamentId={tournament.id} />
+        </div>
+      )}
 
       {/* Estado: open → botón generar bracket */}
       {tournament.status === 'open' && (

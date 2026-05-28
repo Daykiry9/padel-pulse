@@ -7,7 +7,7 @@ import { Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { finishTournament } from '@/lib/tournament-actions';
 
-/** Botón del organizador para cerrar el torneo (inline en la vista en vivo). */
+/** Botón del organizador para cerrar el torneo (inline, misma vista). */
 export function FinishTournamentButton({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

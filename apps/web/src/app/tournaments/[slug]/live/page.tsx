@@ -10,7 +10,7 @@ import { computeAmericanoStandings } from '@padelking/domain';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 import { PlayerMatchActions } from './player-match-actions';
-import { FinishTournamentButton } from './finish-tournament-button';
+import { FinishTournamentButton } from '@/components/finish-tournament-button';
 import { RealtimeRefresh } from './realtime-refresh';
 
 type TournamentRow = {

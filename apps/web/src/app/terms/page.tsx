@@ -151,8 +151,8 @@ export default function TermsPage() {
         </Section>
 
         <p className="text-muted-foreground mt-12 text-xs">
-          Versión 1.0 — borrador inicial pre-beta. Revisado por contraparte legal en{' '}
-          <code>TODO antes de lanzamiento público</code>.
+          PadelKing · Bogotá D.C., Colombia ·{' '}
+          <a href="mailto:hola@padelking.co">hola@padelking.co</a>
         </p>
       </main>
     </div>
