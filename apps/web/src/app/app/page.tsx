@@ -20,25 +20,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PriceTag } from '@/components/ui/price-tag';
 import { Section } from '@/components/ui/section';
 import { StatCard } from '@/components/ui/stat-card';
+import { CATEGORY_LABELS } from '@padelking/domain';
+
 import { formatDate, formatTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre / Pro',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
 
 type Profile = { display_name: string; skill_category: string | null; elo_rating: number; city: string | null };
 type Team = { id: string; name: string; category: string | null; rating: number; slug: string };

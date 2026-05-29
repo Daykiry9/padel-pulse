@@ -2,7 +2,12 @@
 
 import { useState } from 'react';
 
-import { FEMENINO_CATEGORIES, MASCULINO_CATEGORIES, MIXTO_CATEGORIES } from '@padelking/domain';
+import {
+  CATEGORY_LABELS,
+  FEMENINO_CATEGORIES,
+  MASCULINO_CATEGORIES,
+  MIXTO_CATEGORIES,
+} from '@padelking/domain';
 import type { CategoryKind, TournamentFormat } from '@padelking/domain';
 
 import { Input } from '@/components/ui/input';
@@ -11,41 +16,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { createTournament } from '@/lib/tournament-actions';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  // Masculino (nuevo, 1-6)
-  '1': '1',
-  '2': '2',
-  '3': '3',
-  '4': '4',
-  '5': '5',
-  '6': '6',
-  // Mixto (nuevo, A-D)
-  mixto_a: 'Mixto A',
-  mixto_b: 'Mixto B',
-  mixto_c: 'Mixto C',
-  mixto_d: 'Mixto D',
-  // Femenino (nuevo, A-D)
-  femenino_a: 'Femenino A',
-  femenino_b: 'Femenino B',
-  femenino_c: 'Femenino C',
-  femenino_d: 'Femenino D',
-  // Legacy (data antigua, no se ofrece en UI)
-  libre: 'Libre / Pro',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
 
 // El formato YA define la modalidad: "Pareja Fija" = parejas fijas round-robin,
 // "Pareja Random" = social, los jugadores rotan de compañero cada ronda.

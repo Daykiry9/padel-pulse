@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Crown, ExternalLink, Trophy, Users } from 'lucide-react';
 
-import { KING_CATEGORIES, QUEENS_CATEGORIES } from '@padelking/domain';
+import {
+  CATEGORY_LABELS,
+  FEMENINO_CATEGORIES,
+  MASCULINO_CATEGORIES,
+  MIXTO_CATEGORIES,
+} from '@padelking/domain';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,23 +19,6 @@ import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { DeleteAccountSection } from '@/components/delete-account-section';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { updateProfile } from '@/lib/auth-actions';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre / Pro',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
 
 type Profile = {
   id: string;
@@ -101,17 +89,25 @@ export default async function ProfilePage({
       <Card className="p-6">
         <h2 className="font-display mb-4 text-xl tracking-tight">EDITAR DATOS</h2>
         <ActionForm action={updateProfile}>
-          <FormField label="Categoría">
-            <Select name="skill_category" defaultValue={profile.skill_category ?? 'quinta'} required>
+          <FormField label="Categoría" hint="Opcional: solo dato interno, no limita inscripciones.">
+            <Select name="skill_category" defaultValue={profile.skill_category ?? ''}>
+              <option value="">Sin categoría</option>
               <optgroup label="Masculino">
-                {KING_CATEGORIES.map((c) => (
+                {MASCULINO_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {CATEGORY_LABELS[c]}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="Femenino (Queens)">
-                {QUEENS_CATEGORIES.map((c) => (
+              <optgroup label="Mixto">
+                {MIXTO_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Femenino">
+                {FEMENINO_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {CATEGORY_LABELS[c]}
                   </option>

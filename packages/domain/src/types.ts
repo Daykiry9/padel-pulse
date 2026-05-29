@@ -94,6 +94,86 @@ export function isQueensCategory(c: TeamCategory): boolean {
   return c.startsWith('queens_') || c.startsWith('femenino_');
 }
 
+/**
+ * Etiqueta amigable para cada categoría. Único source-of-truth — todas las
+ * vistas deben leerlo desde acá para que un cambio sea consistente.
+ * Tipo Record<string, string> (no Record<TeamCategory>) para indexación con
+ * strings arbitrarios sin error (devuelve undefined si no existe la key).
+ */
+export const CATEGORY_LABELS: Record<string, string> = {
+  // Masculino (nuevo, 1-6)
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  '5': '5',
+  '6': '6',
+  // Mixto (A-D)
+  mixto_a: 'Mixto A',
+  mixto_b: 'Mixto B',
+  mixto_c: 'Mixto C',
+  mixto_d: 'Mixto D',
+  // Femenino (A-D)
+  femenino_a: 'Femenino A',
+  femenino_b: 'Femenino B',
+  femenino_c: 'Femenino C',
+  femenino_d: 'Femenino D',
+  // Legacy masculino
+  libre: 'Libre / Pro',
+  primera: '1ra',
+  segunda: '2da',
+  tercera: '3ra',
+  cuarta: '4ta',
+  quinta: '5ta',
+  sexta: '6ta',
+  septima: '7ma',
+  // Legacy queens
+  queens_libre: 'Queens Libre',
+  queens_a: 'Queens A',
+  queens_b: 'Queens B',
+  queens_c: 'Queens C',
+  queens_d: 'Queens D',
+  queens_e: 'Queens E',
+};
+
+/** Helper: etiqueta segura para cualquier categoría (string o null). */
+export function categoryLabel(c: TeamCategory | string | null | undefined): string {
+  if (!c) return '—';
+  return CATEGORY_LABELS[c as TeamCategory] ?? c;
+}
+
+/** Etiquetas compactas para badges / chips donde el espacio es escaso. */
+export const CATEGORY_LABELS_SHORT: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  '5': '5',
+  '6': '6',
+  mixto_a: 'Mx A',
+  mixto_b: 'Mx B',
+  mixto_c: 'Mx C',
+  mixto_d: 'Mx D',
+  femenino_a: 'F A',
+  femenino_b: 'F B',
+  femenino_c: 'F C',
+  femenino_d: 'F D',
+  libre: 'Libre',
+  primera: '1ra',
+  segunda: '2da',
+  tercera: '3ra',
+  cuarta: '4ta',
+  quinta: '5ta',
+  sexta: '6ta',
+  septima: '7ma',
+  queens_libre: 'Q Libre',
+  queens_a: 'Q A',
+  queens_b: 'Q B',
+  queens_c: 'Q C',
+  queens_d: 'Q D',
+  queens_e: 'Q E',
+};
+
 // Sets actuales (los que ofrece el UI desde 2026-05-28).
 export const MASCULINO_CATEGORIES: TeamCategory[] = ['1', '2', '3', '4', '5', '6'];
 export const MIXTO_CATEGORIES: TeamCategory[] = ['mixto_a', 'mixto_b', 'mixto_c', 'mixto_d'];

@@ -7,27 +7,13 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
+import { CATEGORY_LABELS } from '@padelking/domain';
+
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { createOpenMatch } from '@/lib/open-match-actions';
 
 const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'septima'];
 const QUEENS_CATS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d', 'queens_e'];
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre / Pro',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
 
 export default async function NewMatchPage() {
   const user = await getSession();

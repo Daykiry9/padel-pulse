@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { Check, ChevronDown, Sparkles } from 'lucide-react';
 
+import { CATEGORY_LABELS } from '@padelking/domain';
+
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
@@ -106,23 +108,6 @@ function levelToCategory(level: number, gender: Gender): string {
   const arr = gender === 'female' ? QUEENS_LEVELS : KING_LEVELS;
   return arr[Math.min(level - 1, arr.length - 1)]!;
 }
-
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre / Pro',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
 
 const ALL_KINGS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'septima'];
 const ALL_QUEENS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d', 'queens_e'];

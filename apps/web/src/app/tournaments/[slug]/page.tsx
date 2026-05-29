@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, Crown, Trophy, Users } from 'lucide-react';
 
+import { CATEGORY_LABELS } from '@padelking/domain';
 import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
 
 import { Badge } from '@/components/ui/badge';
@@ -14,23 +15,6 @@ import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
 import { formatDateTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { RegisterButton } from './register-button';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-  queens_e: 'Queens E',
-};
 
 export default async function TournamentDetailPage({
   params,

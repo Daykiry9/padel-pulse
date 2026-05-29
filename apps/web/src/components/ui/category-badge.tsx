@@ -1,21 +1,6 @@
-import { cn } from '@/lib/utils';
+import { CATEGORY_LABELS_SHORT } from '@padelking/domain';
 
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  septima: '7ma',
-  queens_libre: 'Q Libre',
-  queens_a: 'Q A',
-  queens_b: 'Q B',
-  queens_c: 'Q C',
-  queens_d: 'Q D',
-  queens_e: 'Q E',
-};
+import { cn } from '@/lib/utils';
 
 interface BaseBadgeProps {
   className?: string;
@@ -66,11 +51,19 @@ export function CategoryBadge(props: Props) {
   );
 
   if (props.kind === 'category') {
-    const isQueens = props.category.startsWith('queens_');
+    const isQueens =
+      props.category.startsWith('queens_') || props.category.startsWith('femenino_');
+    const isMixto = props.category.startsWith('mixto_');
     const cls = isQueens
       ? 'border-magenta-500/30 bg-magenta-500/10 text-magenta-300'
-      : 'border-gold-400/30 bg-gold-400/10 text-gold-300';
-    return <span className={cn(base, cls)}>{CATEGORY_LABELS[props.category] ?? props.category}</span>;
+      : isMixto
+        ? 'border-data/30 bg-data/10 text-data'
+        : 'border-gold-400/30 bg-gold-400/10 text-gold-300';
+    return (
+      <span className={cn(base, cls)}>
+        {CATEGORY_LABELS_SHORT[props.category as keyof typeof CATEGORY_LABELS_SHORT] ?? props.category}
+      </span>
+    );
   }
 
   if (props.kind === 'suma') {

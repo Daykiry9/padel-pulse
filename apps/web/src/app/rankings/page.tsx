@@ -8,6 +8,8 @@ import { Avatar } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PublicHeader } from '@/components/public-header';
 import { SiteFooter } from '@/components/site-footer';
+import { CATEGORY_LABELS } from '@padelking/domain';
+
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 // Mock visual del top 5 — se muestra cuando rows está vacío para enseñar
@@ -50,21 +52,6 @@ function RankingPreviewMock() {
     </div>
   );
 }
-
-const CATEGORY_LABELS: Record<string, string> = {
-  libre: 'Libre / Pro',
-  primera: '1ra',
-  segunda: '2da',
-  tercera: '3ra',
-  cuarta: '4ta',
-  quinta: '5ta',
-  sexta: '6ta',
-  queens_libre: 'Queens Libre',
-  queens_a: 'Queens A',
-  queens_b: 'Queens B',
-  queens_c: 'Queens C',
-  queens_d: 'Queens D',
-};
 
 const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta'];
 const QUEENS_CATS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d'];
