@@ -77,6 +77,12 @@ export default async function LoginPage({
           />
         </FormField>
 
+        <div className="-mt-2 text-right text-xs">
+          <Link href="/forgot-password" className="text-muted-foreground hover:text-crown underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+
         <SubmitButton variant="crown" size="lg" className="w-full" pendingLabel="Ingresando…">
           Ingresar
         </SubmitButton>

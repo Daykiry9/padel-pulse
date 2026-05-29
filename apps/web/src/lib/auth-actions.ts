@@ -99,6 +99,49 @@ export async function signOut() {
 }
 
 /**
+ * Pide a Supabase que envíe un email con link de reset. Por seguridad
+ * (anti-enumeración) NO revelamos si el email existe o no — siempre devolvemos
+ * éxito y redirigimos a la pantalla de "revisá tu correo".
+ */
+export async function requestPasswordReset(formData: FormData): Promise<ActionResult> {
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+    return { ok: false, error: 'Ingresá un email válido' };
+  }
+  const hdrs = await headers();
+  const host = hdrs.get('host') ?? 'padelking.co';
+  const proto = hdrs.get('x-forwarded-proto') ?? 'https';
+  const redirectTo = `${proto}://${host}/auth/callback?next=/reset-password`;
+
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) console.error('[requestPasswordReset] supabase error:', error);
+  // Siempre redirigimos a "?sent=1" sin importar si el email existió.
+  return { ok: true, redirectTo: '/forgot-password?sent=1' };
+}
+
+/**
+ * Cambia la contraseña del usuario actualmente autenticado. Se usa después de
+ * que el link de reset cae en /auth/callback → ya hay sesión.
+ */
+export async function updatePassword(formData: FormData): Promise<ActionResult> {
+  const password = String(formData.get('password') ?? '');
+  if (password.length < 8) {
+    return { ok: false, error: 'La contraseña debe tener al menos 8 caracteres' };
+  }
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: 'Link de reset inválido o expirado. Pedí uno nuevo.' };
+  }
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
+  return { ok: true, redirectTo: '/app' };
+}
+
+/**
  * Elimina la cuenta del usuario actual: borra el registro de auth.users via
  * service role (cascadea a profiles + datos personales) y cierra la sesión.
  * Requisito de App Store: la baja debe poder hacerse desde dentro de la app.
