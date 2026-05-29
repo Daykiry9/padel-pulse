@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
+import { RemoveRegistrationButton } from '@/components/remove-registration-button';
 import { ShareInviteButton } from '@/components/share-invite-button';
 import { ShareStoryButton } from '@/components/share-story-button';
 import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
@@ -145,6 +146,35 @@ export default async function TournamentDetailPage({
         r.player_two_id === user.id,
     );
   const canChat = userIsParticipant || isOrganizer;
+
+  // Nombres de jugadores individuales / ad-hoc para mostrar en INSCRITOS.
+  const playerIdsForLabels = [
+    ...new Set(
+      registrations
+        .flatMap((r) => [r.player_id, r.player_one_id, r.player_two_id])
+        .filter(Boolean) as string[],
+    ),
+  ];
+  const registrationNameMap = new Map<string, string>();
+  if (playerIdsForLabels.length) {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const sbView = supabase as any;
+    const { data: profs } = await sbView
+      .from('profiles_public')
+      .select('id, display_name')
+      .in('id', playerIdsForLabels);
+    for (const p of (profs ?? []) as { id: string; display_name: string }[]) {
+      registrationNameMap.set(p.id, p.display_name);
+    }
+  }
+  const registrationLabel = (r: RegistrationRow): string => {
+    if (r.teams?.name) return r.teams.name;
+    if (r.player_one_id && r.player_two_id) {
+      return `${registrationNameMap.get(r.player_one_id) ?? '?'} / ${registrationNameMap.get(r.player_two_id) ?? '?'}`;
+    }
+    if (r.player_id) return registrationNameMap.get(r.player_id) ?? '?';
+    return 'Inscripción';
+  };
 
   // Fetch initial chat messages si tiene acceso
   let initialChatMessages: ChatMessage[] = [];
@@ -302,6 +332,11 @@ export default async function TournamentDetailPage({
                   <Link href={`/login?next=/tournaments/${tournament.slug}`}>Ingresar</Link>
                 </Button>
               </div>
+            ) : userIsParticipant ? (
+              <div className="border-success/30 bg-success/[0.04] flex items-center gap-2 rounded-lg border p-4 text-sm">
+                <span className="text-success">✓</span>
+                <span>Ya estás inscrito en este torneo.</span>
+              </div>
             ) : isIndividual ? (
               <div className="space-y-3">
                 <p className="text-sm">
@@ -384,11 +419,20 @@ export default async function TournamentDetailPage({
               </Card>
             ) : (
               <Card className="divide-border/30 divide-y">
-                {registrations!.map((r) => (
-                  <div key={r.id} className="px-4 py-3 text-sm">
-                    {r.teams?.name ?? 'Jugador individual'}
-                  </div>
-                ))}
+                {registrations!.map((r) => {
+                  const label = registrationLabel(r);
+                  return (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between px-4 py-3 text-sm"
+                    >
+                      <span>{label}</span>
+                      {isOrganizer && (
+                        <RemoveRegistrationButton registrationId={r.id} label={label} />
+                      )}
+                    </div>
+                  );
+                })}
               </Card>
             )}
           </div>

@@ -24,6 +24,7 @@ export default async function OnboardingPage({
   const profile = profileRes.data as {
     skill_category: string | null;
     display_name: string | null;
+    phone: string | null;
   } | null;
 
   if (!profile) {
@@ -32,8 +33,9 @@ export default async function OnboardingPage({
       user.email?.split('@')[0] ??
       'Jugador';
     await supabase.from('profiles').insert({ id: user.id, display_name: displayName } as never);
-  } else if (profile.skill_category) {
-    // Ya onboardado: si hay invite pendiente, mandarlo a resolverlo
+  } else if (profile.phone || profile.skill_category) {
+    // Onboardado: tiene al menos teléfono (lo exige updateProfile) o categoría
+    // (legacy). Si hay invite pendiente lo resolvemos; si no, dashboard.
     const cookieStore = await cookies();
     const pendingInvite = invite ?? cookieStore.get('pending_invite')?.value;
     if (pendingInvite) redirect(`/i/${pendingInvite}`);

@@ -156,16 +156,8 @@ export async function redeemInvitation(code: string): Promise<ActionResult> {
     return { ok: false, error: 'Este link ya llegó a su límite de usos.' };
   }
 
-  // Verificar que el profile esté completo (skill_category)
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('skill_category')
-    .eq('id', user.id)
-    .maybeSingle();
-  const profile = profileData as { skill_category: string | null } | null;
-  if (!profile?.skill_category) {
-    return { ok: false, error: 'Completa tu perfil primero', redirectTo: `/onboarding?invite=${code}` };
-  }
+  // Antes exigíamos skill_category para redimir, ahora la categoría es opcional
+  // (puede llenarse después en /app/profile) → procedemos directo.
 
   if (invite.kind === 'community') {
     // Verificar si ya es miembro

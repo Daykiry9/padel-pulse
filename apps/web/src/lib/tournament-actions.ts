@@ -122,6 +122,21 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
 
   const supabase = await getSupabaseServerClient();
 
+  // Anti-duplicado: si el usuario ya aparece como player en alguna inscripción
+  // del torneo, no dejamos inscribir otra vez.
+  const { data: existingForUser } = await supabase
+    .from('tournament_registrations')
+    .select('id')
+    .eq('tournament_id', tournamentId)
+    .or(
+      `player_id.eq.${user.id},player_one_id.eq.${user.id},player_two_id.eq.${user.id}`,
+    )
+    .limit(1)
+    .maybeSingle();
+  if (existingForUser) {
+    return { ok: false, error: 'Ya estás inscrito en este torneo.' };
+  }
+
   if (modality === 'individual') {
     const { error } = await supabase.from('tournament_registrations').insert({
       tournament_id: tournamentId,
@@ -190,6 +205,52 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
   }
 
   revalidatePath('/tournaments');
+  return { ok: true };
+}
+
+/**
+ * El organizador elimina una inscripción del torneo. Solo dueño del club o
+ * de la comunidad organizadora.
+ */
+export async function removeRegistration(formData: FormData): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const registrationId = String(formData.get('registration_id') ?? '');
+  if (!registrationId) return { ok: false, error: 'Inscripción inválida' };
+
+  const supabase = await getSupabaseServerClient();
+  const { data: regData } = await supabase
+    .from('tournament_registrations')
+    .select('id, tournament_id, tournaments(slug, clubs(owner_id), communities(owner_id))')
+    .eq('id', registrationId)
+    .single();
+  const reg = regData as unknown as {
+    id: string;
+    tournament_id: string;
+    tournaments: {
+      slug: string;
+      clubs: { owner_id: string } | null;
+      communities: { owner_id: string } | null;
+    } | null;
+  } | null;
+  if (!reg) return { ok: false, error: 'Inscripción no existe' };
+
+  const isOrganizer =
+    reg.tournaments?.clubs?.owner_id === user.id ||
+    reg.tournaments?.communities?.owner_id === user.id;
+  if (!isOrganizer) {
+    return { ok: false, error: 'Solo el organizador puede eliminar inscripciones' };
+  }
+
+  const admin = getServiceRoleClient();
+  const { error } = await admin
+    .from('tournament_registrations')
+    .delete()
+    .eq('id', registrationId);
+  if (error) return { ok: false, error: translateDbError(error.message) };
+
+  if (reg.tournaments?.slug) revalidatePath(`/tournaments/${reg.tournaments.slug}`);
   return { ok: true };
 }
 
