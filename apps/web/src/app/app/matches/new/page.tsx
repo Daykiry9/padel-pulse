@@ -7,13 +7,15 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
-import { CATEGORY_LABELS } from '@padelking/domain';
+import {
+  CATEGORY_LABELS,
+  FEMENINO_CATEGORIES,
+  MASCULINO_CATEGORIES,
+  MIXTO_CATEGORIES,
+} from '@padelking/domain';
 
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { createOpenMatch } from '@/lib/open-match-actions';
-
-const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'septima'];
-const QUEENS_CATS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d', 'queens_e'];
 
 export default async function NewMatchPage() {
   const user = await getSession();
@@ -81,15 +83,22 @@ export default async function NewMatchPage() {
           <FormField label="Nivel objetivo (opcional)" hint="Filtra a quién aparece. Vacío = abierto a todos.">
             <Select name="category" defaultValue={p?.skill_category ?? ''}>
               <option value="">Cualquier nivel</option>
-              <optgroup label="Kings">
-                {KING_CATS.map((c) => (
+              <optgroup label="Masculino">
+                {MASCULINO_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {CATEGORY_LABELS[c]}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="Queens">
-                {QUEENS_CATS.map((c) => (
+              <optgroup label="Mixto">
+                {MIXTO_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Femenino">
+                {FEMENINO_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {CATEGORY_LABELS[c]}
                   </option>

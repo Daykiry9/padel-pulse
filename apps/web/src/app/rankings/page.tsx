@@ -8,7 +8,12 @@ import { Avatar } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PublicHeader } from '@/components/public-header';
 import { SiteFooter } from '@/components/site-footer';
-import { CATEGORY_LABELS } from '@padelking/domain';
+import {
+  CATEGORY_LABELS,
+  FEMENINO_CATEGORIES,
+  MASCULINO_CATEGORIES,
+  MIXTO_CATEGORIES,
+} from '@padelking/domain';
 
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -52,9 +57,6 @@ function RankingPreviewMock() {
     </div>
   );
 }
-
-const KING_CATS = ['libre', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta'];
-const QUEENS_CATS = ['queens_libre', 'queens_a', 'queens_b', 'queens_c', 'queens_d'];
 
 type RankRow = {
   profile_id: string;
@@ -132,16 +134,11 @@ export default async function RankingsPage({
           <div className="space-y-3">
             <div>
               <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
-                <span className="text-gold-400">●</span> Kings · masculino
+                <span className="text-gold-400">●</span> Masculino
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <FilterChip
-                  href="/rankings"
-                  active={!category}
-                  label="Todas"
-                  small
-                />
-                {KING_CATS.map((c) => (
+                <FilterChip href="/rankings" active={!category} label="Todas" small />
+                {MASCULINO_CATEGORIES.map((c) => (
                   <FilterChip
                     key={c}
                     href={`/rankings?category=${c}`}
@@ -155,10 +152,28 @@ export default async function RankingsPage({
 
             <div>
               <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
-                <span className="text-magenta-500">●</span> Queens · femenino
+                <span className="text-data">●</span> Mixto
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {QUEENS_CATS.map((c) => (
+                {MIXTO_CATEGORIES.map((c) => (
+                  <FilterChip
+                    key={c}
+                    href={`/rankings?category=${c}`}
+                    active={category === c}
+                    label={CATEGORY_LABELS[c]!}
+                    small
+                    mixto
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+                <span className="text-magenta-500">●</span> Femenino
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {FEMENINO_CATEGORIES.map((c) => (
                   <FilterChip
                     key={c}
                     href={`/rankings?category=${c}`}
@@ -317,18 +332,22 @@ function FilterChip({
   label,
   small = false,
   queens = false,
+  mixto = false,
 }: {
   href: string;
   active: boolean;
   label: string;
   small?: boolean;
   queens?: boolean;
+  mixto?: boolean;
 }) {
   const baseSize = small ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs';
   const colors = active
     ? queens
       ? 'border-queens/40 bg-queens/15 text-queens'
-      : 'border-crown/40 bg-crown/15 text-crown'
+      : mixto
+        ? 'border-data/40 bg-data/15 text-data'
+        : 'border-crown/40 bg-crown/15 text-crown'
     : 'border-border/40 text-muted-foreground hover:text-foreground';
   return (
     <Link
