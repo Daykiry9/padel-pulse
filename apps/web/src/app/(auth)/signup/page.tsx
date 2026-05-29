@@ -35,7 +35,7 @@ export default async function SignupPage({
         )}
       </div>
 
-      <OAuthButtons next={invite ? `/i/${invite}` : '/onboarding'} />
+      <OAuthButtons next={invite ? `/i/${invite}` : '/app'} />
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">

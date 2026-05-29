@@ -227,18 +227,9 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   // Validación: si vienen del onboarding (display_name presente), exigimos todos
   // los campos del perfil. Si vienen del /app/profile editando solo unos campos,
   // permitimos partial update.
-  const isFullOnboarding = Boolean(displayName);
-  if (isFullOnboarding) {
-    // skill_category es OPCIONAL (dato interno, no limita inscripciones).
-    if (!phone) return { ok: false, error: 'Teléfono obligatorio' };
-    if (!birthdate) return { ok: false, error: 'Fecha de nacimiento obligatoria' };
-    if (!instagramHandle) return { ok: false, error: 'Instagram obligatorio' };
-    if (!dominantHand) return { ok: false, error: 'Selecciona tu mano dominante' };
-    if (!favoritePosition) return { ok: false, error: 'Selecciona tu posición preferida' };
-    if (!playingSinceYear || Number.isNaN(playingSinceYear)) {
-      return { ok: false, error: 'Indica desde qué año juegas pádel' };
-    }
-  }
+  // Todos los campos del onboarding son OPCIONALES (nombre + email son lo único
+  // que la app necesita para funcionar; el resto se puede llenar después en el
+  // perfil). Solo validamos formato si vienen con valor.
 
   // Validaciones de formato (mismos límites que los CHECK de la DB, pero con
   // mensaje claro de QUÉ corregir en vez del genérico "reglas del torneo").

@@ -72,39 +72,35 @@ export default async function OnboardingPage({
 
         <CategoryQuiz />
 
-        <FormField label="Ciudad">
-          <Input name="city" defaultValue="Bogotá" required />
+        <FormField label="Ciudad" hint="Opcional">
+          <Input name="city" defaultValue="Bogotá" />
         </FormField>
 
-        {/* Datos del jugador — todos obligatorios */}
-        <FormField label="Teléfono" hint="Para premios y notificaciones críticas.">
-          <Input name="phone" type="tel" placeholder="+57 300 123 4567" required />
+        {/* Datos del jugador — todos opcionales, los podés completar después */}
+        <FormField label="Teléfono" hint="Opcional. Para premios y notificaciones críticas.">
+          <Input name="phone" type="tel" placeholder="+57 300 123 4567" />
         </FormField>
 
-        <FormField label="Fecha de nacimiento">
-          <Input name="birthdate" type="date" required />
+        <FormField label="Fecha de nacimiento" hint="Opcional">
+          <Input name="birthdate" type="date" />
         </FormField>
 
-        <FormField label="Instagram" hint="Para tag en stories de torneos. Sin @.">
-          <Input name="instagram_handle" placeholder="juanesp_padel" required />
+        <FormField label="Instagram" hint="Opcional. Para tag en stories de torneos. Sin @.">
+          <Input name="instagram_handle" placeholder="juanesp_padel" />
         </FormField>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Mano dominante">
-            <Select name="dominant_hand" defaultValue="" required>
-              <option value="" disabled>
-                Selecciona…
-              </option>
+          <FormField label="Mano dominante" hint="Opcional">
+            <Select name="dominant_hand" defaultValue="">
+              <option value="">—</option>
               <option value="right">Derecha</option>
               <option value="left">Zurda</option>
             </Select>
           </FormField>
 
-          <FormField label="Posición preferida">
-            <Select name="favorite_position" defaultValue="" required>
-              <option value="" disabled>
-                Selecciona…
-              </option>
+          <FormField label="Posición preferida" hint="Opcional">
+            <Select name="favorite_position" defaultValue="">
+              <option value="">—</option>
               <option value="drive">Drive</option>
               <option value="reves">Revés</option>
               <option value="ambos">Ambos</option>
@@ -112,14 +108,13 @@ export default async function OnboardingPage({
           </FormField>
         </div>
 
-        <FormField label="¿Desde qué año juegas pádel?">
+        <FormField label="¿Desde qué año juegas pádel?" hint="Opcional">
           <Input
             name="playing_since_year"
             type="number"
             min={1990}
             max={new Date().getFullYear()}
             placeholder={String(new Date().getFullYear())}
-            required
           />
         </FormField>
 
