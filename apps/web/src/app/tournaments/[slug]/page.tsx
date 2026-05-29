@@ -71,17 +71,16 @@ export default async function TournamentDetailPage({
       .from('profiles')
       .select('skill_category, gender')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profile) {
-      // Categoría es OPCIONAL: cualquier usuario autenticado puede inscribirse,
-      // no se filtra por elegibilidad.
-      myProfile = {
-        skillCategory: (profile.skill_category as TeamCategory | null) ?? null,
-        gender: (profile.gender as Gender | null) ?? null,
-        eligibility: { ok: true },
-      };
-    }
+    // Categoría es OPCIONAL: cualquier usuario autenticado puede inscribirse,
+    // aunque todavía no tenga fila en profiles (ej. recién hizo Google OAuth y
+    // no pasó por /onboarding).
+    myProfile = {
+      skillCategory: (profile?.skill_category as TeamCategory | null) ?? null,
+      gender: (profile?.gender as Gender | null) ?? null,
+      eligibility: { ok: true },
+    };
 
     type MyTeamMembership = {
       team_id: string;

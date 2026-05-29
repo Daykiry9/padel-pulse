@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 /**
@@ -25,11 +26,36 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await getSupabaseServerClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     return NextResponse.redirect(
       `${url.origin}/login?oauth_error=${encodeURIComponent(error.message)}`,
     );
   }
+
+  // Aseguramos que exista la fila en profiles. Sin ella el user de Google/Apple
+  // que va directo a un torneo no puede inscribirse (y la UI lo deja sin botón).
+  const sessUser = sessionData.user;
+  if (sessUser) {
+    const admin = getServiceRoleClient();
+    const { data: existing } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('id', sessUser.id)
+      .maybeSingle();
+    if (!existing) {
+      const meta = sessUser.user_metadata as Record<string, unknown> | undefined;
+      const displayName =
+        (meta?.full_name as string | undefined) ??
+        (meta?.name as string | undefined) ??
+        (meta?.display_name as string | undefined) ??
+        sessUser.email?.split('@')[0] ??
+        'Jugador';
+      await admin
+        .from('profiles')
+        .insert({ id: sessUser.id, display_name: displayName } as never);
+    }
+  }
+
   return NextResponse.redirect(`${url.origin}${next}`);
 }
