@@ -19,7 +19,7 @@ export function GenerateBracketButton({
   async function onClick() {
     if (busy) return;
     const ok = window.confirm(
-      `¿Cerrar inscripciones y generar el bracket con ${count} equipos? Esta acción se puede revertir pero borrará los matches actuales.`,
+      `¿Iniciar el torneo con ${count} inscritos? Se cerrarán las inscripciones y se generará el bracket. Si lo vuelves a iniciar, se borrarán los matches actuales.`,
     );
     if (!ok) return;
 
@@ -39,9 +39,9 @@ export function GenerateBracketButton({
 
   return (
     <div className="space-y-2">
-      <Button variant="crown" size="lg" onClick={onClick} disabled={busy}>
-        <Sparkles className="size-4" />
-        {busy ? 'Generando bracket…' : 'Cerrar y generar bracket'}
+      <Button variant="crown" size="sm" onClick={onClick} disabled={busy}>
+        <Sparkles className="size-3" />
+        {busy ? 'Iniciando…' : 'Iniciar torneo ya'}
       </Button>
       {error && <p className="text-destructive text-sm">{error}</p>}
     </div>

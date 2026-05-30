@@ -15,6 +15,7 @@ import { ShareStoryButton } from '@/components/share-story-button';
 import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
 import { formatDateTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
+import { GenerateBracketButton } from '@/app/app/tournaments/[slug]/manage/generate-bracket-button';
 import { RegisterButton } from './register-button';
 
 export default async function TournamentDetailPage({
@@ -247,13 +248,19 @@ export default async function TournamentDetailPage({
               {tournament.name}
             </h1>
             {isOrganizer && (
-              <div className="mt-5">
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Button variant="crown" size="sm" asChild>
                   <Link href={`/app/tournaments/${tournament.slug}/manage`}>
                     <Crown className="size-3" />
                     Administrar torneo
                   </Link>
                 </Button>
+                {tournament.status === 'open' && (
+                  <GenerateBracketButton
+                    tournamentId={tournament.id}
+                    count={registrations?.length ?? 0}
+                  />
+                )}
               </div>
             )}
           </div>
