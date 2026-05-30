@@ -71,8 +71,9 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     return { ok: true, redirectTo: `/login?verify=1${next}` };
   }
 
-  // Si vino con invite, pasarlo a onboarding para que la siguiente redirect lo aplique
-  return { ok: true, redirectTo: invite ? `/onboarding?invite=${invite}` : '/onboarding' };
+  // Sin onboarding intermedio: signup → /app (o invite). El dashboard muestra
+  // un banner para completar perfil si faltan datos opcionales.
+  return { ok: true, redirectTo: invite ? `/i/${invite}` : '/app' };
 }
 
 export async function signIn(formData: FormData): Promise<ActionResult> {

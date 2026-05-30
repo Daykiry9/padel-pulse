@@ -30,13 +30,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const profile = profileRes.data as
     | { display_name: string; skill_category: string | null; gender: string | null; city: string | null; is_super_admin: boolean }
     | null;
-  if (!profile?.skill_category) redirect('/onboarding');
-  const isSuperAdmin = profile.is_super_admin === true;
+  // El perfil puede no existir todavía (Google OAuth recién creado) o estar
+  // sin skill_category — ya no forzamos onboarding. El dashboard muestra un
+  // banner "Completa tu perfil" si faltan datos.
+  const isSuperAdmin = profile?.is_super_admin === true;
 
   const notifications = (notificationsRes.data ?? []) as unknown as NotificationItem[];
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
-  const isQueens = profile.gender === 'female' && profile.skill_category?.startsWith('queens_');
+  const isQueens =
+    profile?.gender === 'female' && profile?.skill_category?.startsWith('queens_');
 
   return (
     <div className={`bg-background min-h-screen ${isQueens ? 'theme-queens' : ''}`}>
@@ -85,8 +88,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <NotificationsBell notifications={notifications} unreadCount={unreadCount} />
             <UserMenu
               userId={user.id}
-              displayName={profile.display_name}
-              city={profile.city}
+              displayName={profile?.display_name ?? user.email?.split('@')[0] ?? 'Jugador'}
+              city={profile?.city ?? null}
               isSuperAdmin={isSuperAdmin}
             />
           </div>

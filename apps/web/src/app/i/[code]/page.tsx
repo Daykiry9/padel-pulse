@@ -12,10 +12,8 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   const user = await getSession();
 
   // No autenticado → redirect a signup con el code en query param.
-  // (Antes seteábamos una cookie httpOnly como backup, pero en Next 15
-  //  cookies().set() desde un Server Component tira excepción server-side.
-  //  El code en query param es suficiente para preservar el invite a través
-  //  de signup → onboarding → redeem.)
+  // signUp redirige a /i/{invite} cuando termina, lo que dispara el redeem
+  // automático en este mismo handler una vez que hay sesión.
   if (!user) {
     redirect(`/signup?invite=${code}`);
   }

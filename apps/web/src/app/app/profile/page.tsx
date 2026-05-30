@@ -52,9 +52,11 @@ export default async function ProfilePage({
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
   const profile = profileData as unknown as Profile | null;
-  if (!profile) redirect('/onboarding');
+  // Si no existe perfil (caso borde post-borrado o race condition), redirigimos
+  // al dashboard donde el banner ofrece completar datos.
+  if (!profile) redirect('/app');
 
   return (
     <div className="space-y-8">

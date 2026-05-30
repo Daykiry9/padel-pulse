@@ -12,7 +12,7 @@ const BASE_ITEMS = [
   { href: '/rankings', icon: Crown, label: 'Ranking' },
 ];
 
-const HIDE_ON = ['/login', '/signup', '/onboarding'];
+const HIDE_ON = ['/login', '/signup'];
 
 /**
  * Bottom nav de la experiencia app. Visible cuando:

@@ -22,10 +22,21 @@ import { Section } from '@/components/ui/section';
 import { StatCard } from '@/components/ui/stat-card';
 import { CATEGORY_LABELS } from '@padelking/domain';
 
+import { ProfileCompletionBanner } from '@/components/profile-completion-banner';
 import { formatDate, formatTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
-type Profile = { display_name: string; skill_category: string | null; elo_rating: number; city: string | null };
+type Profile = {
+  display_name: string;
+  skill_category: string | null;
+  elo_rating: number;
+  city: string | null;
+  phone: string | null;
+  birthdate: string | null;
+  instagram_handle: string | null;
+  dominant_hand: string | null;
+  favorite_position: string | null;
+};
 type Team = { id: string; name: string; category: string | null; rating: number; slug: string };
 type CommunityMem = {
   community_id: string;
@@ -119,6 +130,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
+      <ProfileCompletionBanner profile={profile} />
+
       {/* HERO — nombre gigante con stat-line consolidada */}
       <div>
         <h1 className="font-display text-3xl tracking-tight md:text-4xl">
