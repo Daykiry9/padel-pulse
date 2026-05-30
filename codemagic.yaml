@@ -1,0 +1,99 @@
+workflows:
+  ios-testflight:
+    name: iOS — build + TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: PadelKing ASC
+    environment:
+      groups:
+        - app_store_credentials
+      vars:
+        XCODE_WORKSPACE: "App.xcworkspace"
+        XCODE_SCHEME: "App"
+        BUNDLE_ID: "co.padelking.app"
+        APP_STORE_APPLE_ID: $APP_STORE_APPLE_ID
+      node: 22
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'ios-v*'
+          include: true
+    scripts:
+      - name: pnpm install
+        script: |
+          npm install -g pnpm@10
+          pnpm install --frozen-lockfile
+      - name: cap sync ios
+        script: |
+          cd apps/web
+          pnpm exec cap sync ios
+      - name: pod install
+        script: |
+          cd apps/web/ios/App
+          pod install
+      - name: Set up provisioning + signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Bump build number
+        script: |
+          cd apps/web/ios/App
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")
+          agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
+      - name: Build IPA
+        script: |
+          cd apps/web/ios/App
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - apps/web/ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - "Internal Testers"
+
+  ios-pr-validate:
+    name: iOS — PR build validation (sin firmar)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      node: 22
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: false
+    scripts:
+      - name: pnpm install
+        script: |
+          npm install -g pnpm@10
+          pnpm install --frozen-lockfile
+      - name: cap sync ios
+        script: |
+          cd apps/web
+          pnpm exec cap sync ios
+      - name: pod install
+        script: |
+          cd apps/web/ios/App
+          pod install
+      - name: Build sin firmar (validación)
+        script: |
+          cd apps/web/ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            build
