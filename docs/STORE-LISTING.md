@@ -200,6 +200,41 @@ Crear esta cuenta con un torneo de prueba activo + 2 comunidades para que el rev
 
 ---
 
+## 11b. SDK targeting Android — decisión verificada (2026-05-30)
+
+| Campo | Valor | Justificación |
+|---|---|---|
+| `minSdk` | **24** | Default Capacitor 8, cubre >99% del parque Android. |
+| `compileSdk` | **36** | Capacitor 8 lo OBLIGA: no soporta custom target SDK per major. |
+| `targetSdk` | **36** | Play exige ≥35 hoy; sube a 36 obligatorio el **2026-08-31** (~3 meses). Apuntar a 36 hoy evita re-subir build en agosto. |
+
+**Por qué no bajar a 35** (verificado adversarialmente con 4 fuentes oficiales, workflow `wf_68fb0928`):
+- Capacitor 8 no soporta downgrade de `compileSdk` per major (capacitorjs.com/docs/android/setting-target-sdk).
+- Bajar requeriría downgrade a Capacitor 7 → trabajo significativo, plugins en `@capacitor/*@8.x` se rompen.
+- Cutoff Play el 2026-08-31 fuerza a 36 igual en ~3 meses.
+
+**Bugs Capacitor abiertos a TESTEAR antes de submit** (no bloquean build, rompen runtime en Android 16):
+
+| Bug | Síntoma | Cómo testear | Workaround |
+|---|---|---|---|
+| [capacitor#8416](https://github.com/ionic-team/capacitor/issues/8416) | edge-to-edge roto en `@capacitor/android` 8.3.x sobre Android 16; `adjustMarginsForEdgeToEdge` y SystemBars config no aplican | Abrir cualquier pantalla en device A16 real, verificar que el status bar y nav bar no se traguen contenido | Pinear `@capacitor/android@8.2.0` |
+| [capacitor#8432](https://github.com/ionic-team/capacitor/issues/8432) | Teclado empuja el WebView + scroll dispara back-nav en Pixel 9/10 Pro con A16 | Login → tocar input email, scrollear — no debería salirse de la app | Pinear `@capacitor/android@8.2.0` |
+| [capacitor#8459](https://github.com/ionic-team/capacitor/issues/8459) | Keyboard/IonInput roto en 8.3.1-8.3.4 en Android 9 y 15. **Estamos en 8.3.4** | Probar inputs en Android 9 y 15 (no solo Android 16) | Pinear `@capacitor/android@8.2.0` |
+| [capacitor-plugins#2517](https://github.com/ionic-team/capacitor-plugins/issues/2517) | `@capacitor/status-bar@8.0.2` usa `Window.setStatusBarColor` deprecado bajo compileSdk 36; warning Play Console + no-op en A15+ | Subir AAB a Play Console pre-launch report y mirar warnings | Esperar fix upstream (PR abierto), o migrar a `WindowInsetsControllerCompat` manual |
+| [16 KB page size policy](https://developer.android.com/guide/practices/page-sizes) | Apps target SDK 35+ desde 2025-11-01 deben tener `.so` recompilados para páginas 16 KB o crashean en devices nuevos | `apkanalyzer apk features app-release.aab` o herramienta de Play Console pre-launch | Actualizar plugins Capacitor a versiones recompiladas (la mayoría ya lo están) |
+
+**Decisión operativa**: salir con 36/36/24 sin downgrade. Después del primer AAB release, correr el Play Console pre-launch report — si arroja crashes en A16 devices o warnings de 16 KB, evaluamos pinear `@capacitor/android@8.2.0` como hotfix. Si el pre-launch report sale limpio, no tocamos nada.
+
+**Toolchain requerido** (Capacitor 8): AGP 8.13.0, Gradle 8.14.3, Kotlin 2.2.20, Android Studio Otter 2025.2.1+. Verificar que Codemagic + local pinned match.
+
+Sources verificadas:
+- https://developer.android.com/google/play/requirements/target-sdk
+- https://support.google.com/googleplay/android-developer/answer/11926878
+- https://capacitorjs.com/docs/updating/8-0
+- https://capacitorjs.com/docs/android/setting-target-sdk
+
+---
+
 ## 12. Versionado de la app
 
 | Plataforma | Campo | Valor inicial |
