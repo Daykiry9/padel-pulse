@@ -41,10 +41,10 @@ export async function requestCommunityCreation(formData: FormData): Promise<Acti
 
   if (!name || name.length < 4) return { ok: false, error: 'Nombre muy corto (mín 4 caracteres)' };
   if (!city) return { ok: false, error: 'Especifica la ciudad' };
-  if (founders.length < 5) {
+  if (founders.length < 1) {
     return {
       ok: false,
-      error: `Necesitas listar mínimo 5 fundadores. Llevas ${founders.length}.`,
+      error: 'Lista al menos 1 fundador.',
     };
   }
 

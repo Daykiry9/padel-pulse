@@ -210,7 +210,9 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
 
 /**
  * El organizador elimina una inscripción del torneo. Solo dueño del club o
- * de la comunidad organizadora.
+ * de la comunidad organizadora. Si la inscripción usaba guests (sin más
+ * referencias activas), también limpia los rows en guest_players para no
+ * dejar invitados huérfanos.
  */
 export async function removeRegistration(formData: FormData): Promise<ActionResult> {
   const user = await getSession();
@@ -222,14 +224,20 @@ export async function removeRegistration(formData: FormData): Promise<ActionResu
   const supabase = await getSupabaseServerClient();
   const { data: regData } = await supabase
     .from('tournament_registrations')
-    .select('id, tournament_id, tournaments(slug, clubs(owner_id), communities(owner_id))')
+    .select(
+      'id, tournament_id, guest_player_id, guest_player_one_id, guest_player_two_id, tournaments(slug, status, clubs(owner_id), communities(owner_id))',
+    )
     .eq('id', registrationId)
     .single();
   const reg = regData as unknown as {
     id: string;
     tournament_id: string;
+    guest_player_id: string | null;
+    guest_player_one_id: string | null;
+    guest_player_two_id: string | null;
     tournaments: {
       slug: string;
+      status: string;
       clubs: { owner_id: string } | null;
       communities: { owner_id: string } | null;
     } | null;
@@ -243,14 +251,185 @@ export async function removeRegistration(formData: FormData): Promise<ActionResu
     return { ok: false, error: 'Solo el organizador puede eliminar inscripciones' };
   }
 
+  const guestIds = [reg.guest_player_id, reg.guest_player_one_id, reg.guest_player_two_id].filter(
+    Boolean,
+  ) as string[];
+
   const admin = getServiceRoleClient();
+
+  // Si el torneo está in_progress y el guest tiene matches asignados, abortamos
+  // (la FK ON DELETE RESTRICT en matches.pair_*_guest_*_id lo bloquearía igual,
+  // pero damos un mensaje claro).
+  if (guestIds.length && reg.tournaments?.status === 'in_progress') {
+    const { data: matchUse } = await admin
+      .from('matches')
+      .select('id')
+      .eq('tournament_id', reg.tournament_id)
+      .or(
+        guestIds
+          .flatMap((gid) => [
+            `pair_one_guest_one_id.eq.${gid}`,
+            `pair_one_guest_two_id.eq.${gid}`,
+            `pair_two_guest_one_id.eq.${gid}`,
+            `pair_two_guest_two_id.eq.${gid}`,
+          ])
+          .join(','),
+      )
+      .limit(1);
+    if ((matchUse ?? []).length > 0) {
+      return {
+        ok: false,
+        error: 'El invitado ya tiene partidos asignados. Cancela el torneo o esperá a que terminen.',
+      };
+    }
+  }
+
   const { error } = await admin
     .from('tournament_registrations')
     .delete()
     .eq('id', registrationId);
   if (error) return { ok: false, error: translateDbError(error.message) };
 
+  // Limpieza de guest_players ahora que ya no hay FK que los retenga.
+  // La FK guest_*_id en otras registrations es ON DELETE RESTRICT, así que
+  // si el guest fuera reutilizado en otra inscripción (no debería por UNIQUE
+  // partial, pero defensive) el delete fallará silenciosamente y lo dejamos.
+  // Cast a `any` porque la tabla guest_players aún no está en los types
+  // auto-generados de Supabase (se regenera tras aplicar la migración).
+  if (guestIds.length) {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    await (admin as any).from('guest_players').delete().in('id', guestIds);
+  }
+
   if (reg.tournaments?.slug) revalidatePath(`/tournaments/${reg.tournaments.slug}`);
+  return { ok: true };
+}
+
+// ============================================================
+// Inscripción manual del organizador (profile existente o guest sin cuenta)
+// ============================================================
+/**
+ * El organizador agrega un jugador manualmente al torneo:
+ *  - mode='profile': inscribe un profile existente (debe estar registrado en la app).
+ *  - mode='guest':   crea un guest_player con display_name y lo inscribe.
+ *
+ * Modalidad: SIEMPRE individual (player_id o guest_player_id). Las parejas
+ * ad-hoc se siguen armando via registerToTournament o vía bracket random.
+ *
+ * Solo organizador (club owner OR community owner). Anti-duplicado: si el
+ * profile ya está inscrito, falla; si el nombre de guest ya existe en el
+ * torneo, falla por UNIQUE partial.
+ */
+export async function addManualPlayer(formData: FormData): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const tournamentId = String(formData.get('tournament_id') ?? '');
+  const mode = String(formData.get('mode') ?? '') as 'profile' | 'guest';
+  const displayName = String(formData.get('display_name') ?? '').trim();
+  const profileId = String(formData.get('profile_id') ?? '').trim() || null;
+
+  if (!tournamentId) return { ok: false, error: 'Torneo inválido' };
+  if (mode !== 'profile' && mode !== 'guest') return { ok: false, error: 'Modo inválido' };
+  if (mode === 'profile' && !profileId) return { ok: false, error: 'Selecciona un perfil' };
+  if (mode === 'guest') {
+    if (displayName.length < 2 || displayName.length > 60) {
+      return { ok: false, error: 'El nombre del invitado debe tener 2-60 caracteres' };
+    }
+  }
+
+  const supabase = await getSupabaseServerClient();
+
+  // 1. Verificar ownership + estado
+  const { data: tData } = await supabase
+    .from('tournaments')
+    .select('id, slug, status, clubs(owner_id), communities(owner_id)')
+    .eq('id', tournamentId)
+    .single();
+  const tournament = tData as unknown as {
+    id: string;
+    slug: string;
+    status: string;
+    clubs: { owner_id: string } | null;
+    communities: { owner_id: string } | null;
+  } | null;
+  if (!tournament) return { ok: false, error: 'Torneo no existe' };
+  const isOrganizer =
+    tournament.clubs?.owner_id === user.id || tournament.communities?.owner_id === user.id;
+  if (!isOrganizer) {
+    return { ok: false, error: 'Solo el organizador puede inscribir manualmente' };
+  }
+  if (tournament.status !== 'open' && tournament.status !== 'in_progress') {
+    return { ok: false, error: `El torneo está "${tournament.status}", no se aceptan inscripciones` };
+  }
+
+  // Service role para sortear RLS (especialmente útil mid-torneo).
+  const admin = getServiceRoleClient();
+
+  if (mode === 'profile') {
+    // 2a. Anti-duplicado: chequear que no esté ya inscrito (individual ni en pareja)
+    const { data: existing } = await admin
+      .from('tournament_registrations')
+      .select('id')
+      .eq('tournament_id', tournamentId)
+      .or(`player_id.eq.${profileId},player_one_id.eq.${profileId},player_two_id.eq.${profileId}`)
+      .limit(1)
+      .maybeSingle();
+    if (existing) return { ok: false, error: 'Este jugador ya está inscrito en el torneo.' };
+
+    // 2b. Validar que el profile exista
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('id', profileId!)
+      .maybeSingle();
+    if (!profile) return { ok: false, error: 'El perfil no existe' };
+
+    const { error } = await admin.from('tournament_registrations').insert({
+      tournament_id: tournamentId,
+      player_id: profileId,
+      registered_by: user.id,
+      status: 'confirmed',
+      payment_amount: 0,
+      confirmed_at: new Date().toISOString(),
+    } as never);
+    if (error) return { ok: false, error: translateDbError(error.message) };
+  } else {
+    // 3. Crear guest + inscribirlo en la misma transacción lógica
+    //    (no hay TX explícita; insertamos guest primero, si la registration
+    //    falla limpiamos el guest para no dejarlo huérfano).
+    //    Cast a `any` porque guest_players no está en los types generados aún.
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const adminAny = admin as any;
+    const { data: guestData, error: guestErr } = await adminAny
+      .from('guest_players')
+      .insert({
+        tournament_id: tournamentId,
+        display_name: displayName,
+        created_by: user.id,
+      })
+      .select('id')
+      .single();
+    if (guestErr) return { ok: false, error: translateDbError(guestErr.message) };
+    const guestId = (guestData as { id: string }).id;
+
+    const { error } = await admin.from('tournament_registrations').insert({
+      tournament_id: tournamentId,
+      guest_player_id: guestId,
+      registered_by: user.id,
+      status: 'confirmed',
+      payment_amount: 0,
+      confirmed_at: new Date().toISOString(),
+    } as never);
+    if (error) {
+      // Rollback manual del guest huérfano
+      await adminAny.from('guest_players').delete().eq('id', guestId);
+      return { ok: false, error: translateDbError(error.message) };
+    }
+  }
+
+  revalidatePath(`/tournaments/${tournament.slug}`);
+  revalidatePath(`/app/tournaments/${tournament.slug}/manage`);
   return { ok: true };
 }
 
@@ -302,38 +481,64 @@ export async function closeRegistrationsAndGenerateBracket(
   }
   const isRandom = tournament.format === 'americano_random';
 
-  // 2. Inscripciones confirmadas
+  // 2. Inscripciones confirmadas (incluye guests para soporte de inscripción manual)
   const { data: regs } = await supabase
     .from('tournament_registrations')
-    .select('id, player_id')
+    .select('id, player_id, guest_player_id')
     .eq('tournament_id', tournamentId)
     .eq('status', 'confirmed');
-  const registrations = (regs ?? []) as { id: string; player_id: string | null }[];
+  // Cast vía `unknown` porque guest_player_id aún no está en los types generados.
+  const registrations = (regs ?? []) as unknown as {
+    id: string;
+    player_id: string | null;
+    guest_player_id: string | null;
+  }[];
 
   // 3. Generar pareo + filas de matches según formato
   let matchRows: Record<string, unknown>[];
 
   if (isRandom) {
-    // Random (social): los participantes son jugadores individuales y las
-    // parejas rotan cada ronda → guardamos los 4 jugadores por partido.
-    const playerIds = registrations.map((r) => r.player_id).filter(Boolean) as string[];
-    if (playerIds.length < 4) {
+    // Random (social): los participantes son jugadores individuales (profiles
+    // o guests) y las parejas rotan cada ronda → guardamos los 4 slots por
+    // partido (player_*_id O guest_*_id, XOR por slot).
+    // El set de guest_ids permite mapear cada slot a la columna correcta al
+    // insertar; el algoritmo trabaja con strings UUID indistintamente.
+    const guestIdSet = new Set<string>();
+    const participantIds: string[] = [];
+    for (const r of registrations) {
+      if (r.player_id) {
+        participantIds.push(r.player_id);
+      } else if (r.guest_player_id) {
+        participantIds.push(r.guest_player_id);
+        guestIdSet.add(r.guest_player_id);
+      }
+    }
+    if (participantIds.length < 4) {
       return { ok: false, error: 'Mínimo 4 jugadores inscritos para un Americano Random' };
     }
     const rounds = generateRandomAmericano({
-      participantIds: playerIds,
+      participantIds,
       courts: tournament.courts ?? 2,
       rounds: tournament.total_rounds ?? undefined,
     });
+    const slot = (id: string, kind: 'player' | 'guest'): string | null => {
+      const isGuest = guestIdSet.has(id);
+      if (kind === 'player') return isGuest ? null : id;
+      return isGuest ? id : null;
+    };
     matchRows = rounds.flatMap((round) =>
       round.matches.map((m) => ({
         tournament_id: tournamentId,
         round_number: m.roundNumber,
         court_number: m.courtNumber,
-        pair_one_player_one_id: m.pairOne.playerOneId,
-        pair_one_player_two_id: m.pairOne.playerTwoId,
-        pair_two_player_one_id: m.pairTwo.playerOneId,
-        pair_two_player_two_id: m.pairTwo.playerTwoId,
+        pair_one_player_one_id: slot(m.pairOne.playerOneId, 'player'),
+        pair_one_player_two_id: slot(m.pairOne.playerTwoId, 'player'),
+        pair_two_player_one_id: slot(m.pairTwo.playerOneId, 'player'),
+        pair_two_player_two_id: slot(m.pairTwo.playerTwoId, 'player'),
+        pair_one_guest_one_id: slot(m.pairOne.playerOneId, 'guest'),
+        pair_one_guest_two_id: slot(m.pairOne.playerTwoId, 'guest'),
+        pair_two_guest_one_id: slot(m.pairTwo.playerOneId, 'guest'),
+        pair_two_guest_two_id: slot(m.pairTwo.playerTwoId, 'guest'),
         status: 'scheduled' as const,
       })),
     );
@@ -611,7 +816,7 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
   const { data } = await admin
     .from('matches')
     .select(
-      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, tournaments(slug)',
+      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id, tournaments(slug)',
     )
     .eq('id', matchId)
     .single();
@@ -626,6 +831,10 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     pair_one_player_two_id: string | null;
     pair_two_player_one_id: string | null;
     pair_two_player_two_id: string | null;
+    pair_one_guest_one_id: string | null;
+    pair_one_guest_two_id: string | null;
+    pair_two_guest_one_id: string | null;
+    pair_two_guest_two_id: string | null;
     tournaments: { slug: string } | null;
   } | null;
   if (!matchData || matchData.elo_applied_at) return;
@@ -638,6 +847,9 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     player_one_id: string | null;
     player_two_id: string | null;
     player_id: string | null;
+    guest_player_id: string | null;
+    guest_player_one_id: string | null;
+    guest_player_two_id: string | null;
   };
   const regIds = [matchData.registration_one_id, matchData.registration_two_id].filter(
     Boolean,
@@ -645,65 +857,103 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
   const { data: regsData } = regIds.length
     ? await admin
         .from('tournament_registrations')
-        .select('id, player_one_id, player_two_id, player_id')
+        .select(
+          'id, player_one_id, player_two_id, player_id, guest_player_id, guest_player_one_id, guest_player_two_id',
+        )
         .in('id', regIds)
     : { data: [] };
-  const regs = (regsData ?? []) as RegRow[];
+  // Cast vía `unknown` porque las columnas guest_*_id aún no están en los types generados.
+  const regs = (regsData ?? []) as unknown as RegRow[];
   const regOne = regs.find((r) => r.id === matchData.registration_one_id);
   const regTwo = regs.find((r) => r.id === matchData.registration_two_id);
 
-  if (regOne?.player_one_id && regOne?.player_two_id && regTwo?.player_one_id && regTwo?.player_two_id) {
-    const { data: tData } = await admin
-      .from('tournaments')
-      .select('tier')
-      .eq('id', matchData.tournament_id)
-      .single();
-    const tier = (tData as { tier: string } | null)?.tier;
-    const k = tier === 'competitivo' ? 32 : 16;
+  // Guard: ELO solo se aplica si los 4 slots son profiles válidos. Si hay
+  // algún guest (en matches o en regs) o si las 4 columnas player_*_id no
+  // están presentes, salteamos el cálculo. SIEMPRE marcamos elo_applied_at
+  // al final para que el cron no reintente eternamente (bug pre-existente).
+  const hasGuestInMatch = Boolean(
+    matchData.pair_one_guest_one_id ||
+      matchData.pair_one_guest_two_id ||
+      matchData.pair_two_guest_one_id ||
+      matchData.pair_two_guest_two_id,
+  );
+  const hasGuestInRegs = Boolean(
+    regOne?.guest_player_id ||
+      regOne?.guest_player_one_id ||
+      regOne?.guest_player_two_id ||
+      regTwo?.guest_player_id ||
+      regTwo?.guest_player_one_id ||
+      regTwo?.guest_player_two_id,
+  );
+  const allFourAreProfiles = Boolean(
+    regOne?.player_one_id && regOne?.player_two_id && regTwo?.player_one_id && regTwo?.player_two_id,
+  );
 
+  if (allFourAreProfiles && !hasGuestInMatch && !hasGuestInRegs) {
+    // Validación extra: los 4 ids tienen un profile real en la tabla. Si por
+    // alguna razón uno fue borrado (ON DELETE RESTRICT debería impedirlo,
+    // pero defense-in-depth), abortamos el cálculo pero igual marcamos el
+    // match como elo_applied para no loopear.
     const playerIds = [
-      regOne.player_one_id,
-      regOne.player_two_id,
-      regTwo.player_one_id,
-      regTwo.player_two_id,
+      regOne!.player_one_id!,
+      regOne!.player_two_id!,
+      regTwo!.player_one_id!,
+      regTwo!.player_two_id!,
     ];
     const { data: profilesData } = await admin
       .from('profiles')
       .select('id, elo_rating')
       .in('id', playerIds);
-    const eloMap = new Map(
-      ((profilesData ?? []) as unknown as { id: string; elo_rating: number }[]).map((p) => [
-        p.id,
-        p.elo_rating,
-      ]),
-    );
+    const profiles = (profilesData ?? []) as unknown as { id: string; elo_rating: number }[];
+    const allProfilesExist = profiles.length === new Set(playerIds).size;
 
-    const { deltaOne, deltaTwo } = computePaddleEloDeltas({
-      pairOne: { p1: eloMap.get(regOne.player_one_id) ?? 1000, p2: eloMap.get(regOne.player_two_id) ?? 1000 },
-      pairTwo: { p1: eloMap.get(regTwo.player_one_id) ?? 1000, p2: eloMap.get(regTwo.player_two_id) ?? 1000 },
-      scoreOne,
-      scoreTwo,
-      k,
-    });
+    if (allProfilesExist) {
+      const { data: tData } = await admin
+        .from('tournaments')
+        .select('tier')
+        .eq('id', matchData.tournament_id)
+        .single();
+      const tier = (tData as { tier: string } | null)?.tier;
+      const k = tier === 'competitivo' ? 32 : 16;
 
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    const rpc = (admin as any).rpc.bind(admin) as (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => Promise<{ error: { message: string } | null }>;
+      const eloMap = new Map(profiles.map((p) => [p.id, p.elo_rating]));
 
-    await Promise.all([
-      rpc('apply_elo_delta', { p_profile_id: regOne.player_one_id, p_delta: deltaOne, p_match_id: matchId }),
-      rpc('apply_elo_delta', { p_profile_id: regOne.player_two_id, p_delta: deltaOne, p_match_id: matchId }),
-      rpc('apply_elo_delta', { p_profile_id: regTwo.player_one_id, p_delta: deltaTwo, p_match_id: matchId }),
-      rpc('apply_elo_delta', { p_profile_id: regTwo.player_two_id, p_delta: deltaTwo, p_match_id: matchId }),
-    ]);
+      const { deltaOne, deltaTwo } = computePaddleEloDeltas({
+        pairOne: {
+          p1: eloMap.get(regOne!.player_one_id!) ?? 1000,
+          p2: eloMap.get(regOne!.player_two_id!) ?? 1000,
+        },
+        pairTwo: {
+          p1: eloMap.get(regTwo!.player_one_id!) ?? 1000,
+          p2: eloMap.get(regTwo!.player_two_id!) ?? 1000,
+        },
+        scoreOne,
+        scoreTwo,
+        k,
+      });
 
-    await admin
-      .from('matches')
-      .update({ elo_applied_at: new Date().toISOString() } as never)
-      .eq('id', matchId);
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+      const rpc = (admin as any).rpc.bind(admin) as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>;
+
+      await Promise.all([
+        rpc('apply_elo_delta', { p_profile_id: regOne!.player_one_id, p_delta: deltaOne, p_match_id: matchId }),
+        rpc('apply_elo_delta', { p_profile_id: regOne!.player_two_id, p_delta: deltaOne, p_match_id: matchId }),
+        rpc('apply_elo_delta', { p_profile_id: regTwo!.player_one_id, p_delta: deltaTwo, p_match_id: matchId }),
+        rpc('apply_elo_delta', { p_profile_id: regTwo!.player_two_id, p_delta: deltaTwo, p_match_id: matchId }),
+      ]);
+    }
   }
+
+  // SIEMPRE marcar elo_applied_at al completar (con ELO o sin ELO) — esto
+  // arregla el bug pre-existente donde matches random o mixtos hacían loop
+  // infinito en el cron de auto-confirm.
+  await admin
+    .from('matches')
+    .update({ elo_applied_at: new Date().toISOString() } as never)
+    .eq('id', matchId);
 
   const slug = matchData.tournaments?.slug ?? null;
   const pids = new Set<string>();
@@ -713,6 +963,7 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     if (r.player_id) pids.add(r.player_id);
   }
   // Random: los jugadores no salen de registrations sino de los 4 del partido.
+  // Solo agregamos slots de profile (los guests no reciben notificaciones).
   for (const pid of [
     matchData.pair_one_player_one_id,
     matchData.pair_one_player_two_id,

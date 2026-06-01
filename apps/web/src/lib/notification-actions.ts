@@ -30,6 +30,15 @@ interface CreateNotificationInput {
  */
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
   const admin = getServiceRoleClient();
+  // Defense-in-depth: skip si profileId no existe en profiles (caso guest).
+  // Sin esto, la FK rechazaría el insert y el caller no se entera.
+  const { data: existing } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', input.profileId)
+    .maybeSingle();
+  if (!existing) return;
+
   await admin.from('notifications').insert({
     profile_id: input.profileId,
     type: input.type,
@@ -42,8 +51,31 @@ export async function createNotification(input: CreateNotificationInput): Promis
 export async function createNotifications(inputs: CreateNotificationInput[]): Promise<void> {
   if (inputs.length === 0) return;
   const admin = getServiceRoleClient();
+
+  // Defense-in-depth: filtrar profileIds que no existan en profiles (caso
+  // típico: un guest_player_id se cuela en pids por un bug upstream). Sin
+  // este filtro, la FK notifications.profile_id → profiles(id) rechazaría el
+  // INSERT entero del batch y nadie recibiría nada. Silent skip por design.
+  const uniqueProfileIds = Array.from(new Set(inputs.map((i) => i.profileId).filter(Boolean)));
+  if (uniqueProfileIds.length === 0) return;
+
+  const { data: existing } = await admin
+    .from('profiles')
+    .select('id')
+    .in('id', uniqueProfileIds);
+  const validIds = new Set(((existing ?? []) as { id: string }[]).map((p) => p.id));
+
+  const filtered = inputs.filter((i) => validIds.has(i.profileId));
+  if (filtered.length === 0) return;
+  if (filtered.length < inputs.length) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `createNotifications: filtered ${inputs.length - filtered.length} invalid profileIds`,
+    );
+  }
+
   await admin.from('notifications').insert(
-    inputs.map((i) => ({
+    filtered.map((i) => ({
       profile_id: i.profileId,
       type: i.type,
       title: i.title,

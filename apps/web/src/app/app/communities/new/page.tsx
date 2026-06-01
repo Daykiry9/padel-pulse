@@ -23,16 +23,18 @@ export default async function NewCommunityPage() {
       <div>
         <h1 className="font-display text-4xl tracking-tight">CREAR COMUNIDAD</h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Crear una comunidad es <strong>por solicitud</strong>. Necesitas listar al menos{' '}
-          <strong>5 jugadores fundadores</strong> y un super admin de PadelKing revisará tu pedido.
+          Crear una comunidad es <strong>por solicitud</strong>. Puedes empezar con{' '}
+          <strong>1 fundador</strong> (puedes ser tú mismo) y un super admin de PadelKing revisará
+          tu pedido.
         </p>
       </div>
 
       <Card className="border-crown/30 bg-crown/[0.04] flex items-start gap-3 p-4">
         <AlertTriangle className="text-crown size-4 mt-0.5 shrink-0" />
         <div className="text-foreground/80 text-xs">
-          Solicitamos los nombres reales de tus 5+ fundadores para evitar comunidades fantasma y
-          asegurar que tienes un grupo real listo a jugar. La aprobación toma 24-48h.
+          Solicitamos nombres reales de fundadores para evitar comunidades fantasma. Puedes sumar
+          hasta 5 si ya tienes el grupo armado, pero con 1 alcanza para arrancar. La aprobación
+          toma 24-48h.
         </div>
       </Card>
 
@@ -61,17 +63,17 @@ export default async function NewCommunityPage() {
         <div className="border-border/40 mt-6 space-y-4 rounded-lg border bg-muted/30 p-4">
           <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-crown">
             <Sparkles className="size-3.5" />
-            Jugadores fundadores (mín 5)
+            Jugadores fundadores (mín 1)
           </div>
           <p className="text-muted-foreground text-xs normal-case">
-            Lista los 5+ jugadores con los que vas a empezar. Formato:{' '}
+            Lista al menos 1 fundador (puedes sumar más opcionalmente). Formato:{' '}
             <span className="text-foreground font-mono">Nombre completo - email/celular</span>.
           </p>
 
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <FormField
               key={i}
-              label={i < 5 ? `Fundador ${i + 1} (requerido)` : `Fundador ${i + 1} (opcional)`}
+              label={i < 1 ? `Fundador ${i + 1} (requerido)` : `Fundador ${i + 1} (opcional)`}
             >
               <Input
                 name={`founding_member_${i}`}
@@ -82,7 +84,7 @@ export default async function NewCommunityPage() {
                       ? 'Ej: Andrés Mejía - +57 300 123 4567'
                       : 'Nombre - contacto'
                 }
-                required={i < 5}
+                required={i < 1}
               />
             </FormField>
           ))}

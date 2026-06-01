@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
+import { ManualPlayerForm } from '@/components/manual-player-form';
 import { RemoveRegistrationButton } from '@/components/remove-registration-button';
 import { ShareInviteButton } from '@/components/share-invite-button';
 import { ShareStoryButton } from '@/components/share-story-button';
@@ -122,12 +123,17 @@ export default async function TournamentDetailPage({
     player_id: string | null;
     player_one_id: string | null;
     player_two_id: string | null;
+    guest_player_id: string | null;
+    guest_player_one_id: string | null;
+    guest_player_two_id: string | null;
     teams: { name: string } | null;
   };
 
   const regsRes = await supabase
     .from('tournament_registrations')
-    .select('id, team_id, player_id, player_one_id, player_two_id, teams(name)')
+    .select(
+      'id, team_id, player_id, player_one_id, player_two_id, guest_player_id, guest_player_one_id, guest_player_two_id, teams(name)',
+    )
     .eq('tournament_id', tournament.id);
   const registrations = (regsRes.data ?? []) as unknown as RegistrationRow[];
 
@@ -167,12 +173,57 @@ export default async function TournamentDetailPage({
       registrationNameMap.set(p.id, p.display_name);
     }
   }
+
+  // Nombres de invitados (guests) — lookup batched a guest_players.
+  const guestIdsForLabels = [
+    ...new Set(
+      registrations
+        .flatMap((r) => [r.guest_player_id, r.guest_player_one_id, r.guest_player_two_id])
+        .filter(Boolean) as string[],
+    ),
+  ];
+  const guestNameMap = new Map<string, string>();
+  if (guestIdsForLabels.length) {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const sbGuests = supabase as any;
+    const { data: guests } = await sbGuests
+      .from('guest_players')
+      .select('id, display_name')
+      .in('id', guestIdsForLabels);
+    for (const g of (guests ?? []) as { id: string; display_name: string }[]) {
+      guestNameMap.set(g.id, g.display_name);
+    }
+  }
+
+  const labelForSlot = (
+    profileId: string | null,
+    guestId: string | null,
+  ): string => {
+    if (profileId) return registrationNameMap.get(profileId) ?? '?';
+    if (guestId) {
+      const name = guestNameMap.get(guestId) ?? '?';
+      return `${name} (invitado)`;
+    }
+    return '?';
+  };
+
   const registrationLabel = (r: RegistrationRow): string => {
     if (r.teams?.name) return r.teams.name;
-    if (r.player_one_id && r.player_two_id) {
-      return `${registrationNameMap.get(r.player_one_id) ?? '?'} / ${registrationNameMap.get(r.player_two_id) ?? '?'}`;
+    if (
+      r.player_one_id ||
+      r.player_two_id ||
+      r.guest_player_one_id ||
+      r.guest_player_two_id
+    ) {
+      const one = labelForSlot(r.player_one_id, r.guest_player_one_id);
+      const two = labelForSlot(r.player_two_id, r.guest_player_two_id);
+      return `${one} / ${two}`;
     }
     if (r.player_id) return registrationNameMap.get(r.player_id) ?? '?';
+    if (r.guest_player_id) {
+      const name = guestNameMap.get(r.guest_player_id) ?? '?';
+      return `${name} (invitado)`;
+    }
     return 'Inscripción';
   };
 
@@ -261,6 +312,20 @@ export default async function TournamentDetailPage({
                     count={registrations?.length ?? 0}
                   />
                 )}
+              </div>
+            )}
+            {isOrganizer && tournament.status === 'open' && (
+              <div className="mt-6">
+                <div className="mb-2">
+                  <h2 className="font-display text-lg tracking-tight">
+                    Agregar jugador manualmente
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    Inscribe a alguien con cuenta o crea un invitado para que juegue solo en
+                    este torneo.
+                  </p>
+                </div>
+                <ManualPlayerForm tournamentId={tournament.id} />
               </div>
             )}
           </div>
