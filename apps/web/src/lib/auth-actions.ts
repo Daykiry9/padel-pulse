@@ -234,7 +234,16 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
   const displayName = String(formData.get('display_name') ?? '').trim() || null;
 
   // Datos del jugador (ahora obligatorios para el onboarding completo)
-  const phone = String(formData.get('phone') ?? '').trim() || null;
+  // Normalizamos phone: WhatsApp/iOS/Android meten NBSP (U+00A0), guiones
+  // tipográficos (– — ‒ ― U+2010-U+2015) y otros caracteres Unicode invisibles
+  // que rompen el regex sin que el user note la diferencia visualmente.
+  const phoneRaw = String(formData.get('phone') ?? '');
+  const phone =
+    phoneRaw
+      .replace(/[‐-―−]/g, '-') // guiones tipográficos → '-'
+      .replace(/ /g, ' ') // NBSP → espacio normal
+      .replace(/\s+/g, ' ')
+      .trim() || null;
   const birthdate = String(formData.get('birthdate') ?? '').trim() || null;
   const instagramHandle =
     String(formData.get('instagram_handle') ?? '').trim().replace(/^@/, '') || null;
@@ -315,6 +324,9 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: translateDbError(error.message) };
   }
   if (!updated || updated.length === 0) {
+    console.error('[updateProfile] update affected 0 rows for user', user.id, {
+      updates,
+    });
     return { ok: false, error: 'No encontramos tu perfil. Recargá la página e intentá de nuevo.' };
   }
 

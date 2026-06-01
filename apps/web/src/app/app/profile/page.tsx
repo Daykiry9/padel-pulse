@@ -147,15 +147,16 @@ export default async function ProfilePage({
             </Select>
           </FormField>
 
-          <FormField label="Género">
-            <Select name="gender" defaultValue={profile.gender ?? 'male'} required>
+          <FormField label="Género" hint="Recomendado para inscripciones a torneos.">
+            <Select name="gender" defaultValue={profile.gender ?? ''}>
+              <option value="">Sin especificar</option>
               <option value="male">Masculino</option>
               <option value="female">Femenino</option>
             </Select>
           </FormField>
 
-          <FormField label="Ciudad">
-            <Input name="city" defaultValue={profile.city ?? ''} placeholder="Bogotá" required />
+          <FormField label="Ciudad" hint="Recomendado para encontrar torneos cerca tuyo.">
+            <Input name="city" defaultValue={profile.city ?? ''} placeholder="Bogotá" />
           </FormField>
 
           <FormField label="Teléfono" hint="Para premios y notificaciones críticas.">

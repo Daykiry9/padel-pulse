@@ -56,6 +56,7 @@ export function MobileNav({
   return (
     <nav
       className={`border-border/40 bg-background/90 fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-xl ${isNative ? '' : 'md:hidden'}`}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Navegación principal"
     >
       <div
