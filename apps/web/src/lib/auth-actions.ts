@@ -51,18 +51,28 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: 'Email inválido' };
   }
 
+  const invite = String(formData.get('invite') ?? '').trim();
+  const nextPath = invite ? `/i/${invite}` : '/app';
+
+  // emailRedirectTo: si Supabase tiene email confirmation enabled, el link del
+  // mail debe caer en /auth/callback (PKCE) en vez de /, sino el code se pierde
+  // y el user nunca queda logueado tras confirmar.
+  const hdrs = await headers();
+  const host = hdrs.get('host') ?? 'padelking.co';
+  const proto = hdrs.get('x-forwarded-proto') ?? 'https';
+  const emailRedirectTo = `${proto}://${host}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { display_name: displayName },
+      emailRedirectTo,
     },
   });
 
   if (error) return { ok: false, error: translateSupabaseAuthError(error.message) };
-
-  const invite = String(formData.get('invite') ?? '').trim();
 
   // Caso: email confirmation enabled. Sin sesión activa, el usuario tiene que
   // confirmar antes de continuar. Mandamos a /login con flag para mostrar mensaje.
@@ -73,13 +83,22 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
 
   // Sin onboarding intermedio: signup → /app (o invite). El dashboard muestra
   // un banner para completar perfil si faltan datos opcionales.
-  return { ok: true, redirectTo: invite ? `/i/${invite}` : '/app' };
+  return { ok: true, redirectTo: nextPath };
+}
+
+/** Sanitiza un destino interno: rechaza URLs externas, protocol-relative y
+ *  redirects de vuelta a páginas de auth (loop visual / open redirect). */
+function sanitizeNext(raw: string): string {
+  if (!raw.startsWith('/')) return '/app'; // No externa.
+  if (raw.startsWith('//')) return '/app'; // protocol-relative → externo disfrazado.
+  if (raw.startsWith('/login') || raw.startsWith('/signup')) return '/app';
+  return raw;
 }
 
 export async function signIn(formData: FormData): Promise<ActionResult> {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
-  const next = String(formData.get('next') ?? '/app');
+  const next = sanitizeNext(String(formData.get('next') ?? '/app'));
 
   if (!email || !password) {
     return { ok: false, error: 'Email y contraseña son obligatorios' };

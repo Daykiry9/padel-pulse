@@ -17,6 +17,7 @@ import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { DeleteAccountSection } from '@/components/delete-account-section';
+import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { updateProfile } from '@/lib/auth-actions';
 
@@ -53,10 +54,38 @@ export default async function ProfilePage({
     .select('*')
     .eq('id', user.id)
     .maybeSingle();
-  const profile = profileData as unknown as Profile | null;
-  // Si no existe perfil (caso borde post-borrado o race condition), redirigimos
-  // al dashboard donde el banner ofrece completar datos.
-  if (!profile) redirect('/app');
+  let profile = profileData as unknown as Profile | null;
+  // Self-heal: si la fila no existe (callback OAuth fallido en producción, o
+  // race condition de signup), la creamos acá en lugar de redirigir a /app
+  // donde el banner mandaría de vuelta — eso era el dead-end del workflow
+  // wf_3441189c.
+  if (!profile) {
+    const admin = getServiceRoleClient();
+    const meta = user.user_metadata as Record<string, unknown> | undefined;
+    const displayName =
+      (meta?.full_name as string | undefined) ??
+      (meta?.name as string | undefined) ??
+      (meta?.display_name as string | undefined) ??
+      user.email?.split('@')[0] ??
+      'Jugador';
+    await admin
+      .from('profiles')
+      .upsert(
+        { id: user.id, display_name: displayName } as never,
+        { onConflict: 'id', ignoreDuplicates: true },
+      );
+    const { data: healed } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+    profile = healed as unknown as Profile | null;
+    if (!profile) {
+      // Si el self-heal igual falla (problema más profundo de RLS / DB), mandamos
+      // al user a /login con un error explícito en vez de loop a /app.
+      redirect('/login?profile_error=1');
+    }
+  }
 
   return (
     <div className="space-y-8">
