@@ -176,7 +176,10 @@ export const CATEGORY_LABELS_SHORT: Record<string, string> = {
 
 // Sets actuales (los que ofrece el UI desde 2026-05-28).
 export const MASCULINO_CATEGORIES: TeamCategory[] = ['1', '2', '3', '4', '5', '6'];
-export const MIXTO_CATEGORIES: TeamCategory[] = ['mixto_a', 'mixto_b', 'mixto_c', 'mixto_d'];
+// Mixto: A, B, C (sin D, ajuste Gabriel 2026-05-31).
+// 'mixto_d' sigue siendo TeamCategory legal en tipo/label para no romper data
+// histórica, pero no se ofrece en el UI.
+export const MIXTO_CATEGORIES: TeamCategory[] = ['mixto_a', 'mixto_b', 'mixto_c'];
 export const FEMENINO_CATEGORIES: TeamCategory[] = [
   'femenino_a',
   'femenino_b',

@@ -40,11 +40,12 @@ type Profile = {
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: Promise<{ delete_error?: string }>;
+  searchParams: Promise<{ delete_error?: string; saved?: string }>;
 }) {
-  const { delete_error: deleteError } = await searchParams;
+  const { delete_error: deleteError, saved } = await searchParams;
   const deleteErrorTyped =
     deleteError === 'confirmation' || deleteError === 'server' ? deleteError : null;
+  const justSaved = saved === '1';
   const user = await getSession();
   if (!user) redirect('/login?next=/app/profile');
 
@@ -89,6 +90,16 @@ export default async function ProfilePage({
 
   return (
     <div className="space-y-8">
+      {justSaved && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="border-success/30 bg-success/[0.08] flex items-center gap-2 rounded-lg border px-4 py-3 text-sm"
+        >
+          <span className="text-success">✓</span>
+          <span>Perfil actualizado.</span>
+        </div>
+      )}
       <div>
         <Badge variant="crown">Mi perfil</Badge>
         <h1 className="font-display mt-3 text-3xl tracking-tight md:text-4xl">

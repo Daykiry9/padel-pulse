@@ -14,14 +14,15 @@ type ProfileFields = {
 
 /**
  * Banner en el dashboard que invita a completar el perfil cuando faltan los
- * datos opcionales que recolectaba el viejo onboarding. Se considera "completo"
- * si tiene al menos teléfono + categoría (lo demás es decorativo). Se oculta
- * si el user ya marcó esos dos.
+ * datos opcionales que recolectaba el viejo onboarding. Se oculta cuando el
+ * user llenó al menos UNO de los campos clave (categoría o teléfono). Antes
+ * exigía ambos AND → tras guardar parcial el banner seguía apareciendo y
+ * Gabriel reportó "no me deja completarlo" porque pensó que no se guardaba.
  */
 export function ProfileCompletionBanner({ profile }: { profile: ProfileFields | null }) {
   const hasPhone = Boolean(profile?.phone);
   const hasCategory = Boolean(profile?.skill_category);
-  if (hasPhone && hasCategory) return null;
+  if (hasPhone || hasCategory) return null;
 
   const missing: string[] = [];
   if (!hasCategory) missing.push('categoría');

@@ -336,5 +336,8 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
     return { ok: true, redirectTo: `/i/${nextInvite}` };
   }
 
-  return { ok: true, redirectTo: '/app' };
+  // Después de guardar: quedarse en /app/profile con flag de éxito para que el
+  // user vea visualmente que se guardó. Antes redirigía a /app y Gabriel pensaba
+  // "nada cambió, no me dejó".
+  return { ok: true, redirectTo: '/app/profile?saved=1' };
 }
