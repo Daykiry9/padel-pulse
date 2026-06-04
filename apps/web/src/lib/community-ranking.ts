@@ -1,5 +1,8 @@
+import { unstable_cache } from 'next/cache';
+
 import { computePaddleEloDeltas } from '@padelking/domain';
 
+import { getServiceRoleClient } from './supabase/admin';
 import type { ServerSupabase } from './supabase/server';
 
 export interface CommunityRankingEntry {
@@ -9,6 +12,15 @@ export interface CommunityRankingEntry {
   tournaments: number;
   matches: number;
   wins: number;
+}
+
+export interface CommunityTeamRankingEntry {
+  teamId: string;
+  name: string;
+  logoUrl: string | null;
+  totalPoints: number;
+  tournaments: number;
+  bestPosition: number | null;
 }
 
 type MatchRow = {
@@ -35,13 +47,18 @@ type RegRow = {
 const START_ELO = 1000;
 const K = 24; // casual/comunidad: movimiento moderado por partido
 
+// Tag builders — exportados para que server actions invaliden con el mismo formato.
+export const playerRankingTag = (communityId: string) =>
+  `community-ranking-${communityId}`;
+export const teamRankingTag = (communityId: string) =>
+  `community-team-ranking-${communityId}`;
+
 /**
- * Ranking interno de la comunidad por ELO. Simula todos los partidos COMPLETED
- * de los torneos de la comunidad en orden cronológico (cada uno pareja vs
- * pareja) y acumula el rating por jugador, más torneos y partidos jugados.
- * Funciona para fijo (parejas/registrations) y random (4 jugadores del partido).
+ * Implementación interna del ranking por ELO. Recibe supabase (server o admin)
+ * y NO cachea — el caller decide la estrategia. Útil cuando ya hay un
+ * supabase client a mano (tests, server actions) sin pagar otra creación.
  */
-export async function getCommunityPlayerRanking(
+export async function computeCommunityPlayerRanking(
   supabase: ServerSupabase,
   communityId: string,
 ): Promise<CommunityRankingEntry[]> {
@@ -181,4 +198,133 @@ export async function getCommunityPlayerRanking(
     }))
     .sort((a, b) => b.elo - a.elo || b.wins - a.wins)
     .slice(0, 20);
+}
+
+/**
+ * Ranking interno de la comunidad por ELO. Cacheado cross-request con
+ * `unstable_cache` (tag `community-ranking-<id>`, revalidate 5 min). Los datos
+ * son públicos a nivel comunidad, así que usamos service-role internamente —
+ * `unstable_cache` corre fuera del contexto de request y no puede leer cookies.
+ *
+ * Invalidar tras cerrar matches: `revalidateTag(playerRankingTag(communityId))`.
+ *
+ * Firma compatible — el primer arg (supabase) es opcional y se ignora; queda
+ * por backwards-compat con call sites que ya lo pasaban.
+ */
+export async function getCommunityPlayerRanking(
+  _supabaseOrCommunityId: ServerSupabase | string,
+  maybeCommunityId?: string,
+): Promise<CommunityRankingEntry[]> {
+  const communityId =
+    typeof _supabaseOrCommunityId === 'string'
+      ? _supabaseOrCommunityId
+      : (maybeCommunityId as string);
+  return getCachedPlayerRanking(communityId);
+}
+
+const getCachedPlayerRanking = (communityId: string) =>
+  unstable_cache(
+    async (id: string) => {
+      const admin = getServiceRoleClient() as unknown as ServerSupabase;
+      return computeCommunityPlayerRanking(admin, id);
+    },
+    ['community-player-ranking', communityId],
+    {
+      tags: [playerRankingTag(communityId)],
+      revalidate: 300,
+    },
+  )(communityId);
+
+/**
+ * Ranking oficial de equipos de la comunidad (últimos 12 meses).
+ * Lee `team_points` (snapshots cerrados por torneo) y agrega por team_id.
+ * Cacheado con tag `community-team-ranking-<id>`, revalidate 5 min.
+ */
+export async function getCommunityTeamRanking(
+  communityId: string,
+): Promise<CommunityTeamRankingEntry[]> {
+  return getCachedTeamRanking(communityId);
+}
+
+const getCachedTeamRanking = (communityId: string) =>
+  unstable_cache(
+    async (id: string) => computeCommunityTeamRanking(id),
+    ['community-team-ranking', communityId],
+    {
+      tags: [teamRankingTag(communityId)],
+      revalidate: 300,
+    },
+  )(communityId);
+
+async function computeCommunityTeamRanking(
+  communityId: string,
+): Promise<CommunityTeamRankingEntry[]> {
+  const admin = getServiceRoleClient();
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - 12);
+  const cutoff = cutoffDate.toISOString();
+
+  const { data: pointsData } = await admin
+    .from('team_points')
+    .select('team_id, points, position, tournament_id, awarded_at')
+    .eq('community_id', communityId)
+    .gte('awarded_at', cutoff);
+
+  const points = (pointsData ?? []) as {
+    team_id: string;
+    points: number;
+    position: number;
+    tournament_id: string;
+    awarded_at: string;
+  }[];
+  if (!points.length) return [];
+
+  // Agregar por team_id: suma de puntos, set de torneos, mejor posición.
+  const byTeam = new Map<
+    string,
+    { totalPoints: number; tournaments: Set<string>; bestPosition: number }
+  >();
+  for (const p of points) {
+    const cur = byTeam.get(p.team_id);
+    if (!cur) {
+      byTeam.set(p.team_id, {
+        totalPoints: p.points,
+        tournaments: new Set([p.tournament_id]),
+        bestPosition: p.position,
+      });
+    } else {
+      cur.totalPoints += p.points;
+      cur.tournaments.add(p.tournament_id);
+      if (p.position < cur.bestPosition) cur.bestPosition = p.position;
+    }
+  }
+
+  const teamIds = [...byTeam.keys()];
+  if (!teamIds.length) return [];
+
+  const { data: teamsData } = await admin
+    .from('teams')
+    .select('id, name, logo_url')
+    .in('id', teamIds);
+  const teamMap = new Map(
+    ((teamsData ?? []) as { id: string; name: string; logo_url: string | null }[]).map((t) => [
+      t.id,
+      t,
+    ]),
+  );
+
+  return teamIds
+    .map((id) => {
+      const agg = byTeam.get(id)!;
+      const team = teamMap.get(id);
+      return {
+        teamId: id,
+        name: team?.name ?? '?',
+        logoUrl: team?.logo_url ?? null,
+        totalPoints: agg.totalPoints,
+        tournaments: agg.tournaments.size,
+        bestPosition: agg.bestPosition,
+      };
+    })
+    .sort((a, b) => b.totalPoints - a.totalPoints || (a.bestPosition ?? 99) - (b.bestPosition ?? 99));
 }

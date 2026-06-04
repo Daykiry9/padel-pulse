@@ -1,6 +1,8 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+
+import { playerRankingTag, teamRankingTag } from './community-ranking';
 
 import {
   computePaddleEloDeltas,
@@ -786,6 +788,13 @@ export async function finishTournament(formData: FormData): Promise<ActionResult
   revalidatePath(`/tournaments/${t.slug}/live`);
   if (t.communities?.slug) revalidatePath(`/app/communities/${t.communities.slug}`);
   revalidatePath('/app/communities');
+
+  // Invalidar cache de rankings de la comunidad organizadora.
+  if (t.community_id) {
+    revalidateTag(playerRankingTag(t.community_id));
+    revalidateTag(teamRankingTag(t.community_id));
+  }
+
   return { ok: true };
 }
 
@@ -942,7 +951,7 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
   const { data } = await admin
     .from('matches')
     .select(
-      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id, tournaments(slug)',
+      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id, tournaments(slug, community_id)',
     )
     .eq('id', matchId)
     .single();
@@ -961,7 +970,7 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     pair_one_guest_two_id: string | null;
     pair_two_guest_one_id: string | null;
     pair_two_guest_two_id: string | null;
-    tournaments: { slug: string } | null;
+    tournaments: { slug: string; community_id: string | null } | null;
   } | null;
   if (!matchData || matchData.elo_applied_at) return;
 
@@ -1109,6 +1118,14 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
       })),
     );
   }
+
+  // Invalidar cache de rankings de la comunidad (si el torneo pertenece a una).
+  const communityId = matchData.tournaments?.community_id ?? null;
+  if (communityId) {
+    revalidateTag(playerRankingTag(communityId));
+    revalidateTag(teamRankingTag(communityId));
+  }
+
   revalidateMatch(slug);
 }
 

@@ -1,67 +1,55 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
-import { Card } from '@/components/ui/card';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { createTeam } from '@/lib/team-actions';
 
-export default async function NewTeamPage() {
+export default async function NewTeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ community?: string }>;
+}) {
   const user = await getSession();
   if (!user) redirect('/login');
 
+  const { community: communityParam } = await searchParams;
+
+  // Sin ?community=<id>: el user elige a qué comunidad sumar el equipo.
+  if (!communityParam) redirect('/app/communities');
+
   const supabase = await getSupabaseServerClient();
-  const communitiesRes = await supabase
+
+  // Validar membresía en la comunidad antes de mostrar el form.
+  const membershipRes = await supabase
     .from('community_members')
     .select('community_id, communities(name)')
-    .eq('profile_id', user.id);
+    .eq('profile_id', user.id)
+    .eq('community_id', communityParam)
+    .maybeSingle();
 
   type CommunityMembership = { community_id: string; communities: { name: string } | null };
-  const rows = (communitiesRes.data ?? []) as unknown as CommunityMembership[];
-  const myCommunities = rows.filter((c) => c.communities);
+  const membership = membershipRes.data as unknown as CommunityMembership | null;
+  if (!membership || !membership.communities) redirect('/app/communities');
 
-  if (myCommunities.length === 0) {
-    return (
-      <div className="max-w-xl space-y-6">
-        <h1 className="font-display text-4xl tracking-tight">CREAR EQUIPO</h1>
-        <Card className="p-6">
-          <p className="text-foreground/80">
-            Primero necesitas unirte a una comunidad. Tu equipo va a pertenecer a ella.
-          </p>
-          <Button variant="crown" className="mt-4" asChild>
-            <Link href="/app/communities">Ver comunidades</Link>
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  const communityName = membership.communities.name;
 
   return (
     <div className="max-w-xl space-y-8">
       <div>
         <h1 className="font-display text-4xl tracking-tight">CREAR EQUIPO</h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Un equipo son 2 jugadores fijos. La categoría y la Suma se calculan automáticamente.
+          Equipo en <span className="text-foreground">{communityName}</span>. Son 2 jugadores fijos;
+          la categoría y la Suma se calculan automáticamente.
         </p>
       </div>
 
       <ActionForm action={createTeam}>
+        <input type="hidden" name="community_id" value={membership.community_id} />
+
         <FormField label="Nombre del equipo" hint="Ej: Mejía / Rodríguez">
           <Input name="name" required minLength={3} placeholder="Mi Equipo" />
-        </FormField>
-
-        <FormField label="Comunidad principal">
-          <Select name="community_id" required>
-            {myCommunities.map((c) => (
-              <option key={c.community_id} value={c.community_id}>
-                {c.communities!.name}
-              </option>
-            ))}
-          </Select>
         </FormField>
 
         <FormField

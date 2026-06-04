@@ -14,48 +14,55 @@ export interface UserCommunity {
 }
 
 /**
- * Devuelve el community_id activo del usuario:
- *  1) cookie `active_community_id` validada contra membresía,
- *  2) fallback a `profiles.primary_community_id`,
- *  3) fallback al primer `community_members` del user,
- *  4) null si no pertenece a ninguna comunidad.
+ * Devuelve el community_id activo del usuario.
+ *
+ * SOURCE OF TRUTH: `profiles.active_community_id`.
+ * La cookie `active_community_id` es un hint cliente-side; si no matchea
+ * con DB, gana DB.
+ *
+ * Orden:
+ *  1) Lee `profiles.active_community_id` (validado contra membresía).
+ *  2) Si la cookie matchea con DB → devuelve ese id (rápido y consistente).
+ *  3) Si DB tiene valor válido → devuelve DB.
+ *  4) Fallback a primer `community_members` del user.
+ *  5) null si no pertenece a ninguna comunidad.
  */
 export async function getActiveCommunityId(
   supabase: ServerSupabase,
   userId: string,
 ): Promise<string | null> {
-  // 1) cookie
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(ACTIVE_COMMUNITY_COOKIE)?.value;
-  if (cookieValue && UUID_RE.test(cookieValue)) {
-    const { data: membership } = await supabase
-      .from('community_members')
-      .select('community_id')
-      .eq('profile_id', userId)
-      .eq('community_id', cookieValue)
-      .maybeSingle();
-    if (membership) return cookieValue;
-  }
 
-  // 2) profiles.primary_community_id
+  // 1) profiles.active_community_id (source of truth)
   const { data: profile } = await supabase
     .from('profiles')
-    .select('primary_community_id')
+    .select('active_community_id')
     .eq('id', userId)
     .maybeSingle();
-  const primaryId = (profile as { primary_community_id: string | null } | null)
-    ?.primary_community_id;
-  if (primaryId) {
+  const dbActiveId = (profile as { active_community_id: string | null } | null)
+    ?.active_community_id;
+
+  if (dbActiveId) {
+    // Validar membership (defensa en profundidad: la columna tiene FK + trigger,
+    // pero el user pudo salir entre dos requests).
     const { data: membership } = await supabase
       .from('community_members')
       .select('community_id')
       .eq('profile_id', userId)
-      .eq('community_id', primaryId)
+      .eq('community_id', dbActiveId)
       .maybeSingle();
-    if (membership) return primaryId;
+    if (membership) {
+      // Si la cookie matchea, perfecto. Si no matchea, igual devolvemos DB
+      // (la cookie se resincroniza la próxima vez que el user use el switcher).
+      if (cookieValue && UUID_RE.test(cookieValue) && cookieValue === dbActiveId) {
+        return cookieValue;
+      }
+      return dbActiveId;
+    }
   }
 
-  // 3) primer membership
+  // 2) fallback al primer membership
   const { data: first } = await supabase
     .from('community_members')
     .select('community_id')
