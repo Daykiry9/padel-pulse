@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { ManualPlayerForm } from '@/components/manual-player-form';
 import { RemoveRegistrationButton } from '@/components/remove-registration-button';
 import { ShareInviteButton } from '@/components/share-invite-button';
+import { SharePodiumButton } from '@/components/share-podium-button';
 import { ShareStoryButton } from '@/components/share-story-button';
 import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
 import { formatDateTime } from '@/lib/format-date';
@@ -416,6 +417,14 @@ export default async function CommunityTournamentDetailPage({
           variant="outline"
           size="lg"
         />
+        {tournament.status === 'finished' && (
+          <SharePodiumButton
+            slug={tournament.slug}
+            tournamentName={tournament.name}
+            variant="crown"
+            size="lg"
+          />
+        )}
       </div>
 
       {canChat && (

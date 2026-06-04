@@ -3,6 +3,8 @@ import { ImageResponse } from 'next/og';
 import { CATEGORY_LABELS } from '@padelking/domain';
 
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { loadShareFonts } from '@/lib/share-fonts';
+import { KingMark } from '@/lib/share/king-mark';
 
 export const runtime = 'nodejs';
 
@@ -42,7 +44,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     t.category_kind === 'queens_estandar' || t.category_kind === 'queens_suma';
   const accent = isQueens ? '#ec4899' : '#ffc53d';
   const accentDeep = isQueens ? '#831843' : '#7c4f05';
-  const brand = isQueens ? 'PADELQUEENS' : 'PADELKING';
+  const brandTail = isQueens ? 'QUEENS' : 'KING';
 
   const categoryLabel = t.category_kind.includes('suma')
     ? `SUMA ${t.min_sum}+`
@@ -63,18 +65,20 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   });
   // Satori exige que un <div> con >1 hijo tenga display:flex. Precomputamos
   // los textos compuestos como string único para evitarlo.
-  const dateTimeStr = `${dateStr} · ${timeStr}`;
+  const dateTimeStr = `${dateStr} · ${timeStr}`.toUpperCase();
   const venueStr = t.clubs ? `${t.clubs.name} · ${t.clubs.city}` : null;
   const priceStr =
-    t.price_per_team > 0 ? `$${t.price_per_team.toLocaleString('es-CO')} COP / equipo` : 'GRATIS';
+    t.price_per_team > 0 ? `$${t.price_per_team.toLocaleString('es-CO')} COP` : 'GRATIS';
   const inviteUrl = `padelking.co/tournaments/${slug}`;
 
   const statusLabel =
     t.status === 'finished'
-      ? 'FINALIZADO'
+      ? 'TORNEO FINALIZADO'
       : t.status === 'in_progress'
-        ? 'EN CURSO'
+        ? 'TORNEO EN CURSO'
         : 'INSCRIPCIONES ABIERTAS';
+
+  const fonts = await loadShareFonts();
 
   return new ImageResponse(
     (
@@ -84,32 +88,47 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
           height: '1920px',
           display: 'flex',
           flexDirection: 'column',
-          padding: '100px 80px',
+          padding: '110px 90px',
           background: '#0a0a0a',
           color: '#f1efea',
-          fontFamily: 'system-ui, sans-serif',
+          fontFamily: 'Manrope, sans-serif',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        {/* Glow decoration */}
+        {/* Glow decoration: top-right + bottom-left */}
         <div
           style={{
             position: 'absolute',
-            top: '-200px',
-            right: '-200px',
-            width: '900px',
-            height: '900px',
-            background: `radial-gradient(circle, ${accent}26 0%, transparent 70%)`,
+            top: '-280px',
+            right: '-260px',
+            width: '1100px',
+            height: '1100px',
+            background: `radial-gradient(circle, ${accent}33 0%, transparent 65%)`,
             display: 'flex',
           }}
         />
         <div
           style={{
             position: 'absolute',
-            bottom: '-300px',
-            left: '-200px',
-            width: '700px',
-            height: '700px',
-            background: `radial-gradient(circle, ${accentDeep}40 0%, transparent 70%)`,
+            bottom: '-340px',
+            left: '-260px',
+            width: '900px',
+            height: '900px',
+            background: `radial-gradient(circle, ${accentDeep}55 0%, transparent 65%)`,
+            display: 'flex',
+          }}
+        />
+
+        {/* Diagonal scan lines decoration */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            right: '0',
+            height: '8px',
+            background: accent,
             display: 'flex',
           }}
         />
@@ -119,36 +138,22 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '20px',
+            gap: '22px',
             zIndex: 10,
           }}
         >
+          <KingMark size={72} accent={accent} />
           <div
             style={{
-              width: '64px',
-              height: '64px',
-              background: accent,
-              borderRadius: '14px',
+              fontFamily: 'ArchivoBlack, sans-serif',
+              fontSize: '46px',
+              letterSpacing: '-0.01em',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '40px',
-              fontWeight: 900,
-              color: '#0a0a0a',
-            }}
-          >
-            {brand.slice(5, 6)}
-          </div>
-          <div
-            style={{
-              fontSize: '38px',
-              fontWeight: 900,
-              letterSpacing: '0.02em',
-              display: 'flex',
+              textTransform: 'uppercase',
             }}
           >
             <span style={{ color: '#f1efea' }}>PADEL</span>
-            <span style={{ color: accent }}>{brand.slice(5)}</span>
+            <span style={{ color: accent }}>{brandTail}</span>
           </div>
         </div>
 
@@ -156,34 +161,46 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
         <div
           style={{
             display: 'flex',
-            marginTop: '120px',
+            marginTop: '140px',
             zIndex: 10,
           }}
         >
           <div
             style={{
-              padding: '14px 28px',
+              padding: '16px 32px',
               borderRadius: '999px',
-              background: `${accent}22`,
-              border: `2px solid ${accent}66`,
+              background: `${accent}1A`,
+              border: `2px solid ${accent}`,
               color: accent,
-              fontSize: '24px',
-              fontWeight: 700,
-              letterSpacing: '0.15em',
+              fontSize: '26px',
+              fontWeight: 800,
+              letterSpacing: '0.18em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
             }}
           >
+            <div
+              style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '999px',
+                background: accent,
+                display: 'flex',
+              }}
+            />
             {statusLabel}
           </div>
         </div>
 
-        {/* Tournament name */}
+        {/* Tournament name (display font, huge, tight) */}
         <div
           style={{
-            fontSize: '110px',
-            fontWeight: 900,
-            lineHeight: 0.95,
-            letterSpacing: '-0.02em',
-            marginTop: '40px',
+            fontFamily: 'ArchivoBlack, sans-serif',
+            fontSize: t.name.length > 22 ? '120px' : '150px',
+            lineHeight: 0.9,
+            letterSpacing: '-0.035em',
+            marginTop: '44px',
             textTransform: 'uppercase',
             zIndex: 10,
             display: 'flex',
@@ -193,74 +210,87 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
           {t.name}
         </div>
 
-        {/* Category big */}
+        {/* Category accent line */}
         <div
           style={{
-            marginTop: '60px',
-            fontSize: '90px',
-            fontWeight: 900,
-            color: accent,
-            letterSpacing: '-0.01em',
-            zIndex: 10,
+            marginTop: '50px',
             display: 'flex',
+            alignItems: 'center',
+            gap: '28px',
+            zIndex: 10,
           }}
         >
-          {categoryLabel}
+          <div
+            style={{
+              width: '64px',
+              height: '4px',
+              background: accent,
+              display: 'flex',
+            }}
+          />
+          <div
+            style={{
+              fontFamily: 'ArchivoBlack, sans-serif',
+              fontSize: '54px',
+              color: accent,
+              letterSpacing: '-0.01em',
+              display: 'flex',
+            }}
+          >
+            {categoryLabel}
+          </div>
         </div>
 
-        {/* Details bottom */}
+        {/* Details bottom block */}
         <div
           style={{
             marginTop: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px',
+            gap: '36px',
             zIndex: 10,
           }}
         >
-          {/* Date row */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '24px' }}>
-            <span style={{ fontSize: '20px', color: '#a8a6a0', letterSpacing: '0.18em', fontWeight: 600 }}>
-              FECHA
-            </span>
-            <span style={{ fontSize: '40px', fontWeight: 700, textTransform: 'capitalize' }}>
-              {dateTimeStr}
-            </span>
-          </div>
+          {/* Date */}
+          <DetailRow label="FECHA" value={dateTimeStr} />
+          {venueStr && <DetailRow label="SEDE" value={venueStr} />}
+          <DetailRow label="ENTRADA" value={priceStr} />
 
-          {/* Venue */}
-          {venueStr && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '24px' }}>
-              <span style={{ fontSize: '20px', color: '#a8a6a0', letterSpacing: '0.18em', fontWeight: 600 }}>
-                SEDE
-              </span>
-              <span style={{ fontSize: '40px', fontWeight: 700 }}>{venueStr}</span>
-            </div>
-          )}
-
-          {/* Price */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '24px' }}>
-            <span style={{ fontSize: '20px', color: '#a8a6a0', letterSpacing: '0.18em', fontWeight: 600 }}>
-              ENTRADA
-            </span>
-            <span style={{ fontSize: '40px', fontWeight: 700 }}>{priceStr}</span>
-          </div>
-
-          {/* CTA */}
+          {/* CTA card */}
           <div
             style={{
-              marginTop: '60px',
-              padding: '24px 32px',
-              borderTop: '2px solid rgba(241, 239, 234, 0.15)',
+              marginTop: '40px',
+              padding: '36px 40px',
+              border: `2px solid ${accent}`,
+              borderRadius: '20px',
+              background: `${accent}10`,
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
+              gap: '10px',
             }}
           >
-            <div style={{ fontSize: '22px', color: '#a8a6a0', letterSpacing: '0.18em', fontWeight: 600 }}>
+            <div
+              style={{
+                fontSize: '22px',
+                color: '#a8a6a0',
+                letterSpacing: '0.22em',
+                fontWeight: 700,
+                display: 'flex',
+              }}
+            >
               INSCRÍBETE EN
             </div>
-            <div style={{ fontSize: '36px', fontWeight: 700, color: accent }}>{inviteUrl}</div>
+            <div
+              style={{
+                fontFamily: 'ArchivoBlack, sans-serif',
+                fontSize: '52px',
+                color: accent,
+                letterSpacing: '-0.01em',
+                display: 'flex',
+              }}
+            >
+              {inviteUrl}
+            </div>
           </div>
         </div>
       </div>
@@ -268,6 +298,43 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     {
       width: 1080,
       height: 1920,
+      fonts,
     },
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '22px',
+          color: '#a8a6a0',
+          letterSpacing: '0.22em',
+          fontWeight: 700,
+          display: 'flex',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: '46px',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '-0.005em',
+          color: '#f1efea',
+          display: 'flex',
+        }}
+      >
+        {value}
+      </div>
+    </div>
   );
 }

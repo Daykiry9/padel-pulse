@@ -38,6 +38,9 @@ type RegRow = {
   player_one_id: string | null;
   player_two_id: string | null;
   player_id: string | null;
+  guest_player_id: string | null;
+  guest_player_one_id: string | null;
+  guest_player_two_id: string | null;
 };
 
 type MatchRow = {
@@ -55,6 +58,10 @@ type MatchRow = {
   pair_one_player_two_id: string | null;
   pair_two_player_one_id: string | null;
   pair_two_player_two_id: string | null;
+  pair_one_guest_one_id: string | null;
+  pair_one_guest_two_id: string | null;
+  pair_two_guest_one_id: string | null;
+  pair_two_guest_two_id: string | null;
 };
 
 export default async function ManageTournamentPage({
@@ -101,7 +108,9 @@ export default async function ManageTournamentPage({
   // 2. Inscripciones confirmadas + datos para mostrar nombres
   const { data: regsData } = await supabase
     .from('tournament_registrations')
-    .select('id, team_id, player_one_id, player_two_id, player_id')
+    .select(
+      'id, team_id, player_one_id, player_two_id, player_id, guest_player_id, guest_player_one_id, guest_player_two_id',
+    )
     .eq('tournament_id', tournament.id)
     .eq('status', 'confirmed');
   const registrations = (regsData ?? []) as unknown as RegRow[];
@@ -114,6 +123,9 @@ export default async function ManageTournamentPage({
         .filter(Boolean) as string[],
     ),
   );
+  const guestIdsFromRegs = registrations
+    .flatMap((r) => [r.guest_player_id, r.guest_player_one_id, r.guest_player_two_id])
+    .filter(Boolean) as string[];
 
   const [teamsRes, profilesRes] = await Promise.all([
     teamIds.length
@@ -134,27 +146,91 @@ export default async function ManageTournamentPage({
     ]),
   );
 
+  const isRandom = tournament.format === 'americano_random';
+
+  // 3. Matches (necesitamos pair_*_guest_*_id para juntar todos los guest ids antes
+  //    del lookup batched a guest_players).
+  const { data: matchesData } = await supabase
+    .from('matches')
+    .select(
+      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
+    )
+    .eq('tournament_id', tournament.id)
+    .order('round_number')
+    .order('court_number');
+  const matches = (matchesData ?? []) as unknown as MatchRow[];
+
+  const guestIds = Array.from(
+    new Set([
+      ...guestIdsFromRegs,
+      ...matches.flatMap((m) => [
+        m.pair_one_guest_one_id,
+        m.pair_one_guest_two_id,
+        m.pair_two_guest_one_id,
+        m.pair_two_guest_two_id,
+      ]).filter(Boolean) as string[],
+    ]),
+  );
+  const guestNameMap = new Map<string, string>();
+  if (guestIds.length) {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const sbGuests = supabase as any;
+    const { data: guestData } = await sbGuests
+      .from('guest_players')
+      .select('id, display_name')
+      .in('id', guestIds);
+    for (const g of (guestData ?? []) as { id: string; display_name: string }[]) {
+      guestNameMap.set(g.id, g.display_name);
+    }
+  }
+
+  const labelForSlot = (profileId: string | null, guestId: string | null): string => {
+    if (profileId) return profiles.get(profileId) ?? '?';
+    if (guestId) {
+      const name = guestNameMap.get(guestId) ?? '?';
+      return `${name} (invitado)`;
+    }
+    return '?';
+  };
+
   function labelOf(reg: RegRow): string {
     if (reg.team_id && teams.has(reg.team_id)) return teams.get(reg.team_id)!;
-    if (reg.player_one_id && reg.player_two_id) {
-      const a = profiles.get(reg.player_one_id) ?? '?';
-      const b = profiles.get(reg.player_two_id) ?? '?';
+    if (
+      reg.player_one_id ||
+      reg.player_two_id ||
+      reg.guest_player_one_id ||
+      reg.guest_player_two_id
+    ) {
+      const a = labelForSlot(reg.player_one_id, reg.guest_player_one_id);
+      const b = labelForSlot(reg.player_two_id, reg.guest_player_two_id);
       return `${a} / ${b}`;
     }
     if (reg.player_id) return profiles.get(reg.player_id) ?? '?';
+    if (reg.guest_player_id) {
+      const name = guestNameMap.get(reg.guest_player_id) ?? '?';
+      return `${name} (invitado)`;
+    }
     return 'Inscripción';
   }
   const regLabels = new Map(registrations.map((r) => [r.id, labelOf(r)]));
 
-  const isRandom = tournament.format === 'americano_random';
-  const playerName = (id: string | null): string => (id ? (profiles.get(id) ?? '?') : '?');
   const sideLabel = (m: MatchRow, side: 'one' | 'two'): string => {
     if (isRandom) {
-      const [p1, p2] =
+      const [p1, p2, g1, g2] =
         side === 'one'
-          ? [m.pair_one_player_one_id, m.pair_one_player_two_id]
-          : [m.pair_two_player_one_id, m.pair_two_player_two_id];
-      return `${playerName(p1)} / ${playerName(p2)}`;
+          ? [
+              m.pair_one_player_one_id,
+              m.pair_one_player_two_id,
+              m.pair_one_guest_one_id,
+              m.pair_one_guest_two_id,
+            ]
+          : [
+              m.pair_two_player_one_id,
+              m.pair_two_player_two_id,
+              m.pair_two_guest_one_id,
+              m.pair_two_guest_two_id,
+            ];
+      return `${labelForSlot(p1, g1)} / ${labelForSlot(p2, g2)}`;
     }
     const regId = side === 'one' ? m.registration_one_id : m.registration_two_id;
     return (regId && regLabels.get(regId)) || '?';
@@ -169,17 +245,6 @@ export default async function ManageTournamentPage({
       ? (regLabels.get(m.reported_by_registration_id) ?? null)
       : null;
   };
-
-  // 3. Matches
-  const { data: matchesData } = await supabase
-    .from('matches')
-    .select(
-      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
-    )
-    .eq('tournament_id', tournament.id)
-    .order('round_number')
-    .order('court_number');
-  const matches = (matchesData ?? []) as unknown as MatchRow[];
 
   // Agrupar por ronda
   const matchesByRound = new Map<number, MatchRow[]>();

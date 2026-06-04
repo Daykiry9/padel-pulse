@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   if (allCommunities.length === 0) {
     return (
       <div className="space-y-10">
-        <ProfileCompletionBanner profile={profile} />
+        <ProfileCompletionBanner profile={profile} userId={user.id} />
         <NoCommunityEmptyState />
       </div>
     );
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      <ProfileCompletionBanner profile={profile} />
+      <ProfileCompletionBanner profile={profile} userId={user.id} />
       <CommunityHubHome
         user={user}
         activeCommunity={activeCommunity}

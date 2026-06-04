@@ -34,6 +34,9 @@ type RegRow = {
   player_one_id: string | null;
   player_two_id: string | null;
   player_id: string | null;
+  guest_player_id: string | null;
+  guest_player_one_id: string | null;
+  guest_player_two_id: string | null;
 };
 
 type MatchRow = {
@@ -51,6 +54,10 @@ type MatchRow = {
   pair_one_player_two_id: string | null;
   pair_two_player_one_id: string | null;
   pair_two_player_two_id: string | null;
+  pair_one_guest_one_id: string | null;
+  pair_one_guest_two_id: string | null;
+  pair_two_guest_one_id: string | null;
+  pair_two_guest_two_id: string | null;
 };
 
 interface Standing {
@@ -91,13 +98,15 @@ export default async function LiveTournamentPage({
   const [regsRes, matchesRes] = await Promise.all([
     supabase
       .from('tournament_registrations')
-      .select('id, team_id, player_one_id, player_two_id, player_id')
+      .select(
+        'id, team_id, player_one_id, player_two_id, player_id, guest_player_id, guest_player_one_id, guest_player_two_id',
+      )
       .eq('tournament_id', tournament.id)
       .eq('status', 'confirmed'),
     supabase
       .from('matches')
       .select(
-        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
+        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
       )
       .eq('tournament_id', tournament.id)
       .order('round_number')
@@ -159,14 +168,63 @@ export default async function LiveTournamentPage({
     ]),
   );
 
-  const playerName = (id: string | null): string => (id ? (profiles.get(id) ?? '?') : '?');
+  // Guests: lookup batched a guest_players (incluye los de regs + los de matches random)
+  const guestIds = Array.from(
+    new Set(
+      [
+        ...registrations.flatMap((r) => [
+          r.guest_player_id,
+          r.guest_player_one_id,
+          r.guest_player_two_id,
+        ]),
+        ...matches.flatMap((m) => [
+          m.pair_one_guest_one_id,
+          m.pair_one_guest_two_id,
+          m.pair_two_guest_one_id,
+          m.pair_two_guest_two_id,
+        ]),
+      ].filter(Boolean) as string[],
+    ),
+  );
+  const guestNameMap = new Map<string, string>();
+  if (guestIds.length) {
+    // sb (any-cast) ya existe arriba — usado para profiles_public mientras se
+    // regeneran los types de Supabase tras la migracion de guest_players.
+    const { data: guestData } = await sb
+      .from('guest_players')
+      .select('id, display_name')
+      .in('id', guestIds);
+    for (const g of (guestData ?? []) as { id: string; display_name: string }[]) {
+      guestNameMap.set(g.id, g.display_name);
+    }
+  }
+
+  const labelForSlot = (profileId: string | null, guestId: string | null): string => {
+    if (profileId) return profiles.get(profileId) ?? '?';
+    if (guestId) {
+      const name = guestNameMap.get(guestId) ?? '?';
+      return `${name} (invitado)`;
+    }
+    return '?';
+  };
 
   const labelOf = (reg: RegRow): string => {
     if (reg.team_id && teams.has(reg.team_id)) return teams.get(reg.team_id)!;
-    if (reg.player_one_id && reg.player_two_id) {
-      return `${profiles.get(reg.player_one_id) ?? '?'} / ${profiles.get(reg.player_two_id) ?? '?'}`;
+    if (
+      reg.player_one_id ||
+      reg.player_two_id ||
+      reg.guest_player_one_id ||
+      reg.guest_player_two_id
+    ) {
+      const a = labelForSlot(reg.player_one_id, reg.guest_player_one_id);
+      const b = labelForSlot(reg.player_two_id, reg.guest_player_two_id);
+      return `${a} / ${b}`;
     }
     if (reg.player_id) return profiles.get(reg.player_id) ?? '?';
+    if (reg.guest_player_id) {
+      const name = guestNameMap.get(reg.guest_player_id) ?? '?';
+      return `${name} (invitado)`;
+    }
     return 'Inscripción';
   };
   const regLabels = new Map(registrations.map((r) => [r.id, labelOf(r)]));
@@ -175,11 +233,21 @@ export default async function LiveTournamentPage({
   // de esa cancha en esa ronda; en fijo es la inscripción-pareja.
   const sideLabel = (m: MatchRow, side: 'one' | 'two'): string => {
     if (isRandom) {
-      const [p1, p2] =
+      const [p1, p2, g1, g2] =
         side === 'one'
-          ? [m.pair_one_player_one_id, m.pair_one_player_two_id]
-          : [m.pair_two_player_one_id, m.pair_two_player_two_id];
-      return `${playerName(p1)} / ${playerName(p2)}`;
+          ? [
+              m.pair_one_player_one_id,
+              m.pair_one_player_two_id,
+              m.pair_one_guest_one_id,
+              m.pair_one_guest_two_id,
+            ]
+          : [
+              m.pair_two_player_one_id,
+              m.pair_two_player_two_id,
+              m.pair_two_guest_one_id,
+              m.pair_two_guest_two_id,
+            ];
+      return `${labelForSlot(p1, g1)} / ${labelForSlot(p2, g2)}`;
     }
     const regId = side === 'one' ? m.registration_one_id : m.registration_two_id;
     return (regId && regLabels.get(regId)) || '?';
@@ -215,20 +283,30 @@ export default async function LiveTournamentPage({
   let displayStandings: DisplayStanding[];
 
   if (isRandom) {
+    // Cada slot del bracket random es player_*_id XOR guest_*_id. Para el standings
+    // unificamos en un solo id efectivo (profile.id o guest.id) y la etiqueta sale
+    // del map combinado (profiles + guests).
+    const standingsLabel = (id: string): string => {
+      if (profiles.has(id)) return profiles.get(id)!;
+      const g = guestNameMap.get(id);
+      return g ? `${g} (invitado)` : '?';
+    };
     const results = matches
       .filter((m) => m.status === 'completed' && m.score_one != null && m.score_two != null)
       .map((m) => ({
-        pairOnePlayerOneId: m.pair_one_player_one_id ?? '',
-        pairOnePlayerTwoId: m.pair_one_player_two_id ?? '',
-        pairTwoPlayerOneId: m.pair_two_player_one_id ?? '',
-        pairTwoPlayerTwoId: m.pair_two_player_two_id ?? '',
+        pairOnePlayerOneId: (m.pair_one_player_one_id ?? m.pair_one_guest_one_id ?? '') as string,
+        pairOnePlayerTwoId: (m.pair_one_player_two_id ?? m.pair_one_guest_two_id ?? '') as string,
+        pairTwoPlayerOneId: (m.pair_two_player_one_id ?? m.pair_two_guest_one_id ?? '') as string,
+        pairTwoPlayerTwoId: (m.pair_two_player_two_id ?? m.pair_two_guest_two_id ?? '') as string,
         scoreOne: m.score_one as number,
         scoreTwo: m.score_two as number,
       }));
-    const allPlayerIds = registrations.map((r) => r.player_id).filter(Boolean) as string[];
+    const allPlayerIds = registrations
+      .map((r) => r.player_id ?? r.guest_player_id)
+      .filter(Boolean) as string[];
     displayStandings = computeAmericanoStandings(results, allPlayerIds).map((s) => ({
       key: s.playerId,
-      label: playerName(s.playerId),
+      label: standingsLabel(s.playerId),
       wins: s.wins,
       diff: s.diff,
       points: s.points,
