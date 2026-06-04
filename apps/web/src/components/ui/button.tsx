@@ -1,8 +1,11 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { motion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
+import { easing, scale } from '@/lib/motion-tokens';
+import * as haptics from '@/lib/haptics';
 
 /**
  * Button (Emil Kowalski principles):
@@ -12,6 +15,8 @@ import { cn } from '@/lib/utils';
  *  - :active scale(0.97) para feedback de press
  *  - sombras sutiles (sin shadow-lg)
  *  - focus-visible: ring sin offset agresivo
+ *  - motion: whileTap scale + spring (framer-motion respeta prefers-reduced-motion)
+ *  - haptics: tap() en variants normales, confirm() en destructive
  */
 const buttonVariants = cva(
   [
@@ -67,10 +72,41 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
+  ({ className, variant, size, asChild = false, onClick, ...props }, ref) => {
+    const handleClick = React.useCallback(
+      (event: React.MouseEvent<HTMLButtonElement>) => {
+        // Fire-and-forget: no await — el click sigue inmediato.
+        if (variant === 'destructive') {
+          void haptics.confirm();
+        } else {
+          void haptics.tap();
+        }
+        onClick?.(event);
+      },
+      [variant, onClick],
+    );
+
+    if (asChild) {
+      // Slot no soporta motion wrapper sin romper la composición con el hijo.
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          onClick={handleClick}
+          {...props}
+        />
+      );
+    }
+
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <motion.button
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        onClick={handleClick}
+        whileTap={{ scale: scale.tap }}
+        transition={easing.spring}
+        {...(props as React.ComponentPropsWithoutRef<typeof motion.button>)}
+      />
     );
   },
 );

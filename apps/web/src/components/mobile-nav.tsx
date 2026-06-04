@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { CircleUser, Home, Shield, Trophy, Users } from 'lucide-react';
 
 const BASE_ITEMS = [
@@ -72,10 +73,17 @@ export function MobileNav({
             <Link
               key={item.href}
               href={item.href}
-              className={`focus-card flex min-h-[3.25rem] flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+              className={`focus-card relative flex min-h-[3.25rem] flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
                 isActive ? 'text-crown' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
+              {isActive && (
+                <motion.div
+                  layoutId="active-tab-indicator"
+                  className="bg-crown absolute left-0 right-0 top-0 h-0.5"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
               <item.icon className="size-5" />
               <span className="text-[10px] uppercase tracking-wider">{item.label}</span>
             </Link>

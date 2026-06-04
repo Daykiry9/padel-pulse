@@ -1,5 +1,10 @@
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  MemberAvatarSkeleton,
+  RankingRowSkeleton,
+  TournamentCardSkeleton,
+} from '@/components/ui/skeletons';
 import { StatCard } from '@/components/ui/stat-card';
 
 export default function DashboardLoading() {
@@ -31,17 +36,19 @@ export default function DashboardLoading() {
         </Card>
       </div>
 
-      <div>
+      <div className="space-y-4">
         <Skeleton className="h-5 w-40" />
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="space-y-2 p-4">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-5 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </Card>
-          ))}
-        </div>
+        <TournamentCardSkeleton count={3} />
+      </div>
+
+      <div className="space-y-4">
+        <Skeleton className="h-5 w-40" />
+        <RankingRowSkeleton count={5} />
+      </div>
+
+      <div className="space-y-4">
+        <Skeleton className="h-5 w-40" />
+        <MemberAvatarSkeleton count={6} />
       </div>
     </div>
   );

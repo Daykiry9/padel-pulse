@@ -3,10 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useRef, type ReactNode } from 'react';
 import { useFormStatus } from 'react-dom';
+import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import type { ActionResult } from '@/lib/auth-actions';
+import * as haptics from '@/lib/haptics';
 
 interface ActionFormProps {
   action: (formData: FormData) => Promise<ActionResult>;
@@ -28,6 +30,8 @@ export function ActionForm({ action, className, children, onSuccess }: ActionFor
 
   useEffect(() => {
     if (state.ok && state.redirectTo) {
+      toast.success('Listo');
+      void haptics.success();
       onSuccess?.();
       router.push(state.redirectTo);
       router.refresh();
@@ -38,9 +42,12 @@ export function ActionForm({ action, className, children, onSuccess }: ActionFor
   // Crítico en mobile/Android WebView donde el error inline al final del form
   // queda fuera de pantalla tras el tap en "Guardar" y el user cree que "no pasó nada".
   useEffect(() => {
-    if (!state.ok && state.error && errorRef.current) {
-      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      errorRef.current.focus();
+    if (!state.ok && state.error) {
+      void haptics.error();
+      if (errorRef.current) {
+        errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        errorRef.current.focus();
+      }
     }
   }, [state]);
 

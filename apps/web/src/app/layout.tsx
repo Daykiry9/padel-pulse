@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo_Black, JetBrains_Mono, Manrope } from 'next/font/google';
+import { Toaster } from 'sonner';
 
 import { MobileNav } from '@/components/mobile-nav';
 import { getBrandFromCookie } from '@/lib/brand';
@@ -108,6 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       >
         {children}
         <MobileNav isNative={native} isAuthed={Boolean(user)} isSuperAdmin={isSuperAdmin} />
+        <Toaster position="top-center" expand={false} richColors />
       </body>
     </html>
   );
