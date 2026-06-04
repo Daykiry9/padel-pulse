@@ -16,6 +16,7 @@ type Community = {
   description: string | null;
   city: string;
   rating: number;
+  logo_url: string | null;
   member_count?: number;
   recent_members?: { profile_id: string; display_name: string | null }[];
 };
@@ -28,7 +29,7 @@ export default async function CommunitiesPage() {
   const [allRes, mineRes] = await Promise.all([
     supabase
       .from('communities')
-      .select('id, slug, name, description, city, rating')
+      .select('id, slug, name, description, city, rating, logo_url')
       .order('rating', { ascending: false })
       .limit(50),
     supabase.from('community_members').select('community_id').eq('profile_id', user.id),
@@ -134,7 +135,12 @@ function CommunityCard({ community, isMember }: { community: Community; isMember
       <Card className="group hover:border-gold-400/40 relative h-full overflow-hidden p-5 transition-[border-color,background-color] duration-[var(--duration-base)]">
         {/* Avatar grande arriba */}
         <div className="flex items-start justify-between gap-3">
-          <Avatar seed={community.slug} name={community.name} size="xl" />
+          <Avatar
+            seed={community.id}
+            name={community.name}
+            src={community.logo_url ?? null}
+            size="xl"
+          />
           {isMember && <Badge variant="success">Miembro</Badge>}
         </div>
 
