@@ -10,6 +10,7 @@ import { SiteFooter } from '@/components/site-footer';
 import { CATEGORY_LABELS } from '@padelking/domain';
 
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { getCommunityPlayerRanking } from '@/lib/community-ranking';
 
 const HAND_LABELS: Record<string, string> = {
   right: 'Derecha',
@@ -38,11 +39,14 @@ type PublicProfile = {
   elo_rating: number;
 };
 
-type Ranking = {
-  total_points: number;
-  tournaments_played: number;
-  raw_tier1_points: number;
-  raw_tier2_points: number;
+type CommunityRankingItem = {
+  communityId: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  position: number;
+  elo: number;
+  totalPlayers: number;
 };
 
 export default async function PublicPlayerPage({
@@ -67,13 +71,50 @@ export default async function PublicPlayerPage({
   const player = profileData as unknown as PublicProfile | null;
   if (!player) notFound();
 
-  const { data: rankingData } = await supabase
-    .from('player_ranking_consolidated')
-    .select('total_points, tournaments_played, raw_tier1_points, raw_tier2_points')
+  // Comunidades públicas en las que participa el jugador.
+  const { data: memberRows } = await sb
+    .from('community_members')
+    .select('community_id, communities!inner(id, name, slug, logo_url, is_public)')
     .eq('profile_id', id)
-    .maybeSingle();
-  const ranking = rankingData as unknown as Ranking | null;
+    .eq('communities.is_public', true);
 
+  type MemberRow = {
+    community_id: string;
+    communities: {
+      id: string;
+      name: string;
+      slug: string;
+      logo_url: string | null;
+      is_public: boolean;
+    };
+  };
+  const memberCommunities = ((memberRows ?? []) as MemberRow[]).map((r) => r.communities);
+
+  // Para cada comunidad pública, sacar el ranking interno y la entry del jugador.
+  const communityRankings: CommunityRankingItem[] = (
+    await Promise.all(
+      memberCommunities.map(async (c) => {
+        const ranking = await getCommunityPlayerRanking(c.id);
+        const idx = ranking.findIndex((e) => e.playerId === id);
+        if (idx === -1) return null;
+        const entry = ranking[idx]!;
+        return {
+          communityId: c.id,
+          name: c.name,
+          slug: c.slug,
+          logoUrl: c.logo_url,
+          position: idx + 1,
+          elo: entry.elo,
+          totalPlayers: ranking.length,
+        };
+      }),
+    )
+  ).filter((x): x is CommunityRankingItem => x !== null)
+    .sort((a, b) => a.position - b.position);
+
+  // Totales de torneos jugados para reliability (cuenta tournament_ids únicos
+  // de las registrations del jugador). Reemplaza tournaments_played de la
+  // vista consolidada (que removimos).
   const isQueens = player.gender === 'female' && player.skill_category?.startsWith('queens_');
   const yearsPlaying = player.playing_since_year
     ? new Date().getFullYear() - player.playing_since_year
@@ -135,8 +176,8 @@ export default async function PublicPlayerPage({
     }
   }
 
-  // Reliability del ELO según tournaments_played
-  const tournamentsPlayed = ranking?.tournaments_played ?? 0;
+  // Reliability del ELO según torneos jugados (derivado de registrations).
+  const tournamentsPlayed = myTournamentIds.length;
   const reliability =
     tournamentsPlayed === 0
       ? { level: 'none', label: 'Sin data', pct: 5 }
@@ -174,7 +215,7 @@ export default async function PublicPlayerPage({
         </div>
 
         {/* Stats principales */}
-        <div className="mt-8 grid gap-3 md:grid-cols-3">
+        <div className="mt-8 grid gap-3 md:grid-cols-2">
           <Card className={`p-5 ${isQueens ? 'border-queens/30 bg-queens/[0.04]' : 'border-crown/30 bg-crown/[0.04]'}`}>
             <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
               ELO individual
@@ -234,25 +275,13 @@ export default async function PublicPlayerPage({
 
           <Card className="p-5">
             <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-              Puntos ranking
-            </div>
-            <div className="font-display mt-1 text-4xl tabular-nums tracking-tight">
-              {(ranking?.total_points ?? 0).toLocaleString('es-CO')}
-            </div>
-            <div className="text-muted-foreground mt-1 text-xs">
-              últimos 12 meses
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
               Torneos
             </div>
             <div className="font-display mt-1 text-4xl tabular-nums tracking-tight">
-              {ranking?.tournaments_played ?? 0}
+              {tournamentsPlayed}
             </div>
             <div className="text-muted-foreground mt-1 text-xs">
-              últimos 12 meses
+              jugados en total
             </div>
           </Card>
         </div>
@@ -289,24 +318,48 @@ export default async function PublicPlayerPage({
           </dl>
         </Card>
 
-        {/* Histórico de torneos — placeholder hasta que haya data real */}
+        {/* Ranking en sus comunidades */}
         <Card className="mt-6 p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg tracking-tight">HISTORIAL · 12 MESES</h2>
-            <span className="text-muted-foreground text-[10px] uppercase tracking-widest">
-              {ranking?.tournaments_played ?? 0} torneos
-            </span>
-          </div>
-          {(ranking?.tournaments_played ?? 0) === 0 ? (
-            <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/40 px-4 py-8 text-center text-sm">
-              Aún sin torneos jugados. Cuando juegue su primer torneo,
-              <br className="hidden md:inline" />
-              aparecerá aquí su historial con posición y puntos sumados.
+          <h2 className="font-display text-lg tracking-tight">RANKING EN SUS COMUNIDADES</h2>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Posición y ELO interno en cada comunidad pública.
+          </p>
+          {communityRankings.length === 0 ? (
+            <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/40 px-4 py-6 text-center text-xs">
+              Aún no participa en comunidades públicas
             </div>
           ) : (
-            <div className="text-muted-foreground mt-4 text-sm">
-              Mostrando los últimos torneos jugados (vista detallada próximamente).
-            </div>
+            <ul className="divide-border/30 mt-4 divide-y">
+              {communityRankings.map((c) => (
+                <li key={c.communityId}>
+                  <Link
+                    href={`/app/communities/${c.slug}`}
+                    className="focus-card hover:bg-muted/30 -mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors"
+                  >
+                    <Avatar
+                      seed={c.communityId}
+                      name={c.name}
+                      src={c.logoUrl ?? undefined}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{c.name}</div>
+                      <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                        #{c.position} de {c.totalPlayers}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-display text-lg tabular-nums ${isQueens ? 'text-queens' : 'text-crown'}`}>
+                        {c.elo}
+                      </div>
+                      <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                        ELO
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </Card>
 
@@ -340,35 +393,10 @@ export default async function PublicPlayerPage({
           )}
         </Card>
 
-        {/* Desglose ranking */}
-        {ranking && ranking.total_points > 0 && (
-          <Card className="mt-6 p-6">
-            <h2 className="font-display mb-4 text-lg tracking-tight">DESGLOSE DE RANKING</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="border-border/40 rounded-lg border p-3">
-                <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-                  Tier 1 (oficiales · x1.0)
-                </div>
-                <div className="font-display mt-1 text-2xl tabular-nums text-crown">
-                  {ranking.raw_tier1_points.toLocaleString('es-CO')}
-                </div>
-              </div>
-              <div className="border-border/40 rounded-lg border p-3">
-                <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-                  Tier 2 (casuales · x0.5)
-                </div>
-                <div className="font-display mt-1 text-2xl tabular-nums text-data">
-                  {ranking.raw_tier2_points.toLocaleString('es-CO')}
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
         <div className="text-muted-foreground mt-8 text-center text-xs">
           Perfil público de PadelKing.{' '}
-          <Link href="/rankings" className="text-crown hover:underline">
-            Ver ranking nacional
+          <Link href="/app" className="text-crown hover:underline">
+            Ver mi ranking
           </Link>
         </div>
       </main>

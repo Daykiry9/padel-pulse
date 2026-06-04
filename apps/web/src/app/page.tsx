@@ -70,9 +70,6 @@ function SiteHeader({ isAuthed }: { isAuthed: boolean }) {
           <Link href="#categorias" className="hover:text-foreground transition-colors">
             Categorías
           </Link>
-          <Link href="/rankings" className="hover:text-foreground transition-colors">
-            Ranking
-          </Link>
           <Link href="/queens" className="text-queens hover:brightness-125 transition-[border-color,background-color]">
             Queens →
           </Link>

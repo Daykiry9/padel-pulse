@@ -10,7 +10,6 @@ const COLUMNS = [
     links: [
       { href: '/tournaments', label: 'Torneos Kings' },
       { href: '/queens/tournaments', label: 'Torneos Queens' },
-      { href: '/rankings', label: 'Ranking nacional' },
       { href: '/app', label: 'Mi panel' },
     ],
   },

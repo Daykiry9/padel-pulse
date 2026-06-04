@@ -50,9 +50,6 @@ export async function PublicHeader({
           <Link href="/tournaments" className="hover:text-foreground transition-colors">
             Torneos
           </Link>
-          <Link href="/rankings" className="hover:text-foreground transition-colors">
-            Ranking
-          </Link>
         </nav>
 
         <div className="flex items-center gap-2">
