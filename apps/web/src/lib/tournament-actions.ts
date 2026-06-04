@@ -43,8 +43,14 @@ export async function createTournament(formData: FormData): Promise<ActionResult
   const category = String(formData.get('category') ?? '') as TeamCategory | '';
   const minSumRaw = String(formData.get('min_sum') ?? '').trim();
   const maxPlayerCategoryRaw = String(formData.get('max_player_category_value') ?? '').trim();
-  const clubId = String(formData.get('club_id') ?? '') || null;
-  const communityId = String(formData.get('community_id') ?? '') || null;
+  const scope = String(formData.get('scope') ?? '') as
+    | 'community'
+    | 'club_private'
+    | 'club_open'
+    | '';
+  const clubIdRaw = String(formData.get('club_id') ?? '') || null;
+  const communityIdRaw = String(formData.get('community_id') ?? '') || null;
+  const cityIdRaw = String(formData.get('city_id') ?? '') || null;
   const startsAt = String(formData.get('starts_at') ?? '');
   const maxTeams = Number(formData.get('max_teams') ?? 16);
   const pricePerTeam = Number(formData.get('price_per_team') ?? 0);
@@ -54,7 +60,9 @@ export async function createTournament(formData: FormData): Promise<ActionResult
 
   if (!name || name.length < 4) return { ok: false, error: 'Nombre del torneo muy corto' };
   if (!format) return { ok: false, error: 'Selecciona un formato' };
-  if (!clubId && !communityId) return { ok: false, error: 'Selecciona una sede o comunidad' };
+  if (scope !== 'community' && scope !== 'club_private' && scope !== 'club_open') {
+    return { ok: false, error: 'Selecciona el alcance del torneo' };
+  }
   if (!startsAt) return { ok: false, error: 'Fecha de inicio requerida' };
 
   if (categoryKind === 'estandar' || categoryKind === 'queens_estandar') {
@@ -65,6 +73,56 @@ export async function createTournament(formData: FormData): Promise<ActionResult
   }
 
   const supabase = await getSupabaseServerClient();
+
+  // ============================================================
+  // Validación de scope: el user tiene permiso + setear FK correcto
+  // ============================================================
+  let clubId: string | null = null;
+  let communityId: string | null = null;
+  let cityId: string | null = null;
+
+  if (scope === 'community') {
+    if (!communityIdRaw) return { ok: false, error: 'Selecciona la comunidad organizadora' };
+    const { data: memb } = await supabase
+      .from('community_members')
+      .select('role')
+      .eq('community_id', communityIdRaw)
+      .eq('profile_id', user.id)
+      .in('role', ['owner', 'admin'])
+      .maybeSingle();
+    if (!memb) return { ok: false, error: 'No sos owner/admin de esa comunidad' };
+    communityId = communityIdRaw;
+  } else {
+    // club_private o club_open
+    if (!clubIdRaw) return { ok: false, error: 'Selecciona el club organizador' };
+    const { data: club } = await supabase
+      .from('clubs')
+      .select('id, owner_id, city_id')
+      .eq('id', clubIdRaw)
+      .maybeSingle();
+    const c = club as { id: string; owner_id: string; city_id: string | null } | null;
+    if (!c) return { ok: false, error: 'El club no existe' };
+    if (c.owner_id !== user.id) {
+      return { ok: false, error: 'Solo el dueño del club puede crear torneos del club' };
+    }
+    clubId = c.id;
+
+    if (scope === 'club_open') {
+      // Preferimos city_id explícito del form; fallback al city_id del club.
+      const resolvedCityId = cityIdRaw || c.city_id;
+      if (!resolvedCityId) {
+        return {
+          ok: false,
+          error: 'El torneo abierto requiere una ciudad. Configurala en el form o en el club.',
+        };
+      }
+      cityId = resolvedCityId;
+    } else {
+      // club_private igualmente puede setear city_id por descubrimiento, pero
+      // no es obligatorio.
+      cityId = c.city_id;
+    }
+  }
 
   const startsDate = new Date(startsAt);
   const endsDate = new Date(startsDate.getTime() + 6 * 3600 * 1000); // +6h default
@@ -102,8 +160,10 @@ export async function createTournament(formData: FormData): Promise<ActionResult
             : null,
       points_per_match: pointsPerMatchRaw ? Number(pointsPerMatchRaw) : 12,
       total_rounds: totalRoundsRaw ? Number(totalRoundsRaw) : null,
+      scope,
       club_id: clubId,
       community_id: communityId,
+      city_id: cityId,
       starts_at: startsDate.toISOString(),
       ends_at: endsDate.toISOString(),
       registration_deadline: registrationDeadline.toISOString(),

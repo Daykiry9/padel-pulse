@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Calendar, Crown, Trophy, Users } from 'lucide-react';
 
 import { CATEGORY_LABELS } from '@padelking/domain';
@@ -49,16 +49,24 @@ export default async function TournamentDetailPage({
 
   const tournamentRes = await supabase
     .from('tournaments')
-    .select('*, clubs(owner_id), communities(owner_id)')
+    .select('*, clubs(owner_id), communities(owner_id, slug)')
     .eq('slug', slug)
     .single();
 
   const tournament = tournamentRes.data as unknown as (TournamentRow & {
     club_id: string | null;
+    scope: 'community' | 'club_open' | 'club_private' | null;
     clubs: { owner_id: string } | null;
-    communities: { owner_id: string } | null;
+    communities: { owner_id: string; slug: string } | null;
   }) | null;
   if (!tournament) notFound();
+
+  // Si el torneo es scope=community, su detalle vive bajo el hub de la comunidad
+  // (gate por membresía / privacy). Esta ruta pública sigue existiendo para
+  // compartir links externos y para scope=club_open/club_private.
+  if (tournament.scope === 'community' && tournament.communities?.slug) {
+    redirect(`/app/communities/${tournament.communities.slug}/tournaments/${tournament.slug}`);
+  }
 
   const user = await getSession();
   const isOrganizer = Boolean(

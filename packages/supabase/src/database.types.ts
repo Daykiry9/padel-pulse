@@ -2112,6 +2112,7 @@ export type Database = {
           price_per_team: number
           registration_deadline: string
           rotation_games: number
+          scope: string
           slug: string
           starts_at: string
           status: Database["public"]["Enums"]["tournament_status"]
@@ -2144,6 +2145,7 @@ export type Database = {
           price_per_team?: number
           registration_deadline: string
           rotation_games?: number
+          scope?: string
           slug: string
           starts_at: string
           status?: Database["public"]["Enums"]["tournament_status"]
@@ -2176,6 +2178,7 @@ export type Database = {
           price_per_team?: number
           registration_deadline?: string
           rotation_games?: number
+          scope?: string
           slug?: string
           starts_at?: string
           status?: Database["public"]["Enums"]["tournament_status"]
