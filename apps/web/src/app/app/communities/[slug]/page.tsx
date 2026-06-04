@@ -136,6 +136,7 @@ export default async function CommunityDetailPage({
             {activeTab === 'members' && (
               <MembersTab
                 communityId={community.id}
+                communityName={community.name}
                 isOwner={isOwner}
                 currentUserId={user.id}
               />

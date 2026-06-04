@@ -8,8 +8,7 @@ const COLUMNS = [
   {
     title: 'Producto',
     links: [
-      { href: '/tournaments', label: 'Torneos Kings' },
-      { href: '/queens/tournaments', label: 'Torneos Queens' },
+      { href: '/tournaments', label: 'Torneos' },
       { href: '/app', label: 'Mi panel' },
     ],
   },

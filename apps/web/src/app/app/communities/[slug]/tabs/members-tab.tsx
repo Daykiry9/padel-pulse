@@ -6,9 +6,11 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { JoinRequestRow } from '../join-request-row';
+import { LeaveCommunityButton } from '../leave-community-button';
 
 interface MembersTabProps {
   communityId: string;
+  communityName: string;
   isOwner: boolean;
   currentUserId: string;
 }
@@ -46,6 +48,7 @@ const ROLE_LABEL: Record<MemberRow['role'], string> = {
 
 export async function MembersTab({
   communityId,
+  communityName,
   isOwner,
   currentUserId,
 }: MembersTabProps) {
@@ -230,6 +233,12 @@ export async function MembersTab({
           </Card>
         )}
       </section>
+
+      <LeaveCommunityButton
+        communityId={communityId}
+        communityName={communityName}
+        isOwner={isOwner}
+      />
     </section>
   );
 }

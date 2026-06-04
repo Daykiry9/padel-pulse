@@ -78,10 +78,7 @@ export default async function TournamentsPage({
             TORNEOS <span className="text-gold-400">KINGS</span>
           </h1>
           <p className="text-muted-foreground mt-3 max-w-2xl text-sm md:text-base">
-            Masculinos + mixtos. ¿Buscas femeninos?{' '}
-            <Link href="/queens/tournaments" className="text-magenta-500 underline-offset-2 hover:underline">
-              Ver Queens →
-            </Link>
+            Masculinos, femeninos y mixtos.
           </p>
 
           {/* Hero stats — credibilidad de un vistazo */}

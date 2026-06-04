@@ -160,6 +160,57 @@ export async function deleteCommunity(formData: FormData): Promise<void> {
   redirect('/app/communities?deleted=1');
 }
 
+export async function leaveCommunity(formData: FormData): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const communityId = String(formData.get('community_id') ?? '').trim();
+  if (!UUID_RE.test(communityId)) return { ok: false, error: 'Comunidad inválida' };
+
+  const supabase = await getSupabaseServerClient();
+
+  // Confirmar membresia + leer mi rol.
+  const { data: meRow } = await supabase
+    .from('community_members')
+    .select('role')
+    .eq('community_id', communityId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  if (!meRow) return { ok: false, error: 'No perteneces a esta comunidad' };
+
+  const myRole = (meRow as { role: 'owner' | 'admin' | 'member' }).role;
+
+  if (myRole === 'owner') {
+    // Contar otros owners (excluyendome).
+    const { count: otherOwners } = await supabase
+      .from('community_members')
+      .select('profile_id', { count: 'exact', head: true })
+      .eq('community_id', communityId)
+      .eq('role', 'owner')
+      .neq('profile_id', user.id);
+
+    if ((otherOwners ?? 0) === 0) {
+      return {
+        ok: false,
+        error: 'Sos el único owner. Transferí ownership antes de abandonar.',
+      };
+    }
+  }
+
+  const { error } = await supabase
+    .from('community_members')
+    .delete()
+    .eq('community_id', communityId)
+    .eq('profile_id', user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/app/communities');
+  revalidatePath('/app');
+  return { ok: true, redirectTo: '/app/communities?left=1' };
+}
+
 export async function setActiveCommunity(formData: FormData): Promise<ActionResult> {
   const user = await getSession();
   if (!user) return { ok: false, error: 'No autenticado' };
