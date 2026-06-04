@@ -49,7 +49,7 @@ export function aggregateCommunityRanking({
 
 /**
  * Ranking interno de una comunidad — sus equipos ordenados por puntos.
- * Útil para "tu equipo está #3 dentro de tu parche".
+ * Útil para "tu equipo está #3 dentro de tu comunidad".
  */
 export function internalCommunityRanking(
   teamEntries: TeamRankingEntry[],

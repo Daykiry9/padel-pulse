@@ -4,8 +4,12 @@ import { revalidatePath } from 'next/cache';
 
 import {
   computePaddleEloDeltas,
+  generateExpress,
   generateFixedAmericano,
+  generateLeague,
+  generateLiguillaCasual,
   generateRandomAmericano,
+  generateSingleElimination,
   tierOf,
   weightOf,
 } from '@padelking/domain';
@@ -66,7 +70,10 @@ export async function createTournament(formData: FormData): Promise<ActionResult
 
   const tier = tierOf(format);
   const weight = weightOf(format);
-  const competitionUnit = format === 'americano_random' ? 'player' : 'team';
+  // americano_random y express son player-based (los jugadores rotan de
+  // compañero cada ronda). El resto son team-based (parejas fijas).
+  const competitionUnit =
+    format === 'americano_random' || format === 'express' ? 'player' : 'team';
 
   const baseSlug = slugify(name);
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
@@ -86,7 +93,11 @@ export async function createTournament(formData: FormData): Promise<ActionResult
       max_player_category_value: maxPlayerCategoryRaw ? Number(maxPlayerCategoryRaw) : null,
       competition_unit: competitionUnit,
       pairing_mode:
-        format === 'americano_random' ? 'random' : format === 'americano_fijo' ? 'fixed' : null,
+        format === 'americano_random' || format === 'express'
+          ? 'random'
+          : format === 'americano_fijo'
+            ? 'fixed'
+            : null,
       points_per_match: pointsPerMatchRaw ? Number(pointsPerMatchRaw) : 12,
       total_rounds: totalRoundsRaw ? Number(totalRoundsRaw) : null,
       club_id: clubId,
@@ -473,14 +484,6 @@ export async function closeRegistrationsAndGenerateBracket(
   if (tournament.status !== 'open') {
     return { ok: false, error: `El torneo está "${tournament.status}", no se puede generar bracket.` };
   }
-  if (!tournament.format.startsWith('americano')) {
-    return {
-      ok: false,
-      error: 'Solo torneos Americano soportan bracket auto-generado por ahora.',
-    };
-  }
-  const isRandom = tournament.format === 'americano_random';
-
   // 2. Inscripciones confirmadas (incluye guests para soporte de inscripción manual)
   const { data: regs } = await supabase
     .from('tournament_registrations')
@@ -494,64 +497,13 @@ export async function closeRegistrationsAndGenerateBracket(
     guest_player_id: string | null;
   }[];
 
-  // 3. Generar pareo + filas de matches según formato
-  let matchRows: Record<string, unknown>[];
+  const courts = tournament.courts ?? 2;
 
-  if (isRandom) {
-    // Random (social): los participantes son jugadores individuales (profiles
-    // o guests) y las parejas rotan cada ronda → guardamos los 4 slots por
-    // partido (player_*_id O guest_*_id, XOR por slot).
-    // El set de guest_ids permite mapear cada slot a la columna correcta al
-    // insertar; el algoritmo trabaja con strings UUID indistintamente.
-    const guestIdSet = new Set<string>();
-    const participantIds: string[] = [];
-    for (const r of registrations) {
-      if (r.player_id) {
-        participantIds.push(r.player_id);
-      } else if (r.guest_player_id) {
-        participantIds.push(r.guest_player_id);
-        guestIdSet.add(r.guest_player_id);
-      }
-    }
-    if (participantIds.length < 4) {
-      return { ok: false, error: 'Mínimo 4 jugadores inscritos para un Americano Random' };
-    }
-    const rounds = generateRandomAmericano({
-      participantIds,
-      courts: tournament.courts ?? 2,
-      rounds: tournament.total_rounds ?? undefined,
-    });
-    const slot = (id: string, kind: 'player' | 'guest'): string | null => {
-      const isGuest = guestIdSet.has(id);
-      if (kind === 'player') return isGuest ? null : id;
-      return isGuest ? id : null;
-    };
-    matchRows = rounds.flatMap((round) =>
-      round.matches.map((m) => ({
-        tournament_id: tournamentId,
-        round_number: m.roundNumber,
-        court_number: m.courtNumber,
-        pair_one_player_one_id: slot(m.pairOne.playerOneId, 'player'),
-        pair_one_player_two_id: slot(m.pairOne.playerTwoId, 'player'),
-        pair_two_player_one_id: slot(m.pairTwo.playerOneId, 'player'),
-        pair_two_player_two_id: slot(m.pairTwo.playerTwoId, 'player'),
-        pair_one_guest_one_id: slot(m.pairOne.playerOneId, 'guest'),
-        pair_one_guest_two_id: slot(m.pairOne.playerTwoId, 'guest'),
-        pair_two_guest_one_id: slot(m.pairTwo.playerOneId, 'guest'),
-        pair_two_guest_two_id: slot(m.pairTwo.playerTwoId, 'guest'),
-        status: 'scheduled' as const,
-      })),
-    );
-  } else {
-    // Fijo: los participantes son parejas (registrations). Round-robin Berger.
-    if (registrations.length < 2) {
-      return { ok: false, error: 'Mínimo 2 parejas inscritas para generar bracket' };
-    }
-    const rounds = generateFixedAmericano({
-      participantIds: registrations.map((r) => r.id),
-      courts: tournament.courts ?? 2,
-    });
-    matchRows = rounds.flatMap((round) =>
+  // Helper para round-robin team-based (fijo/liga/liguilla): mapea round.matches
+  // al shape de la tabla `matches` con registration_one_id/two_id.
+  type TeamBasedRound = ReturnType<typeof generateFixedAmericano>[number];
+  const teamBasedMatchRows = (rounds: TeamBasedRound[]) =>
+    rounds.flatMap((round) =>
       round.matches.map((m) => ({
         tournament_id: tournamentId,
         round_number: m.roundNumber,
@@ -561,6 +513,180 @@ export async function closeRegistrationsAndGenerateBracket(
         status: 'scheduled' as const,
       })),
     );
+
+  // 3. Generar pareo + filas de matches según formato
+  let matchRows: Record<string, unknown>[];
+
+  switch (tournament.format) {
+    case 'americano_random': {
+      // Random (social): los participantes son jugadores individuales (profiles
+      // o guests) y las parejas rotan cada ronda → guardamos los 4 slots por
+      // partido (player_*_id O guest_*_id, XOR por slot).
+      const guestIdSet = new Set<string>();
+      const participantIds: string[] = [];
+      for (const r of registrations) {
+        if (r.player_id) {
+          participantIds.push(r.player_id);
+        } else if (r.guest_player_id) {
+          participantIds.push(r.guest_player_id);
+          guestIdSet.add(r.guest_player_id);
+        }
+      }
+      if (participantIds.length < 4) {
+        return { ok: false, error: 'Mínimo 4 jugadores inscritos para un Americano Random' };
+      }
+      const rounds = generateRandomAmericano({
+        participantIds,
+        courts,
+        rounds: tournament.total_rounds ?? undefined,
+      });
+      const slot = (id: string, kind: 'player' | 'guest'): string | null => {
+        const isGuest = guestIdSet.has(id);
+        if (kind === 'player') return isGuest ? null : id;
+        return isGuest ? id : null;
+      };
+      matchRows = rounds.flatMap((round) =>
+        round.matches.map((m) => ({
+          tournament_id: tournamentId,
+          round_number: m.roundNumber,
+          court_number: m.courtNumber,
+          pair_one_player_one_id: slot(m.pairOne.playerOneId, 'player'),
+          pair_one_player_two_id: slot(m.pairOne.playerTwoId, 'player'),
+          pair_two_player_one_id: slot(m.pairTwo.playerOneId, 'player'),
+          pair_two_player_two_id: slot(m.pairTwo.playerTwoId, 'player'),
+          pair_one_guest_one_id: slot(m.pairOne.playerOneId, 'guest'),
+          pair_one_guest_two_id: slot(m.pairOne.playerTwoId, 'guest'),
+          pair_two_guest_one_id: slot(m.pairTwo.playerOneId, 'guest'),
+          pair_two_guest_two_id: slot(m.pairTwo.playerTwoId, 'guest'),
+          status: 'scheduled' as const,
+        })),
+      );
+      break;
+    }
+
+    case 'express': {
+      // Express: jugadores individuales (igual que random), pero pocas rondas.
+      const guestIdSet = new Set<string>();
+      const participantIds: string[] = [];
+      for (const r of registrations) {
+        if (r.player_id) {
+          participantIds.push(r.player_id);
+        } else if (r.guest_player_id) {
+          participantIds.push(r.guest_player_id);
+          guestIdSet.add(r.guest_player_id);
+        }
+      }
+      if (participantIds.length < 4) {
+        return { ok: false, error: 'Mínimo 4 jugadores inscritos para Express' };
+      }
+      const rounds = generateExpress({
+        participantIds,
+        courts,
+        rounds: tournament.total_rounds ?? 6,
+      });
+      const slot = (id: string, kind: 'player' | 'guest'): string | null => {
+        const isGuest = guestIdSet.has(id);
+        if (kind === 'player') return isGuest ? null : id;
+        return isGuest ? id : null;
+      };
+      matchRows = rounds.flatMap((round) =>
+        round.matches.map((m) => ({
+          tournament_id: tournamentId,
+          round_number: m.roundNumber,
+          court_number: m.courtNumber,
+          pair_one_player_one_id: slot(m.pairOne.playerOneId, 'player'),
+          pair_one_player_two_id: slot(m.pairOne.playerTwoId, 'player'),
+          pair_two_player_one_id: slot(m.pairTwo.playerOneId, 'player'),
+          pair_two_player_two_id: slot(m.pairTwo.playerTwoId, 'player'),
+          pair_one_guest_one_id: slot(m.pairOne.playerOneId, 'guest'),
+          pair_one_guest_two_id: slot(m.pairOne.playerTwoId, 'guest'),
+          pair_two_guest_one_id: slot(m.pairTwo.playerOneId, 'guest'),
+          pair_two_guest_two_id: slot(m.pairTwo.playerTwoId, 'guest'),
+          status: 'scheduled' as const,
+        })),
+      );
+      break;
+    }
+
+    case 'americano_fijo': {
+      // Fijo: los participantes son parejas (registrations). Round-robin Berger.
+      if (registrations.length < 2) {
+        return { ok: false, error: 'Mínimo 2 parejas inscritas para generar bracket' };
+      }
+      const rounds = generateFixedAmericano({
+        participantIds: registrations.map((r) => r.id),
+        courts,
+      });
+      matchRows = teamBasedMatchRows(rounds);
+      break;
+    }
+
+    case 'liga': {
+      if (registrations.length < 2) {
+        return { ok: false, error: 'Mínimo 2 parejas inscritas para Liga' };
+      }
+      const rounds = generateLeague({
+        participantIds: registrations.map((r) => r.id),
+        courts,
+      });
+      matchRows = teamBasedMatchRows(rounds);
+      break;
+    }
+
+    case 'liguilla_casual': {
+      if (registrations.length < 2) {
+        return { ok: false, error: 'Mínimo 2 parejas inscritas para Liguilla' };
+      }
+      if (registrations.length > 8) {
+        return {
+          ok: false,
+          error: 'Liguilla Casual soporta máximo 8 parejas. Usá Liga para más participantes.',
+        };
+      }
+      const rounds = generateLiguillaCasual({
+        participantIds: registrations.map((r) => r.id),
+        courts,
+      });
+      matchRows = teamBasedMatchRows(rounds);
+      break;
+    }
+
+    case 'eliminacion': {
+      if (registrations.length < 2) {
+        return { ok: false, error: 'Mínimo 2 parejas inscritas para eliminación directa' };
+      }
+      const elimRounds = generateSingleElimination({
+        participantIds: registrations.map((r) => r.id),
+        courts,
+      });
+      // Para eliminación directa solo insertamos ronda 1 (los participantes ya
+      // están definidos por seeding). Las rondas siguientes se generan cuando
+      // se completan los matches previos (acción pendiente: advanceWinner).
+      // Los matches con BYE quedan auto-completed con winner = lado con
+      // registración válida.
+      matchRows = elimRounds
+        .filter((r) => r.roundNumber === 1)
+        .flatMap((round) =>
+          round.matches
+            .filter((m) => m.registrationOne.registrationId && m.registrationTwo.registrationId)
+            .map((m) => ({
+              tournament_id: tournamentId,
+              round_number: m.roundNumber,
+              court_number: m.courtNumber,
+              registration_one_id: m.registrationOne.registrationId,
+              registration_two_id: m.registrationTwo.registrationId,
+              status: 'scheduled' as const,
+            })),
+        );
+      break;
+    }
+
+    default: {
+      return {
+        ok: false,
+        error: `Formato "${tournament.format}" no soportado para generación automática de bracket.`,
+      };
+    }
   }
 
   if (matchRows.length === 0) {

@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { Crown, Globe, Home, Shield, Trophy } from 'lucide-react';
+import { CircleUser, Home, Shield, Trophy, Users } from 'lucide-react';
 
 const BASE_ITEMS = [
   { href: '/app', icon: Home, label: 'Inicio' },
-  { href: '/tournaments', icon: Trophy, label: 'Torneos' },
-  { href: '/app/communities', icon: Globe, label: 'Parches' },
-  { href: '/rankings', icon: Crown, label: 'Ranking' },
+  { href: '/app/communities', icon: Users, label: 'Comunidades' },
+  { href: '/app/tournaments', icon: Trophy, label: 'Torneos' },
+  { href: '/app/profile', icon: CircleUser, label: 'Perfil' },
 ];
 
 const HIDE_ON = ['/login', '/signup'];

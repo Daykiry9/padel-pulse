@@ -1,8 +1,12 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { Crown, Globe, Shield, Trophy, Users } from 'lucide-react';
 
 import { CommandPalette } from '@/components/command-palette';
+import {
+  CommunitySwitcher,
+  type CommunitySwitcherCommunity,
+} from '@/components/community-switcher';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { NotificationsBell, type NotificationItem } from '@/components/notifications-bell';
 import { UserMenu } from '@/components/user-menu';
@@ -13,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect('/login');
 
   const supabase = await getSupabaseServerClient();
-  const [profileRes, notificationsRes] = await Promise.all([
+  const [profileRes, notificationsRes, communitiesRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('display_name, skill_category, gender, city, is_super_admin')
@@ -25,6 +29,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .eq('profile_id', user.id)
       .order('created_at', { ascending: false })
       .limit(15),
+    supabase
+      .from('community_members')
+      .select('community_id, communities(id, name, slug, logo_url)')
+      .eq('profile_id', user.id),
   ]);
 
   const profile = profileRes.data as
@@ -37,6 +45,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const notifications = (notificationsRes.data ?? []) as unknown as NotificationItem[];
   const unreadCount = notifications.filter((n) => !n.read_at).length;
+
+  const communityRows = (communitiesRes.data ?? []) as unknown as {
+    community_id: string;
+    communities:
+      | { id: string; name: string; slug: string; logo_url?: string | null }
+      | null;
+  }[];
+  const communities: CommunitySwitcherCommunity[] = communityRows
+    .map((row) => row.communities)
+    .filter(
+      (c): c is { id: string; name: string; slug: string; logo_url?: string | null } =>
+        Boolean(c),
+    )
+    .map((c) => ({ id: c.id, name: c.name, slug: c.slug, logoUrl: c.logo_url ?? null }));
+
+  const cookieStore = await cookies();
+  const cookieActiveId = cookieStore.get('active_community_id')?.value ?? null;
+  const activeCommunityId =
+    cookieActiveId && communities.some((c) => c.id === cookieActiveId)
+      ? cookieActiveId
+      : (communities[0]?.id ?? null);
 
   const isQueens =
     profile?.gender === 'female' && profile?.skill_category?.startsWith('queens_');
@@ -51,36 +80,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               PADEL<span className="text-crown">KING</span>
             </span>
           </Link>
-          <nav
-            aria-label="Navegación principal"
-            className="text-muted-foreground hidden items-center gap-5 text-xs uppercase tracking-[0.15em] md:flex"
-          >
-            <Link href="/app" className="hover:text-foreground transition-colors">
-              <Trophy className="inline size-3.5 mr-1" />
-              Dashboard
-            </Link>
-            <Link href="/app/communities" className="hover:text-foreground transition-colors">
-              <Globe className="inline size-3.5 mr-1" />
-              Comunidades
-            </Link>
-            <Link href="/app/teams" className="hover:text-foreground transition-colors">
-              <Users className="inline size-3.5 mr-1" />
-              Equipo
-            </Link>
-            <Link href="/tournaments" className="hover:text-foreground transition-colors">
-              <Crown className="inline size-3.5 mr-1" />
-              Torneos
-            </Link>
-            {isSuperAdmin && (
-              <Link
-                href="/app/admin"
-                className="text-crown hover:brightness-125 transition-colors"
-              >
-                <Shield className="inline size-3.5 mr-1" />
-                Admin
-              </Link>
-            )}
-          </nav>
+          <CommunitySwitcher
+            communities={communities}
+            activeCommunityId={activeCommunityId}
+          />
           <div className="flex items-center gap-3">
             <div className="hidden md:block">
               <CommandPalette />

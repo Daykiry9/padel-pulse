@@ -95,7 +95,7 @@ export default async function CommunitiesPage() {
           subtitle={
             myCommunities.length > 0
               ? `Eres miembro de ${myCommunities.length} · descubre las demás abajo`
-              : 'Encuentra tu parche local y pide unirte'
+              : 'Encuentra tu comunidad local y pide unirte'
           }
         >
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -108,7 +108,7 @@ export default async function CommunitiesPage() {
         <EmptyState
           icon={Globe}
           title="Aún no hay comunidades"
-          description="Sé el primero en armar un parche local. Solo necesitas tu nombre para arrancar; un super admin la revisa en 24-48h."
+          description="Sé el primero en armar una comunidad local. Solo necesitas tu nombre para arrancar; un super admin la revisa en 24-48h."
           bullets={[
             'Una comunidad agrupa jugadores de una ciudad o zona',
             'Organiza torneos americanos y eliminatorias',

@@ -36,14 +36,14 @@ Información lista para pegar en las fichas de Play Console y App Store Connect 
 
 ## 4. Promo text (App Store — 170 chars, editable sin re-review)
 
-> Apúntate al americano del finde, súmale puntos a tu ranking y desafía a tu parche. Pádel amateur con la seriedad de la Kings League y la energía de un parche real.
+> Apúntate al americano del finde, súmale puntos a tu ranking y desafía a tu comunidad. Pádel amateur con la seriedad de la Kings League y la energía de una comunidad real.
 
 ## 5. Descripción larga (Play Store — 4000 chars)
 
 ```
 PadelKing es la liga amateur del pádel colombiano. Una app pensada para
 jugadores reales: los que se inscriben al americano del finde, suben al
-ranking, arman parche y persiguen el siguiente torneo.
+ranking, arman comunidad y persiguen el siguiente torneo.
 
 QUÉ PUEDES HACER
 
@@ -55,7 +55,7 @@ QUÉ PUEDES HACER
 · Ver el bracket en vivo, ronda por ronda, mientras se juega.
 · Subir en el RANKING NACIONAL — los puntos vienen de torneos reales y
   pesan según el tier (competitivo > social).
-· Unirte a COMUNIDADES (parches) y organizar torneos internos con tu grupo.
+· Unirte a COMUNIDADES y organizar torneos internos con tu grupo.
 · Crear EQUIPO con tu compañero/a fijo, llevar el récord juntos.
 
 DOS LIGAS, UN ECOSISTEMA

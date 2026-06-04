@@ -19,16 +19,17 @@ import { createTournament } from '@/lib/tournament-actions';
 
 // El formato YA define la modalidad: "Pareja Fija" = parejas fijas round-robin,
 // "Pareja Random" = social, los jugadores rotan de compañero cada ronda.
-// Los formatos sin generador implementado quedan deshabilitados ("próximamente").
+// Liga / Liguilla / Express / Eliminación están todos soportados con generador.
 const FORMAT_LABELS: Partial<Record<TournamentFormat, string>> = {
   americano_fijo: 'Americano Pareja Fija',
   americano_random: 'Americano Pareja Random',
+  liga: 'Liga (round-robin)',
+  liguilla_casual: 'Liguilla Casual (mini-liga, máx 8 parejas)',
+  express: 'Express (americano corto, 6 rondas)',
+  eliminacion: 'Eliminación directa',
 };
 
-const FORMAT_COMING_SOON: Partial<Record<TournamentFormat, string>> = {
-  eliminacion: 'Eliminación directa (próximamente)',
-  liga: 'Liga (próximamente)',
-};
+const FORMAT_COMING_SOON: Partial<Record<TournamentFormat, string>> = {};
 
 // Sets visibles en el UI. Suma queda en el enum por compatibilidad pero no se ofrece.
 const KIND_LABELS: Partial<Record<CategoryKind, string>> = {
@@ -50,6 +51,8 @@ export function CreateTournamentForm({ clubs, communities, community }: Props) {
   const [categoryKind, setCategoryKind] = useState<CategoryKind>('estandar');
 
   const isRandom = format === 'americano_random';
+  const isExpress = format === 'express';
+  const isPlayerBased = isRandom || isExpress;
   const isMasculino = categoryKind === 'estandar';
   const isFemenino = categoryKind === 'queens_estandar';
   const isMixto = categoryKind === 'mixto_estandar';
@@ -84,13 +87,23 @@ export function CreateTournamentForm({ clubs, communities, community }: Props) {
         </Select>
       </FormField>
 
-      {isRandom && (
+      {isPlayerBased && (
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Puntos por partido" hint="A cuántos puntos juega cada cancha por ronda. Típico: 12.">
             <Input name="points_per_match" type="number" min={4} max={64} defaultValue={12} />
           </FormField>
-          <FormField label="Número de rondas" hint="Vacío = automático según # de jugadores.">
-            <Input name="total_rounds" type="number" min={1} max={30} placeholder="Automático" />
+          <FormField
+            label="Número de rondas"
+            hint={isExpress ? 'Express usa 6 rondas por defecto.' : 'Vacío = automático según # de jugadores.'}
+          >
+            <Input
+              name="total_rounds"
+              type="number"
+              min={1}
+              max={30}
+              placeholder={isExpress ? '6' : 'Automático'}
+              defaultValue={isExpress ? 6 : undefined}
+            />
           </FormField>
         </div>
       )}
