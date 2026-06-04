@@ -211,6 +211,172 @@ export async function leaveCommunity(formData: FormData): Promise<ActionResult> 
   return { ok: true, redirectTo: '/app/communities?left=1' };
 }
 
+const LOGO_BUCKET = 'community-logos';
+const LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+const LOGO_ALLOWED_MIME = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/svg+xml',
+]);
+const MIME_TO_EXT: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/svg+xml': 'svg',
+};
+
+async function assertCommunityOwner(
+  communityId: string,
+  userId: string,
+): Promise<
+  | { ok: true; community: { id: string; slug: string; logo_url: string | null } }
+  | { ok: false; error: string }
+> {
+  if (!UUID_RE.test(communityId)) return { ok: false, error: 'Comunidad inválida' };
+  const supabase = await getSupabaseServerClient();
+  const { data: existing } = await supabase
+    .from('communities')
+    .select('id, owner_id, slug, logo_url')
+    .eq('id', communityId)
+    .maybeSingle();
+  if (!existing) return { ok: false, error: 'Comunidad no encontrada' };
+  const row = existing as {
+    id: string;
+    owner_id: string;
+    slug: string;
+    logo_url: string | null;
+  };
+  if (row.owner_id !== userId) {
+    return { ok: false, error: 'Solo el owner puede editar la comunidad' };
+  }
+  return { ok: true, community: { id: row.id, slug: row.slug, logo_url: row.logo_url } };
+}
+
+export async function uploadCommunityLogo(formData: FormData): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const communityId = String(formData.get('community_id') ?? '').trim();
+  const file = formData.get('file');
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: 'Archivo inválido' };
+  }
+  if (file.size > LOGO_MAX_BYTES) {
+    return { ok: false, error: 'El logo debe pesar máximo 2MB' };
+  }
+  const mime = file.type;
+  if (!LOGO_ALLOWED_MIME.has(mime)) {
+    return { ok: false, error: 'Formato no permitido. Usa PNG, JPG, WEBP o SVG.' };
+  }
+
+  const owned = await assertCommunityOwner(communityId, user.id);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const supabase = await getSupabaseServerClient();
+  const ext = MIME_TO_EXT[mime] ?? 'bin';
+  const path = `${communityId}/${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(LOGO_BUCKET)
+    .upload(path, file, {
+      upsert: false,
+      contentType: mime,
+      cacheControl: '3600',
+    });
+  if (uploadError) {
+    return { ok: false, error: uploadError.message || 'No se pudo subir el logo' };
+  }
+
+  const { data: pub } = supabase.storage.from(LOGO_BUCKET).getPublicUrl(path);
+  const publicUrl = pub?.publicUrl;
+  if (!publicUrl) {
+    // Best-effort cleanup si no obtuvimos URL.
+    await supabase.storage.from(LOGO_BUCKET).remove([path]);
+    return { ok: false, error: 'No se pudo obtener la URL del logo' };
+  }
+
+  const { error: updateError } = await supabase
+    .from('communities')
+    .update({ logo_url: publicUrl } as never)
+    .eq('id', communityId);
+  if (updateError) {
+    // Rollback del objeto subido para no dejar huérfano.
+    await supabase.storage.from(LOGO_BUCKET).remove([path]);
+    return { ok: false, error: updateError.message };
+  }
+
+  // Si había un logo previo, lo limpiamos del bucket.
+  const previousUrl = owned.community.logo_url;
+  if (previousUrl) {
+    const previousPath = extractStoragePath(previousUrl, LOGO_BUCKET);
+    if (previousPath && previousPath !== path) {
+      await supabase.storage.from(LOGO_BUCKET).remove([previousPath]);
+    }
+  }
+
+  revalidatePath('/app/communities');
+  revalidatePath(`/app/communities/${owned.community.slug}`);
+  revalidatePath(`/app/communities/${owned.community.slug}/settings`);
+  revalidatePath('/app');
+  return { ok: true };
+}
+
+export async function deleteCommunityLogo(formData: FormData): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+
+  const communityId = String(formData.get('community_id') ?? '').trim();
+  const owned = await assertCommunityOwner(communityId, user.id);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const supabase = await getSupabaseServerClient();
+  const currentUrl = owned.community.logo_url;
+
+  if (currentUrl) {
+    const path = extractStoragePath(currentUrl, LOGO_BUCKET);
+    if (path) {
+      const { error: removeError } = await supabase.storage
+        .from(LOGO_BUCKET)
+        .remove([path]);
+      if (removeError) {
+        return { ok: false, error: removeError.message || 'No se pudo borrar el logo' };
+      }
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from('communities')
+    .update({ logo_url: null } as never)
+    .eq('id', communityId);
+  if (updateError) return { ok: false, error: updateError.message };
+
+  revalidatePath('/app/communities');
+  revalidatePath(`/app/communities/${owned.community.slug}`);
+  revalidatePath(`/app/communities/${owned.community.slug}/settings`);
+  revalidatePath('/app');
+  return { ok: true };
+}
+
+// getPublicUrl produce algo como:
+//   https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+// Esta función invierte esa convención para obtener el `path` que requiere
+// .remove(). Si la URL no pertenece al bucket esperado, devuelve null.
+function extractStoragePath(publicUrl: string, bucket: string): string | null {
+  try {
+    const url = new URL(publicUrl);
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const idx = url.pathname.indexOf(marker);
+    if (idx === -1) return null;
+    const raw = url.pathname.slice(idx + marker.length);
+    if (!raw) return null;
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function setActiveCommunity(formData: FormData): Promise<ActionResult> {
   const user = await getSession();
   if (!user) return { ok: false, error: 'No autenticado' };

@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@radix-ui/react-dropdown-menu';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Plus } from 'lucide-react';
 
 import { Avatar } from '@/components/ui/avatar';
 import { setActiveCommunity } from '@/lib/community-actions';
@@ -37,22 +37,6 @@ export function CommunitySwitcher({ communities, activeCommunityId }: CommunityS
 
   const active =
     communities.find((c) => c.id === activeCommunityId) ?? communities[0]!;
-
-  if (communities.length === 1) {
-    return (
-      <div className="flex items-center gap-2">
-        <Avatar
-          seed={active.id}
-          name={active.name}
-          src={active.logoUrl ?? null}
-          size="default"
-        />
-        <span className="font-display max-w-[180px] truncate text-base tracking-tight">
-          {active.name}
-        </span>
-      </div>
-    );
-  }
 
   function handleSelect(communityId: string) {
     if (communityId === activeCommunityId) {
@@ -123,6 +107,30 @@ export function CommunitySwitcher({ communities, activeCommunityId }: CommunityS
             </DropdownMenuItem>
           );
         })}
+        <DropdownMenuSeparator className="bg-border/40 -mx-1 my-1 h-px" />
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            router.push('/app/communities/new');
+          }}
+          className="hover:bg-muted focus:bg-muted text-crown flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm outline-none"
+        >
+          <span className="bg-crown/15 text-crown flex size-7 items-center justify-center rounded-full">
+            <Plus className="size-3.5" />
+          </span>
+          <span className="font-display flex-1 tracking-tight">Crear comunidad</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setOpen(false);
+            router.push('/app/communities');
+          }}
+          className="hover:bg-muted focus:bg-muted text-muted-foreground flex cursor-pointer items-center justify-center gap-1.5 rounded-md px-2.5 py-2 text-[11px] uppercase tracking-widest outline-none"
+        >
+          Ver todas
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -100,7 +100,9 @@ export default async function TournamentsInboxPage({
   searchParams: Promise<{ showClub?: string }>;
 }) {
   const { showClub } = await searchParams;
-  const showClubOpen = showClub === '1';
+  // Default ON: el inbox muestra torneos de TODAS las comunidades del user + los
+  // del club abiertos. Se puede ocultar club_open con ?showClub=0 (toggle).
+  const showClubOpen = showClub !== '0';
 
   const user = await getSession();
   if (!user) return null;
@@ -443,7 +445,7 @@ export default async function TournamentsInboxPage({
           <Button variant="ghost" size="sm" asChild>
             <Link
               href={
-                showClubOpen ? '/app/tournaments' : '/app/tournaments?showClub=1'
+                showClubOpen ? '/app/tournaments?showClub=0' : '/app/tournaments'
               }
             >
               {showClubOpen ? 'Ocultar' : 'Mostrar'}

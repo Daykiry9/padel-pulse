@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Globe, Lock, Pencil, Trophy, Users } from 'lucide-react';
+import { Globe, ImagePlus, Lock, Pencil, Trophy, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -116,6 +116,22 @@ export default async function CommunityDetailPage({
         isMember={isMember}
         isPublic={isPublic}
       />
+
+      {isOwner && !community.logo_url && (
+        <Link
+          href={`/app/communities/${community.slug}/settings?tab=logo`}
+          className="border-crown/30 bg-crown/[0.04] hover:bg-crown/[0.08] flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors"
+        >
+          <ImagePlus className="text-crown size-4 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">Sube un logo para tu comunidad</div>
+            <div className="text-muted-foreground text-xs">
+              Dale identidad — aparece en torneos, rankings y compartidos.
+            </div>
+          </div>
+          <span className="text-crown text-xs uppercase tracking-widest shrink-0">Subir</span>
+        </Link>
+      )}
 
       {isMember ? (
         <>
