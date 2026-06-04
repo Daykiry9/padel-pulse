@@ -9,6 +9,7 @@ import {
 } from '@/components/community-switcher';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { NotificationsBell, type NotificationItem } from '@/components/notifications-bell';
+import { SwipeTabsListener } from '@/components/swipe-tabs';
 import { UserMenu } from '@/components/user-menu';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -99,6 +100,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-10 md:py-14">{children}</main>
+      <SwipeTabsListener />
     </div>
   );
 }
