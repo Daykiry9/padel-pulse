@@ -9,9 +9,12 @@ values (
   'community-logos',
   true,
   2097152, -- 2 MB
-  array['image/png','image/jpeg','image/webp','image/svg+xml']
+  -- SVG excluido por XSS: bucket es publico y SVG puede ejecutar scripts via URL directa.
+  array['image/png','image/jpeg','image/webp']
 )
-on conflict (id) do nothing;
+on conflict (id) do update
+  set file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
 
 -- Policies sobre storage.objects para el bucket 'community-logos'.
 

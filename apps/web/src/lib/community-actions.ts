@@ -213,17 +213,17 @@ export async function leaveCommunity(formData: FormData): Promise<ActionResult> 
 
 const LOGO_BUCKET = 'community-logos';
 const LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+// NOTA: SVG fuera del whitelist por seguridad — un SVG puede embebrer <script>
+// que se ejecuta cuando se navega a la URL pública del storage directamente.
 const LOGO_ALLOWED_MIME = new Set([
   'image/png',
   'image/jpeg',
   'image/webp',
-  'image/svg+xml',
 ]);
 const MIME_TO_EXT: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
-  'image/svg+xml': 'svg',
 };
 
 async function assertCommunityOwner(
@@ -268,7 +268,7 @@ export async function uploadCommunityLogo(formData: FormData): Promise<ActionRes
   }
   const mime = file.type;
   if (!LOGO_ALLOWED_MIME.has(mime)) {
-    return { ok: false, error: 'Formato no permitido. Usa PNG, JPG, WEBP o SVG.' };
+    return { ok: false, error: 'Formato no permitido. Usa PNG, JPG o WEBP.' };
   }
 
   const owned = await assertCommunityOwner(communityId, user.id);

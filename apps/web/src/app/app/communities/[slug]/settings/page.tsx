@@ -12,6 +12,7 @@ import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { updateCommunity } from '@/lib/community-actions';
+import { CommunityLogoUploader } from '@/components/community-logo-uploader';
 import { DeleteCommunitySection } from './delete-community-section';
 
 type DeleteError = 'confirmation' | 'tournaments' | 'not_owner' | 'invalid' | 'server';
@@ -24,6 +25,7 @@ type CommunityRow = {
   city: string;
   owner_id: string;
   is_public: boolean | null;
+  logo_url: string | null;
 };
 
 export default async function CommunitySettingsPage({
@@ -48,7 +50,7 @@ export default async function CommunitySettingsPage({
   const supabase = await getSupabaseServerClient();
   const { data: communityRaw } = await supabase
     .from('communities')
-    .select('id, slug, name, description, city, owner_id, is_public')
+    .select('id, slug, name, description, city, owner_id, is_public, logo_url')
     .eq('slug', slug)
     .maybeSingle();
 
@@ -88,6 +90,19 @@ export default async function CommunitySettingsPage({
           <span>Cambios guardados.</span>
         </div>
       )}
+
+      <Card className="p-6">
+        <h2 className="font-display mb-2 text-xl tracking-tight">LOGO DE LA COMUNIDAD</h2>
+        <p className="text-muted-foreground mb-4 text-sm">
+          Aparece en el directorio, en las invitaciones y en las tarjetas compartidas. PNG, JPG, WebP
+          o SVG, máximo 2 MB. Cuadrado se ve mejor.
+        </p>
+        <CommunityLogoUploader
+          communityId={community.id}
+          currentLogoUrl={community.logo_url}
+          communityName={community.name}
+        />
+      </Card>
 
       <Card className="p-6">
         <h2 className="font-display mb-4 text-xl tracking-tight">EDITAR DATOS</h2>
