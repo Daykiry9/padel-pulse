@@ -151,6 +151,10 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     color-scheme: dark;
+    /* WebView Android: cortar el edge-swipe back gesture y cualquier overscroll
+       horizontal. Sin esto el SwipeTabsListener "tira" del layout y se ve el
+       header recortado mientras el dedo está abajo. */
+    overscroll-behavior-x: none;
   }
   body {
     @apply bg-background text-foreground font-sans;
@@ -158,6 +162,9 @@
     line-height: 1.6;
     letter-spacing: 0.005em;
     font-weight: 450;
+    /* Belt-and-suspenders: ningún ancho > 100vw arrastra el viewport. */
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight uppercase;
