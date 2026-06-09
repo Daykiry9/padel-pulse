@@ -559,7 +559,16 @@ export async function closeRegistrationsAndGenerateBracket(
     guest_player_id: string | null;
   }[];
 
-  const courts = tournament.courts ?? 2;
+  // Canchas: el organizador las elige manualmente, acotadas por #inscritos.
+  // random/express son jugadores individuales (4 por cancha); el resto parejas
+  // (2 por cancha). Fallback al valor guardado si no llega nada.
+  const perCourt = tournament.format === 'americano_random' || tournament.format === 'express' ? 4 : 2;
+  const maxCourts = Math.max(1, Math.floor(registrations.length / perCourt));
+  const requestedCourts = Number(formData.get('courts') ?? 0);
+  const courts =
+    requestedCourts > 0
+      ? Math.min(requestedCourts, maxCourts)
+      : Math.min(tournament.courts ?? 2, maxCourts);
 
   // Helper para round-robin team-based (fijo/liga/liguilla): mapea round.matches
   // al shape de la tabla `matches` con registration_one_id/two_id.
@@ -768,7 +777,7 @@ export async function closeRegistrationsAndGenerateBracket(
   // 6. Pasar a in_progress
   const { error: updErr } = await supabase
     .from('tournaments')
-    .update({ status: 'in_progress' } as never)
+    .update({ status: 'in_progress', courts } as never)
     .eq('id', tournamentId);
   if (updErr) return { ok: false, error: translateDbError(updErr.message) };
 

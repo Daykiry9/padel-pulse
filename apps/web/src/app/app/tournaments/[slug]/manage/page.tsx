@@ -327,7 +327,11 @@ export default async function ManageTournamentPage({
             </p>
           ) : (
             <div className="mt-5">
-              <GenerateBracketButton tournamentId={tournament.id} count={registrations.length} />
+              <GenerateBracketButton
+                tournamentId={tournament.id}
+                count={registrations.length}
+                format={tournament.format}
+              />
             </div>
           )}
         </Card>

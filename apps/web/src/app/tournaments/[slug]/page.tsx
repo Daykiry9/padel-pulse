@@ -319,6 +319,7 @@ export default async function TournamentDetailPage({
                   <GenerateBracketButton
                     tournamentId={tournament.id}
                     count={registrations?.length ?? 0}
+                    format={tournament.format}
                   />
                 )}
               </div>

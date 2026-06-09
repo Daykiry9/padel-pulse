@@ -122,7 +122,38 @@ export async function MembersTab({
     });
   }
 
-  const pendingRequests = (joinReqsRes.data ?? []) as JoinReqRow[];
+  let pendingRequests = (joinReqsRes.data ?? []) as JoinReqRow[];
+
+  // Las RLS de profiles ocultan al solicitante (aún no es miembro), así que el
+  // embed viene null → "?". Hidratamos desde profiles_public por id.
+  const missingReqIds = pendingRequests.filter((r) => !r.profiles).map((r) => r.profile_id);
+  if (missingReqIds.length > 0) {
+    const { data: pubReqData } = await supabase
+      .from('profiles_public')
+      .select('id, display_name, skill_category, city')
+      .in('id', missingReqIds);
+    const reqById = new Map(
+      ((pubReqData ?? []) as {
+        id: string;
+        display_name: string;
+        skill_category: string | null;
+        city: string | null;
+      }[]).map((p) => [p.id, p]),
+    );
+    pendingRequests = pendingRequests.map((r) => {
+      if (r.profiles) return r;
+      const pub = reqById.get(r.profile_id);
+      if (!pub) return r;
+      return {
+        ...r,
+        profiles: {
+          display_name: pub.display_name,
+          skill_category: pub.skill_category,
+          city: pub.city,
+        },
+      };
+    });
+  }
 
   members.sort((a, b) => {
     const ro = ROLE_ORDER[a.role] - ROLE_ORDER[b.role];

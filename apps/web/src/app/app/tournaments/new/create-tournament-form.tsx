@@ -176,6 +176,9 @@ export function CreateTournamentForm({
           </p>
         )}
       </fieldset>
+      {/* Un fieldset disabled excluye sus controles del submit; cuando el scope
+          queda fijo, lo enviamos por un hidden fuera del fieldset. */}
+      {scopeLocked && <input type="hidden" name="scope" value={scope} />}
 
       {/* === ORGANIZADOR según scope ==================================== */}
       {scope === 'community' && (
