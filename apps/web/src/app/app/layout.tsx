@@ -81,10 +81,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               PADEL<span className="text-crown">KING</span>
             </span>
           </Link>
-          <CommunitySwitcher
-            communities={communities}
-            activeCommunityId={activeCommunityId}
-          />
+          <div className="hidden md:block">
+            <CommunitySwitcher
+              communities={communities}
+              activeCommunityId={activeCommunityId}
+            />
+          </div>
           <div className="flex items-center gap-3">
             <div className="hidden md:block">
               <CommandPalette />

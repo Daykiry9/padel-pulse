@@ -86,7 +86,7 @@ export function ShareStoryButton({
   }
 
   return (
-    <Card className="space-y-3 p-4">
+    <Card className="animate-in fade-in-0 zoom-in-95 origin-top space-y-3 p-4 duration-200">
       <div>
         <div className="font-display text-sm tracking-tight">COMPARTIR STORY</div>
         <p className="text-muted-foreground mt-1 text-xs normal-case">

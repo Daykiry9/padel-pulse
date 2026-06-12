@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
+import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
 
 import { FinishTournamentButton } from '@/components/finish-tournament-button';
 import { GenerateBracketButton } from './generate-bracket-button';
@@ -270,16 +271,8 @@ export default async function ManageTournamentPage({
         </Link>
         <div className="mt-3 flex items-center gap-2">
           <Badge variant="crown">Administrar</Badge>
-          <Badge
-            variant={
-              tournament.status === 'in_progress'
-                ? 'success'
-                : tournament.status === 'finished'
-                  ? 'muted'
-                  : 'data'
-            }
-          >
-            {tournament.status}
+          <Badge variant={TOURNAMENT_STATUS[tournament.status]?.variant ?? 'muted'}>
+            {TOURNAMENT_STATUS[tournament.status]?.label ?? tournament.status}
           </Badge>
         </div>
         <h1 className="font-display mt-3 text-4xl tracking-tight md:text-5xl">
@@ -304,7 +297,7 @@ export default async function ManageTournamentPage({
       {tournament.status === 'in_progress' && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-crown/30 bg-crown/[0.03] px-4 py-3">
           <p className="text-muted-foreground text-sm">
-            Cuando termines de cargar los marcadores, cerrá el torneo.
+            Cuando termines de cargar los marcadores, cierra el torneo.
           </p>
           <FinishTournamentButton tournamentId={tournament.id} />
         </div>

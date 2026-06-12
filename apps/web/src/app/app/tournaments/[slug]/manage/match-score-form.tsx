@@ -118,7 +118,12 @@ export function MatchScoreForm({
             Aceptar lo reportado
           </Button>
         )}
-        {savedAt && !isPending && <span className="text-success text-xs">✓ Guardado</span>}
+        {savedAt && !isPending && (
+          <span className="text-success flex items-center gap-1 text-xs">
+            <Check className="size-3 shrink-0" aria-hidden />
+            Guardado
+          </span>
+        )}
         {error && <span className="text-destructive text-xs">{error}</span>}
       </div>
     </div>

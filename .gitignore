@@ -88,3 +88,6 @@ apps/web/ios/.DS_Store
 *.mobileprovision
 keystore.properties
 apps/web/android/app/keystore.properties
+
+# Impeccable critique snapshots (tooling local)
+.impeccable/

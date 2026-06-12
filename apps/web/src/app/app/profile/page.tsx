@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Crown, ExternalLink, Trophy, Users } from 'lucide-react';
+import { Check, Crown, ExternalLink, Trophy, Users } from 'lucide-react';
 
 import {
   CATEGORY_LABELS,
@@ -94,9 +94,9 @@ export default async function ProfilePage({
         <div
           role="status"
           aria-live="polite"
-          className="border-success/30 bg-success/[0.08] flex items-center gap-2 rounded-lg border px-4 py-3 text-sm"
+          className="border-success/30 bg-success/[0.08] animate-in fade-in-0 slide-in-from-top-1 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm duration-200"
         >
-          <span className="text-success">✓</span>
+          <Check className="text-success size-4 shrink-0" aria-hidden />
           <span>Perfil actualizado.</span>
         </div>
       )}
@@ -124,7 +124,11 @@ export default async function ProfilePage({
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard icon={Trophy} label="Categoría" value={profile.skill_category ? CATEGORY_LABELS[profile.skill_category] ?? profile.skill_category : '—'} />
         <StatCard icon={Crown} label="ELO" value={String(profile.elo_rating ?? 1000)} accent="text-data" />
-        <StatCard icon={Users} label="Género" value={profile.gender ?? '—'} />
+        <StatCard
+          icon={Users}
+          label="Género"
+          value={profile.gender === 'male' ? 'Masculino' : profile.gender === 'female' ? 'Femenino' : '—'}
+        />
       </div>
 
       {/* Edit form */}

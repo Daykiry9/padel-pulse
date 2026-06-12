@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft, Check, Settings } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -86,7 +86,7 @@ export default async function CommunitySettingsPage({
           aria-live="polite"
           className="border-success/30 bg-success/[0.08] flex items-center gap-2 rounded-lg border px-4 py-3 text-sm"
         >
-          <span className="text-success">✓</span>
+          <Check className="text-success size-4 shrink-0" aria-hidden />
           <span>Cambios guardados.</span>
         </div>
       )}

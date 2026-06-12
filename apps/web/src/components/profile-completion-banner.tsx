@@ -35,8 +35,8 @@ const FIELD_KEYS = Object.keys(FIELD_LABELS) as Array<keyof typeof FIELD_LABELS>
  * exigía ambos AND → tras guardar parcial el banner seguía apareciendo y
  * Gabriel reportó "no me deja completarlo" porque pensó que no se guardaba.
  *
- * Versión rica: avatar grande del user, progress bar % calculada sobre 6
- * campos, CTA con conteo de campos faltantes, entrada animada (slide-up +
+ * Versión rica: avatar grande del user, progress bar % calculada sobre los
+ * campos opcionales + display_name, CTA, entrada animada (slide-up +
  * fade) con framer-motion. El haptic feedback del CTA lo da el Button crown
  * por defecto (whileTap + haptics.tap()).
  */
@@ -51,8 +51,10 @@ export function ProfileCompletionBanner({
   const hasCategory = Boolean(profile?.skill_category);
   if (hasPhone || hasCategory) return null;
 
-  const filled = FIELD_KEYS.filter((key) => Boolean(profile?.[key])).length;
-  const total = FIELD_KEYS.length;
+  // display_name siempre existe tras signup: dota progreso inicial (endowed
+  // progress) para que la barra nunca arranque en 0%.
+  const filled = FIELD_KEYS.filter((key) => Boolean(profile?.[key])).length + 1;
+  const total = FIELD_KEYS.length + 1;
   const missing = FIELD_KEYS.filter((key) => !profile?.[key]);
   const missingCount = missing.length;
   const percent = Math.round((filled / total) * 100);
@@ -61,7 +63,7 @@ export function ProfileCompletionBanner({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
       className="border-crown/30 from-crown/[0.08] via-crown/[0.04] relative overflow-hidden rounded-2xl border bg-gradient-to-br to-transparent p-4 md:p-5"
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-5">
@@ -77,7 +79,7 @@ export function ProfileCompletionBanner({
             <div className="flex items-center gap-2">
               <Gift className="text-crown size-3.5" />
               <p className="font-display text-crown text-xs tracking-tight uppercase">
-                Desbloqueá recompensas
+                Desbloquea recompensas
               </p>
             </div>
             <p className="text-foreground text-sm leading-snug font-medium md:text-base">
@@ -86,7 +88,7 @@ export function ProfileCompletionBanner({
                 : `Te faltan ${missingCount} ${missingCount === 1 ? 'dato' : 'datos'} para completar tu perfil`}
             </p>
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Completá {missing.slice(0, 3).map((k) => FIELD_LABELS[k]).join(', ')}
+              Completa {missing.slice(0, 3).map((k) => FIELD_LABELS[k]).join(', ')}
               {missing.length > 3 ? ` y ${missing.length - 3} más` : ''} para recibir premios en
               torneos.
             </p>
@@ -98,10 +100,12 @@ export function ProfileCompletionBanner({
               <span className="text-crown font-display tabular-nums">{percent}%</span>
             </div>
             <div className="bg-crown/10 relative h-1.5 overflow-hidden rounded-full">
+              {/* width estático + scaleX: transform puro, sin animar layout */}
               <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${percent}%` }}
-                transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                style={{ width: `${percent}%`, originX: 0 }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                 className="bg-crown absolute inset-y-0 left-0 rounded-full"
               />
             </div>
@@ -110,12 +114,11 @@ export function ProfileCompletionBanner({
 
         <Button
           variant="crown"
-          size="sm"
           asChild
-          className="self-stretch md:self-center md:shrink-0"
+          className="h-11 self-stretch md:self-center md:shrink-0"
         >
           <Link href="/app/profile">
-            Completar {missingCount}
+            Completar perfil
             <ArrowRight className="size-3.5" />
           </Link>
         </Button>

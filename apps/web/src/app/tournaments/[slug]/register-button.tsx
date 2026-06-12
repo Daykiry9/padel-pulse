@@ -60,7 +60,11 @@ export function RegisterButton({ tournamentId, mode, teams, label }: Props) {
         >
           {isPending ? 'Inscribiendo…' : (label ?? 'Inscribirme')}
         </Button>
-        {error && <p className="text-destructive text-xs">{error}</p>}
+        {error && (
+          <p key={error} role="alert" className="stagger-fade-in text-destructive text-xs">
+            {error}
+          </p>
+        )}
       </div>
     );
   }
@@ -75,7 +79,7 @@ export function RegisterButton({ tournamentId, mode, teams, label }: Props) {
 
   return (
     <form
-      className="max-w-sm space-y-3"
+      className="stagger-fade-in max-w-sm space-y-3"
       action={(fd) => {
         fd.set('tournament_id', tournamentId);
         fd.set('modality', mode);
@@ -83,8 +87,8 @@ export function RegisterButton({ tournamentId, mode, teams, label }: Props) {
       }}
     >
       {mode === 'team' ? (
-        <FormField label="Tu equipo">
-          <Select name="team_id" required>
+        <FormField label="Tu equipo" error={error}>
+          <Select name="team_id" defaultValue={teams![0]?.id} required>
             {teams!.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -94,21 +98,21 @@ export function RegisterButton({ tournamentId, mode, teams, label }: Props) {
         </FormField>
       ) : (
         <FormField
-          label="Compañero ad-hoc"
+          label="Compañero"
           hint="Nombre exacto con el que se registró en PadelKing. La pareja solo aplica a este torneo."
+          error={error}
         >
           <Input name="partner_search" required placeholder="Ej: Andrés Mejía" />
         </FormField>
       )}
-      <div className="flex gap-2">
-        <Button type="submit" variant="crown" disabled={isPending} size="sm">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="submit" variant="crown" disabled={isPending} size="lg">
           {isPending ? 'Inscribiendo…' : 'Confirmar inscripción'}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+        <Button type="button" variant="outline" size="lg" onClick={() => setOpen(false)}>
           Cancelar
         </Button>
       </div>
-      {error && <p className="text-destructive text-xs">{error}</p>}
     </form>
   );
 }

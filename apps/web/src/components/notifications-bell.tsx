@@ -60,11 +60,11 @@ export function NotificationsBell({
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={unreadCount > 0 ? `${unreadCount} notificaciones sin leer` : 'Notificaciones'}
-        className="text-muted-foreground hover:text-foreground relative transition-colors"
+        className="text-muted-foreground hover:text-foreground relative flex size-11 items-center justify-center transition-colors"
       >
         {unreadCount > 0 ? <BellDot className="size-4" /> : <Bell className="size-4" />}
         {unreadCount > 0 && (
-          <span className="bg-crown text-crown-foreground absolute -right-1.5 -top-1 flex size-4 items-center justify-center rounded-full text-[9px] font-bold">
+          <span className="bg-crown text-crown-foreground absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full text-[9px] font-bold">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -77,7 +77,7 @@ export function NotificationsBell({
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="border-border/40 bg-card absolute right-0 top-full z-40 mt-2 w-80 overflow-hidden rounded-lg border shadow-lg">
+          <div className="border-border/40 bg-card shadow-elevated animate-in fade-in-0 zoom-in-95 absolute right-0 top-full z-40 mt-2 w-80 origin-top-right overflow-hidden rounded-xl border duration-[180ms]">
             <div className="border-border/40 flex items-center justify-between border-b px-4 py-3">
               <span className="font-display text-sm tracking-tight">NOTIFICACIONES</span>
               {unreadCount > 0 && (

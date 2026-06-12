@@ -76,7 +76,7 @@ export function CommunitySwitcher({ communities, activeCommunityId }: CommunityS
       <DropdownMenuContent
         align="start"
         sideOffset={8}
-        className="border-border bg-card text-foreground z-50 w-64 overflow-hidden rounded-xl border p-1 shadow-elevated"
+        className="border-border bg-card text-foreground shadow-elevated animate-in fade-in-0 zoom-in-95 z-50 w-64 origin-top overflow-hidden rounded-xl border p-1 duration-[180ms]"
       >
         <DropdownMenuLabel className="text-muted-foreground px-3 py-2 text-[10px] uppercase tracking-widest">
           Tus comunidades

@@ -44,7 +44,7 @@ export async function RankingTab({
         title="Aún no hay ranking"
         description={
           isMember
-            ? 'El ranking se construye con cada partido completado en torneos de la comunidad. Jugá tu primer torneo para aparecer acá.'
+            ? 'El ranking se construye con cada partido completado en torneos de la comunidad. Juega tu primer torneo para aparecer acá.'
             : 'Esta comunidad aún no completó partidos. Cuando se cierren los primeros torneos vas a ver el ranking interno por ELO.'
         }
         bullets={[

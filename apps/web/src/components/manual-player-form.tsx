@@ -112,14 +112,14 @@ export function ManualPlayerForm({ tournamentId, className }: ManualPlayerFormPr
     if (mode === 'guest') {
       const name = guestName.trim();
       if (name.length < 2) {
-        setError('Escribí un nombre (mínimo 2 caracteres)');
+        setError('Escribe un nombre (mínimo 2 caracteres)');
         return;
       }
       fd.set('mode', 'guest');
       fd.set('display_name', name);
     } else {
       if (!selected) {
-        setError('Elegí una cuenta de la lista');
+        setError('Elige una cuenta de la lista');
         return;
       }
       fd.set('mode', 'profile');
@@ -145,7 +145,7 @@ export function ManualPlayerForm({ tournamentId, className }: ManualPlayerFormPr
           Agregar jugador
         </CardTitle>
         <CardDescription>
-          Sumá una cuenta existente o un invitado sin cuenta. Los invitados viven solo en este
+          Suma una cuenta existente o un invitado sin cuenta. Los invitados viven solo en este
           torneo.
         </CardDescription>
       </CardHeader>
@@ -186,7 +186,7 @@ export function ManualPlayerForm({ tournamentId, className }: ManualPlayerFormPr
             <FormField
               label="Buscar por nombre"
               htmlFor="profile-search"
-              hint="El usuario tiene que existir en PadelScore."
+              hint="El usuario tiene que existir en PadelKing."
             >
               {selected ? (
                 <div className="border-border bg-card flex items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5">
@@ -231,7 +231,7 @@ export function ManualPlayerForm({ tournamentId, className }: ManualPlayerFormPr
                   {results.length > 0 ? (
                     <ul
                       role="listbox"
-                      className="border-border bg-card shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] absolute z-10 mt-1.5 max-h-60 w-full overflow-auto rounded-lg border py-1"
+                      className="border-border bg-card shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] animate-in fade-in-0 zoom-in-95 absolute z-10 mt-1.5 max-h-60 w-full origin-top overflow-auto rounded-lg border py-1 duration-[180ms]"
                     >
                       {results.map((p) => (
                         <li key={p.id}>

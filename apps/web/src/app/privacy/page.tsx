@@ -30,7 +30,7 @@ export default function PrivacyPage() {
         <p className="text-foreground/85 mt-6 text-sm leading-relaxed">
           Esta política explica qué datos recolectamos cuando usás PadelKing (la
           &quot;Plataforma&quot;), para qué los usamos, con quién los compartimos y los derechos
-          que tenés sobre ellos. Si algo no te queda claro, escribínos a{' '}
+          que tienes sobre ellos. Si algo no te queda claro, escríbenos a{' '}
           <a href="mailto:hola@padelking.co">hola@padelking.co</a>.
         </p>
 
@@ -128,7 +128,7 @@ export default function PrivacyPage() {
         <Section title="5. Bases legales del tratamiento">
           <ul>
             <li>
-              <strong>Consentimiento:</strong> al registrarte aceptás estos términos y esta
+              <strong>Consentimiento:</strong> al registrarte aceptas estos términos y esta
               política. Lo podés revocar cuando quieras eliminando tu cuenta o escribiéndonos.
             </li>
             <li>
@@ -147,7 +147,7 @@ export default function PrivacyPage() {
 
         <Section title="6. Sign in with Apple / Google (proveedores de identidad)">
           <p>
-            Si elegís ingresar con Apple o Google, ese proveedor nos comparte un identificador
+            Si eliges ingresar con Apple o Google, ese proveedor nos comparte un identificador
             único y, opcionalmente, tu email. Apple permite ocultar tu email real con su servicio
             de relay privado — nosotros respetamos esa elección y nunca intentamos resolver el
             email real.

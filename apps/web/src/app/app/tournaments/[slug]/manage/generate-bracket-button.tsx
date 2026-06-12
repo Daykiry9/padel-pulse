@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { closeRegistrationsAndGenerateBracket } from '@/lib/tournament-actions';
 
 // Jugadores por cancha según formato: random/express son individuales (4),
@@ -52,24 +53,26 @@ export function GenerateBracketButton({
 
   return (
     <div className="space-y-3">
-      <label className="flex items-center gap-2 text-sm">
+      {/* div, no label: el Select custom renderiza sus opciones dentro del
+          contenedor y un label re-dispararía el click al trigger (reabre el popup) */}
+      <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground uppercase tracking-widest text-[10px]">Canchas</span>
-        <select
-          value={courts}
+        <Select
+          className="w-20"
+          value={String(courts)}
           onChange={(e) => setCourts(Number(e.target.value))}
           disabled={busy}
-          className="border-border bg-background rounded-md border px-2 py-1 text-sm"
         >
           {Array.from({ length: maxCourts }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={n}>
+            <option key={n} value={String(n)}>
               {n}
             </option>
           ))}
-        </select>
+        </Select>
         <span className="text-muted-foreground text-xs">
           máx {maxCourts} para {count} inscritos
         </span>
-      </label>
+      </div>
       <Button variant="crown" size="sm" onClick={onClick} disabled={busy}>
         <Sparkles className="size-3" />
         {busy ? 'Iniciando…' : 'Iniciar torneo ya'}

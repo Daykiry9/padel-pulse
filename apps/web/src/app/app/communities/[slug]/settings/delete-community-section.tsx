@@ -61,7 +61,7 @@ export function DeleteCommunitySection({ communityId, slug, communityName, showE
           <input type="hidden" name="community_id" value={communityId} />
           <input type="hidden" name="slug" value={slug} />
           <p className="text-foreground text-sm">
-            Para confirmar, escribí{' '}
+            Para confirmar, escribe{' '}
             <strong className="font-mono tracking-wider">ELIMINAR</strong> abajo.
           </p>
           <Input

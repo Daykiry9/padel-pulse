@@ -11,7 +11,7 @@ import {
 import type { User } from '@supabase/supabase-js';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { CategoryBadge } from '@/components/ui/category-badge';
@@ -108,7 +108,7 @@ export async function CommunityHubHome({
   return (
     <div className="space-y-10">
       {/* HEADER STICKY — avatar comunidad activa + switcher */}
-      <header className="bg-background/85 supports-[backdrop-filter]:bg-background/65 border-border/40 sticky top-0 z-30 -mx-4 flex items-center justify-between gap-3 border-b px-4 py-3 backdrop-blur-md md:-mx-6 md:px-6">
+      <header className="bg-background/85 supports-[backdrop-filter]:bg-background/65 border-border/40 sticky top-16 z-30 -mx-6 flex items-center justify-between gap-3 border-b px-6 py-3 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           {allCommunities.length >= 2 ? (
             <CommunitySwitcher
@@ -158,10 +158,10 @@ export async function CommunityHubHome({
         {nextTournament ? (
           <Link
             href={`/tournaments/${nextTournament.slug}`}
-            className="focus-card block rounded-xl"
+            className="focus-card block rounded-xl transition-transform duration-[120ms] [transition-timing-function:var(--ease-press)] active:scale-[0.99]"
           >
-            <Card className="border-gold-400/30 from-gold-400/[0.04] hover:border-gold-400/60 group relative overflow-hidden bg-gradient-to-br to-transparent p-6 md:p-8">
-              <div className="bg-gold-400/[0.06] absolute -right-12 -top-12 size-48 rounded-full blur-3xl" />
+            <Card className="border-crown/30 from-crown/[0.04] hover:border-crown/60 group relative overflow-hidden bg-gradient-to-br to-transparent p-6 md:p-8">
+              <div className="bg-crown/[0.06] absolute -right-12 -top-12 size-48 rounded-full blur-3xl" />
 
               <div className="relative flex flex-wrap items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
@@ -220,10 +220,10 @@ export async function CommunityHubHome({
                 <span className="text-muted-foreground text-xs uppercase tracking-widest tabular-nums">
                   {confirmedCount}/{nextTournament.max_teams} inscritos
                 </span>
-                <Button variant="crown" size="sm">
+                <span className={buttonVariants({ variant: 'crown', size: 'sm' })}>
                   Ver torneo
                   <ArrowRight className="size-3" />
-                </Button>
+                </span>
               </div>
             </Card>
           </Link>
@@ -239,7 +239,7 @@ export async function CommunityHubHome({
                 </div>
                 <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                   {isOwner
-                    ? 'Arma el primer torneo de tu comunidad — abre inscripciones y juega.'
+                    ? 'Arma el primer torneo de tu comunidad: abre inscripciones y juega.'
                     : 'Avisa al organizador para que arme el primero.'}
                 </p>
                 {isOwner && (
@@ -288,10 +288,10 @@ export async function CommunityHubHome({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-display text-base">
-                  Aún no tenés ranking en esta comunidad
+                  Aún no tienes ranking en esta comunidad
                 </div>
                 <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                  Jugá tu primer torneo para entrar al ranking interno.
+                  Juega tu primer torneo para entrar al ranking interno.
                 </p>
               </div>
             </div>

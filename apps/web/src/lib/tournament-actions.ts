@@ -210,6 +210,21 @@ export async function registerToTournament(formData: FormData): Promise<ActionRe
     return { ok: false, error: 'Ya estás inscrito en este torneo.' };
   }
 
+  // Cupo (best-effort): check read-then-insert sin lock; dos inscripciones
+  // simultáneas en el último cupo podrían colarse. Garantía real = RPC/trigger.
+  const [{ data: capData }, { count: confirmedCount }] = await Promise.all([
+    supabase.from('tournaments').select('max_teams').eq('id', tournamentId).single(),
+    supabase
+      .from('tournament_registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('tournament_id', tournamentId)
+      .eq('status', 'confirmed'),
+  ]);
+  const maxTeams = (capData as { max_teams: number } | null)?.max_teams;
+  if (maxTeams != null && (confirmedCount ?? 0) >= maxTeams) {
+    return { ok: false, error: 'El torneo ya está lleno.' };
+  }
+
   if (modality === 'individual') {
     const { error } = await supabase.from('tournament_registrations').insert({
       tournament_id: tournamentId,

@@ -26,7 +26,7 @@ export function DeleteAccountSection({ showError }: { showError?: 'confirmation'
 
       {showError === 'server' && (
         <p className="text-destructive mt-3 text-xs">
-          No pudimos eliminar tu cuenta. Reintentá o escribí a{' '}
+          No pudimos eliminar tu cuenta. Reintenta o escribe a{' '}
           <a href="mailto:privacidad@padelking.co" className="underline">
             privacidad@padelking.co
           </a>
@@ -47,7 +47,7 @@ export function DeleteAccountSection({ showError }: { showError?: 'confirmation'
       ) : (
         <form action={deleteMyAccount} className="mt-4 space-y-3">
           <p className="text-foreground text-sm">
-            Para confirmar, escribí{' '}
+            Para confirmar, escribe{' '}
             <strong className="font-mono tracking-wider">ELIMINAR</strong> abajo.
           </p>
           <Input

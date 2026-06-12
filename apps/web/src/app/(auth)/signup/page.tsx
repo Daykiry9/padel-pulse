@@ -29,7 +29,7 @@ export default async function SignupPage({
         </p>
         {invite && (
           <div className="border-crown/30 bg-crown/[0.05] text-foreground mt-4 rounded-lg border p-3 text-xs">
-            ✨ Te invitaron a PadelKing. Crea tu cuenta y completa tu perfil para entrar al torneo
+            Te invitaron a PadelKing. Crea tu cuenta y completa tu perfil para entrar al torneo
             / equipo / comunidad.
           </div>
         )}
@@ -80,7 +80,7 @@ export default async function SignupPage({
         </SubmitButton>
 
         <p className="text-muted-foreground text-center text-xs normal-case">
-          Al crear tu cuenta aceptás los{' '}
+          Al crear tu cuenta aceptas los{' '}
           <Link href="/terms" target="_blank" className="text-crown underline">
             Términos
           </Link>{' '}

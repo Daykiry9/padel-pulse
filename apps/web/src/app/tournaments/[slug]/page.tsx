@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Calendar, Crown, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Check, Crown, Trophy, Users } from 'lucide-react';
 
 import { CATEGORY_LABELS } from '@padelking/domain';
 import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
@@ -18,6 +18,7 @@ import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
 import { formatDateTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { GenerateBracketButton } from '@/app/app/tournaments/[slug]/manage/generate-bracket-button';
+import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
 import { RegisterButton } from './register-button';
 
 export default async function TournamentDetailPage({
@@ -128,6 +129,7 @@ export default async function TournamentDetailPage({
 
   type RegistrationRow = {
     id: string;
+    status: string;
     team_id: string | null;
     player_id: string | null;
     player_one_id: string | null;
@@ -141,7 +143,7 @@ export default async function TournamentDetailPage({
   const regsRes = await supabase
     .from('tournament_registrations')
     .select(
-      'id, team_id, player_id, player_one_id, player_two_id, guest_player_id, guest_player_one_id, guest_player_two_id, teams(name)',
+      'id, status, team_id, player_id, player_one_id, player_two_id, guest_player_id, guest_player_one_id, guest_player_two_id, teams(name)',
     )
     .eq('tournament_id', tournament.id);
   const registrations = (regsRes.data ?? []) as unknown as RegistrationRow[];
@@ -278,6 +280,10 @@ export default async function TournamentDetailPage({
 
   const isIndividual = tournament.competition_unit === 'player';
 
+  // Mismo criterio que el gate del server (registerToTournament): solo confirmed.
+  const isFull =
+    registrations.filter((r) => r.status === 'confirmed').length >= tournament.max_teams;
+
   return (
     <div className="bg-background min-h-screen">
       <header className="border-border/40 bg-background/60 sticky top-0 z-40 border-b backdrop-blur-xl">
@@ -302,7 +308,9 @@ export default async function TournamentDetailPage({
               <Badge variant={tournament.tier === 'competitivo' ? 'crown' : 'data'}>
                 {tournament.format.replace('_', ' ')}
               </Badge>
-              <Badge variant={tournament.status === 'open' ? 'success' : 'muted'}>{tournament.status}</Badge>
+              <Badge variant={TOURNAMENT_STATUS[tournament.status]?.variant ?? 'muted'}>
+                {TOURNAMENT_STATUS[tournament.status]?.label ?? tournament.status}
+              </Badge>
             </div>
             <h1 className="font-display mt-4 text-5xl tracking-tight md:text-7xl">
               {tournament.name}
@@ -326,21 +334,12 @@ export default async function TournamentDetailPage({
             )}
             {isOrganizer && tournament.status === 'open' && (
               <div className="mt-6">
-                <div className="mb-2">
-                  <h2 className="font-display text-lg tracking-tight">
-                    Agregar jugador manualmente
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    Inscribe a alguien con cuenta o crea un invitado para que juegue solo en
-                    este torneo.
-                  </p>
-                </div>
                 <ManualPlayerForm tournamentId={tournament.id} />
               </div>
             )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             <InfoCard
               icon={Calendar}
               label="Fecha"
@@ -353,7 +352,7 @@ export default async function TournamentDetailPage({
                 tournament.category_kind === 'suma' ||
                 tournament.category_kind === 'mixto_suma' ||
                 tournament.category_kind === 'queens_suma'
-                  ? `Suma ≥ ${tournament.min_sum}${tournament.max_player_category_value ? ` (tope val ${tournament.max_player_category_value})` : ''}`
+                  ? `Suma ≥ ${tournament.min_sum}${tournament.max_player_category_value ? ` (tope ${tournament.max_player_category_value} por jugador)` : ''}`
                   : tournament.category
                     ? (CATEGORY_LABELS[tournament.category] ?? tournament.category)
                     : 'Casual'
@@ -423,8 +422,12 @@ export default async function TournamentDetailPage({
               </div>
             ) : userIsParticipant ? (
               <div className="border-success/30 bg-success/[0.04] flex items-center gap-2 rounded-lg border p-4 text-sm">
-                <span className="text-success">✓</span>
+                <Check className="text-success size-4 shrink-0" aria-hidden />
                 <span>Ya estás inscrito en este torneo.</span>
+              </div>
+            ) : isFull ? (
+              <div className="border-border/40 bg-muted/30 text-muted-foreground flex items-center gap-2 rounded-lg border p-4 text-sm">
+                Cupo completo: {tournament.max_teams} {isIndividual ? 'jugadores' : 'equipos'}.
               </div>
             ) : isIndividual ? (
               <div className="space-y-3">
@@ -445,15 +448,15 @@ export default async function TournamentDetailPage({
             ) : (
               <div className="space-y-4">
                 <p className="text-sm">
-                  Puedes inscribirte con un equipo registrado, o con un compañero ad-hoc solo
+                  Puedes inscribirte con un equipo registrado, o con un compañero solo
                   para este torneo (lo más común en pádel amateur).
                 </p>
 
                 {/* Opción A: equipos registrados elegibles */}
                 {myTeams.filter((t) => t.eligibility.ok).length > 0 && (
-                  <div className="border-border/40 space-y-3 rounded-lg border bg-muted/30 p-4">
+                  <div className="space-y-3 rounded-lg bg-muted/30 p-4">
                     <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-                      Opción A — con equipo registrado
+                      Opción A · Equipo registrado
                     </div>
                     {myTeams.map((t) => (
                       <div key={t.id} className="flex items-center justify-between">
@@ -482,10 +485,10 @@ export default async function TournamentDetailPage({
                 )}
 
                 {/* Opción B: ad-hoc partner (siempre disponible para Tier 1) */}
-                <div className="border-border/40 space-y-3 rounded-lg border bg-muted/30 p-4">
+                <div className="space-y-3 rounded-lg bg-muted/30 p-4">
                   <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
                     {myTeams.filter((t) => t.eligibility.ok).length > 0
-                      ? 'Opción B — con compañero ad-hoc'
+                      ? 'Opción B · Compañero solo para este torneo'
                       : 'Inscríbete con un compañero'}
                   </div>
                   <p className="text-muted-foreground text-sm">
@@ -555,7 +558,7 @@ function InfoCard({
         <Icon className="size-3.5" />
         {label}
       </div>
-      <div className="font-display mt-1 text-sm capitalize">{value}</div>
+      <div className="font-display mt-1.5 text-lg tracking-tight capitalize">{value}</div>
     </Card>
   );
 }

@@ -40,11 +40,11 @@ export function RemoveRegistrationButton({
         type="button"
         onClick={onClick}
         disabled={isPending}
-        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors disabled:opacity-40"
+        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive -my-2.5 -mr-1.5 inline-flex size-11 items-center justify-center rounded-md transition-[background-color,color] duration-[120ms] disabled:opacity-40"
         aria-label={`Eliminar inscripción de ${label}`}
         title="Eliminar inscripción"
       >
-        <X className="size-3.5" />
+        <X className="size-4" />
       </button>
     </div>
   );

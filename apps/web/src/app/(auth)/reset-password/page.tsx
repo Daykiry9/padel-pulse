@@ -32,7 +32,7 @@ export default async function ResetPasswordPage() {
       <div>
         <h1 className="font-display text-4xl">NUEVA CONTRASEÑA</h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Elegí una contraseña nueva para tu cuenta.
+          Elige una contraseña nueva para tu cuenta.
         </p>
       </div>
 

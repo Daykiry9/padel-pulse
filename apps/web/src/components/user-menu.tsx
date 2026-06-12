@@ -43,7 +43,7 @@ export function UserMenu({
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Menú de usuario"
-          className="hover:ring-foreground/20 focus-visible:ring-ring rounded-full transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="hover:ring-foreground/20 focus-visible:ring-ring rounded-full p-1 transition-shadow hover:ring-2 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <Avatar seed={userId} name={displayName} size="default" />
         </button>
@@ -52,7 +52,7 @@ export function UserMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="border-border bg-card text-foreground z-50 w-60 overflow-hidden rounded-xl border p-1 shadow-elevated"
+        className="border-border bg-card text-foreground shadow-elevated animate-in fade-in-0 zoom-in-95 z-50 w-60 origin-top-right overflow-hidden rounded-xl border p-1 duration-[180ms]"
       >
         <DropdownMenuLabel className="px-3 py-2.5">
           <div className="text-sm font-semibold">{displayName}</div>

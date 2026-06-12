@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useRef, type ReactNode } from 'react';
 import { useFormStatus } from 'react-dom';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
@@ -30,7 +31,9 @@ export function ActionForm({ action, className, children, onSuccess }: ActionFor
 
   useEffect(() => {
     if (state.ok && state.redirectTo) {
-      toast.success('Listo');
+      // Si el destino renderiza su propio banner de éxito (?saved=1), el toast
+      // sería una doble señal para el mismo evento.
+      if (!state.redirectTo.includes('saved=1')) toast.success('Listo');
       void haptics.success();
       onSuccess?.();
       router.push(state.redirectTo);
@@ -59,7 +62,7 @@ export function ActionForm({ action, className, children, onSuccess }: ActionFor
           role="alert"
           aria-live="assertive"
           tabIndex={-1}
-          className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm outline-none"
+          className="border-destructive/40 bg-destructive/10 text-destructive animate-in fade-in-0 slide-in-from-top-1 rounded-md border px-3 py-2 text-sm outline-none duration-200"
         >
           {state.error}
         </div>
@@ -77,7 +80,14 @@ export function SubmitButton({ children, pendingLabel, disabled, ...props }: Sub
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={disabled || pending} {...props}>
-      {pending ? (pendingLabel ?? 'Procesando…') : children}
+      {pending ? (
+        <>
+          <Loader2 className="size-4 animate-spin" />
+          {pendingLabel ?? 'Procesando…'}
+        </>
+      ) : (
+        children
+      )}
     </Button>
   );
 }

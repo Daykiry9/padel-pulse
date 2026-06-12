@@ -17,6 +17,7 @@ type OptionLike = {
   value: string;
   label: React.ReactNode;
   disabled?: boolean;
+  group?: string;
 };
 
 interface SelectProps {
@@ -31,10 +32,15 @@ interface SelectProps {
   children: React.ReactNode;
 }
 
-function extractOptions(children: React.ReactNode): OptionLike[] {
+function extractOptions(children: React.ReactNode, group?: string): OptionLike[] {
   const out: OptionLike[] = [];
   React.Children.forEach(children, (child) => {
     if (!React.isValidElement(child)) return;
+    if (child.type === 'optgroup') {
+      const p = child.props as { label?: string; children?: React.ReactNode };
+      out.push(...extractOptions(p.children, p.label));
+      return;
+    }
     if (child.type === 'option') {
       const p = child.props as {
         value?: string;
@@ -47,6 +53,7 @@ function extractOptions(children: React.ReactNode): OptionLike[] {
         value: String(p.value),
         label: p.children ?? p.value,
         disabled: p.disabled,
+        group,
       });
     }
   });
@@ -224,7 +231,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             ref={popupRef}
             className={cn(
               'bg-popover text-popover-foreground border-border absolute left-0 right-0 top-full z-50 mt-1.5',
-              'animate-in fade-in-0 zoom-in-95 origin-top rounded-lg border shadow-xl',
+              'animate-in fade-in-0 zoom-in-95 origin-top rounded-lg border shadow-xl duration-[180ms]',
               'overflow-hidden',
             )}
           >
@@ -240,26 +247,46 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               {options.map((opt, i) => {
                 const isSel = opt.value === current;
                 const isActive = i === activeIdx;
+                const showGroup = opt.group && opt.group !== options[i - 1]?.group;
                 return (
-                  <li
-                    key={opt.value}
-                    id={`opt-${i}`}
-                    role="option"
-                    aria-selected={isSel}
-                    aria-disabled={opt.disabled}
-                    onMouseEnter={() => !opt.disabled && setActiveIdx(i)}
-                    onClick={() => !opt.disabled && commit(opt.value)}
-                    className={cn(
-                      'mx-1 flex cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-sm leading-snug',
-                      'transition-colors duration-100',
-                      isActive && !opt.disabled && 'bg-muted',
-                      isSel && 'text-crown',
-                      opt.disabled && 'text-muted-foreground/50 pointer-events-none',
+                  <React.Fragment key={opt.value}>
+                    {showGroup && (
+                      <li
+                        role="presentation"
+                        className="text-muted-foreground px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-[0.1em]"
+                      >
+                        {opt.group}
+                      </li>
                     )}
-                  >
-                    <span className="truncate">{opt.label}</span>
-                    {isSel && <Check className="size-4 shrink-0" />}
-                  </li>
+                    <li
+                      id={`opt-${i}`}
+                      role="option"
+                      aria-selected={isSel}
+                      aria-disabled={opt.disabled}
+                      aria-label={
+                        opt.group && typeof opt.label === 'string'
+                          ? `${opt.group}: ${opt.label}`
+                          : undefined
+                      }
+                      onMouseEnter={() => !opt.disabled && setActiveIdx(i)}
+                      onClick={(e) => {
+                        // preventDefault: si un ancestro es <label>, el click en el li
+                        // se re-dispararía al trigger y reabriría el popup.
+                        e.preventDefault();
+                        if (!opt.disabled) commit(opt.value);
+                      }}
+                      className={cn(
+                        'mx-1 flex min-h-11 cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-2 text-sm leading-snug',
+                        'transition-colors duration-100',
+                        isActive && !opt.disabled && 'bg-muted',
+                        isSel && 'text-crown',
+                        opt.disabled && 'text-muted-foreground/50 pointer-events-none',
+                      )}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSel && <Check className="size-4 shrink-0" />}
+                    </li>
+                  </React.Fragment>
                 );
               })}
             </ul>

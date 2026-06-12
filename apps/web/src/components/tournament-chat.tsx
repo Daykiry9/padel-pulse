@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, Send } from 'lucide-react';
 
 import { Avatar } from '@/components/ui/avatar';
@@ -127,11 +128,15 @@ export function TournamentChat({
             Sin mensajes aún. Sé el primero en romper el hielo.
           </p>
         ) : (
-          messages.map((m) => {
+          <AnimatePresence initial={false}>
+          {messages.map((m) => {
             const isMe = m.profile_id === currentUserId;
             return (
-              <div
+              <motion.div
                 key={m.id}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
                 className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}
               >
                 <Avatar
@@ -162,9 +167,10 @@ export function TournamentChat({
                     {m.body}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
-          })
+          })}
+          </AnimatePresence>
         )}
         <div ref={bottomRef} />
       </div>
@@ -184,9 +190,9 @@ export function TournamentChat({
             placeholder="Escribe algo…"
             maxLength={1000}
             disabled={isPending}
-            className="border-border bg-background flex-1 rounded-md border px-3 py-2 text-sm outline-none focus:border-foreground/30"
+            className="border-input bg-card h-11 flex-1 rounded-lg border px-3.5 text-sm outline-none focus:border-foreground/30"
           />
-          <Button type="submit" variant="crown" size="sm" disabled={isPending || !text.trim()}>
+          <Button type="submit" variant="crown" className="h-11" disabled={isPending || !text.trim()}>
             {isPending ? <Loader2 className="size-3 animate-spin" /> : <Send className="size-3" />}
             Enviar
           </Button>

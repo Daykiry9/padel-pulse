@@ -3,6 +3,7 @@ import { Archivo_Black, JetBrains_Mono, Manrope } from 'next/font/google';
 import { Toaster } from 'sonner';
 
 import { MobileNav } from '@/components/mobile-nav';
+import { MotionProvider } from '@/components/motion-provider';
 import { getBrandFromCookie } from '@/lib/brand';
 import { isNativeApp } from '@/lib/native';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
@@ -107,8 +108,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body
         className={`${archivoBlack.variable} ${manrope.variable} ${jetbrainsMono.variable} antialiased ${brand === 'queens' ? 'theme-queens' : ''} ${native ? 'native-app' : ''}`}
       >
-        {children}
-        <MobileNav isNative={native} isAuthed={Boolean(user)} isSuperAdmin={isSuperAdmin} />
+        <MotionProvider>
+          {children}
+          <MobileNav isNative={native} isAuthed={Boolean(user)} isSuperAdmin={isSuperAdmin} />
+        </MotionProvider>
         <Toaster position="top-center" expand={false} richColors />
       </body>
     </html>

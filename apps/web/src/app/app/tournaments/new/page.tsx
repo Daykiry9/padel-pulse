@@ -72,7 +72,7 @@ export default async function NewTournamentPage({
       <div>
         <h1 className="font-display text-4xl tracking-tight md:text-5xl">CREAR TORNEO</h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Elegí el alcance del torneo. Cambia quién puede inscribirse y quién lo administra.
+          Elige el alcance del torneo. Cambia quién puede inscribirse y quién lo administra.
         </p>
       </div>
 
