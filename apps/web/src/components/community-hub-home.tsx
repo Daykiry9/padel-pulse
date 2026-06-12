@@ -11,7 +11,8 @@ import {
 import type { User } from '@supabase/supabase-js';
 
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Card } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { CategoryBadge } from '@/components/ui/category-badge';
