@@ -360,7 +360,10 @@ export default async function CommunityTournamentDetailPage({
         )}
         {isOrganizer && tournament.status === 'open' && (
           <div className="mt-6">
-            <ManualPlayerForm tournamentId={tournament.id} />
+            <ManualPlayerForm
+              tournamentId={tournament.id}
+              pairMode={tournament.format !== 'americano_random' && tournament.format !== 'express'}
+            />
           </div>
         )}
       </div>

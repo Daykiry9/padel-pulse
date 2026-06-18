@@ -16,6 +16,7 @@ export function MatchScoreForm({
   initialScoreTwo,
   status = 'scheduled',
   reportedByLabel,
+  pointsPerMatch,
 }: {
   matchId: string;
   labelOne: string;
@@ -25,6 +26,8 @@ export function MatchScoreForm({
   status?: string;
   /** Nombre de la pareja que reportó (para pending_confirmation). */
   reportedByLabel?: string | null;
+  /** Puntos objetivo del torneo, como referencia al cargar el marcador. */
+  pointsPerMatch?: number;
 }) {
   const router = useRouter();
   const [scoreOne, setScoreOne] = useState<string>(initialScoreOne?.toString() ?? '');
@@ -68,6 +71,11 @@ export function MatchScoreForm({
 
   return (
     <div className="space-y-3">
+      {pointsPerMatch ? (
+        <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
+          Partido a {pointsPerMatch} puntos
+        </div>
+      ) : null}
       {(isPendingConfirm || isDisputed) && (
         <div
           className={`rounded-md border px-3 py-2 text-xs ${

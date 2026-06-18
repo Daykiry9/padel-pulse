@@ -276,11 +276,11 @@ export function CreateTournamentForm({
         </Select>
       </FormField>
 
-      {isPlayerBased && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Puntos por partido" hint="A cuántos puntos juega cada cancha por ronda. Típico: 12.">
-            <Input name="points_per_match" type="number" min={4} max={64} defaultValue={12} />
-          </FormField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label="Puntos por partido" hint="A cuántos puntos se juega cada partido. Típico: 12 o 16.">
+          <Input name="points_per_match" type="number" min={4} max={64} defaultValue={12} />
+        </FormField>
+        {isPlayerBased && (
           <FormField
             label="Número de rondas"
             hint={isExpress ? 'Express usa 6 rondas por defecto.' : 'Vacío = automático según # de jugadores.'}
@@ -294,8 +294,8 @@ export function CreateTournamentForm({
               defaultValue={isExpress ? 6 : undefined}
             />
           </FormField>
-        </div>
-      )}
+        )}
+      </div>
 
       <FormField label="Tipo de categoría">
         <Select

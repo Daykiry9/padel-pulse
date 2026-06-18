@@ -397,14 +397,17 @@ export async function removeRegistration(formData: FormData): Promise<ActionResu
 // Inscripción manual del organizador (profile existente o guest sin cuenta)
 // ============================================================
 /**
- * El organizador agrega un jugador manualmente al torneo:
- *  - mode='profile': inscribe un profile existente (debe estar registrado en la app).
- *  - mode='guest':   crea un guest_player con display_name y lo inscribe.
+ * El organizador agrega gente manualmente al torneo:
+ *  - mode='single': un jugador (player_id o guest_player_id). Para formatos
+ *    de jugadores sueltos (americano random, express).
+ *  - mode='pair':   una pareja completa (2 slots, cada uno profile XOR guest).
+ *    Para formatos de parejas (americano fijo, liga, liguilla, eliminación).
  *
- * Modalidad: SIEMPRE individual (player_id o guest_player_id). Las parejas
- * ad-hoc se siguen armando via registerToTournament o vía bracket random.
+ * Cada slot llega como `profile_id_<one|two>` (cuenta existente) o
+ * `guest_name_<one|two>` (invitado nuevo). Esto deja que una sola persona
+ * arme el cuadro entero con invitados sin que cada jugador tenga cuenta.
  *
- * Solo organizador (club owner OR community owner). Anti-duplicado: si el
+ * Solo organizador (club owner OR community owner). Anti-duplicado: si un
  * profile ya está inscrito, falla; si el nombre de guest ya existe en el
  * torneo, falla por UNIQUE partial.
  */
@@ -413,17 +416,38 @@ export async function addManualPlayer(formData: FormData): Promise<ActionResult>
   if (!user) return { ok: false, error: 'No autenticado' };
 
   const tournamentId = String(formData.get('tournament_id') ?? '');
-  const mode = String(formData.get('mode') ?? '') as 'profile' | 'guest';
-  const displayName = String(formData.get('display_name') ?? '').trim();
-  const profileId = String(formData.get('profile_id') ?? '').trim() || null;
+  const mode = String(formData.get('mode') ?? '') as 'single' | 'pair';
 
   if (!tournamentId) return { ok: false, error: 'Torneo inválido' };
-  if (mode !== 'profile' && mode !== 'guest') return { ok: false, error: 'Modo inválido' };
-  if (mode === 'profile' && !profileId) return { ok: false, error: 'Selecciona un perfil' };
-  if (mode === 'guest') {
-    if (displayName.length < 2 || displayName.length > 60) {
-      return { ok: false, error: 'El nombre del invitado debe tener 2-60 caracteres' };
+  if (mode !== 'single' && mode !== 'pair') return { ok: false, error: 'Modo inválido' };
+
+  // Parsear slots: cada uno es profile XOR guest.
+  type SlotInput = { profileId: string | null; guestName: string | null };
+  const parseSlot = (suffix: string): SlotInput => ({
+    profileId: String(formData.get(`profile_id${suffix}`) ?? '').trim() || null,
+    guestName: String(formData.get(`guest_name${suffix}`) ?? '').trim() || null,
+  });
+  const slots: SlotInput[] = [parseSlot('_one')];
+  if (mode === 'pair') slots.push(parseSlot('_two'));
+
+  const validateSlot = (s: SlotInput, label: string): string | null => {
+    if (s.profileId && s.guestName) return `${label}: elige cuenta o invitado, no ambos`;
+    if (!s.profileId && !s.guestName) return `${label}: falta el jugador`;
+    if (s.guestName && (s.guestName.length < 2 || s.guestName.length > 60)) {
+      return `${label}: el nombre del invitado debe tener 2-60 caracteres`;
     }
+    return null;
+  };
+  for (let i = 0; i < slots.length; i++) {
+    const err = validateSlot(slots[i]!, mode === 'pair' ? `Jugador ${i + 1}` : 'Jugador');
+    if (err) return { ok: false, error: err };
+  }
+  if (
+    mode === 'pair' &&
+    slots[0]!.profileId &&
+    slots[0]!.profileId === slots[1]!.profileId
+  ) {
+    return { ok: false, error: 'Los dos jugadores no pueden ser la misma cuenta' };
   }
 
   const supabase = await getSupabaseServerClient();
@@ -453,68 +477,80 @@ export async function addManualPlayer(formData: FormData): Promise<ActionResult>
 
   // Service role para sortear RLS (especialmente útil mid-torneo).
   const admin = getServiceRoleClient();
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const adminAny = admin as any;
 
-  if (mode === 'profile') {
-    // 2a. Anti-duplicado: chequear que no esté ya inscrito (individual ni en pareja)
+  // 2. Validar profiles: existen y no están ya inscritos.
+  for (const s of slots) {
+    if (!s.profileId) continue;
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('id', s.profileId)
+      .maybeSingle();
+    if (!profile) return { ok: false, error: 'El perfil no existe' };
+
     const { data: existing } = await admin
       .from('tournament_registrations')
       .select('id')
       .eq('tournament_id', tournamentId)
-      .or(`player_id.eq.${profileId},player_one_id.eq.${profileId},player_two_id.eq.${profileId}`)
+      .or(`player_id.eq.${s.profileId},player_one_id.eq.${s.profileId},player_two_id.eq.${s.profileId}`)
       .limit(1)
       .maybeSingle();
-    if (existing) return { ok: false, error: 'Este jugador ya está inscrito en el torneo.' };
+    if (existing) return { ok: false, error: 'Ese jugador ya está inscrito en el torneo.' };
+  }
 
-    // 2b. Validar que el profile exista
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('id')
-      .eq('id', profileId!)
-      .maybeSingle();
-    if (!profile) return { ok: false, error: 'El perfil no existe' };
+  // 3. Crear los guests necesarios (sin TX: si algo falla después, limpiamos).
+  const createdGuestIds: string[] = [];
+  const failAndRollback = async (error: string): Promise<ActionResult> => {
+    if (createdGuestIds.length) {
+      await adminAny.from('guest_players').delete().in('id', createdGuestIds);
+    }
+    return { ok: false, error };
+  };
 
-    const { error } = await admin.from('tournament_registrations').insert({
-      tournament_id: tournamentId,
-      player_id: profileId,
-      registered_by: user.id,
-      status: 'confirmed',
-      payment_amount: 0,
-      confirmed_at: new Date().toISOString(),
-    } as never);
-    if (error) return { ok: false, error: translateDbError(error.message) };
-  } else {
-    // 3. Crear guest + inscribirlo en la misma transacción lógica
-    //    (no hay TX explícita; insertamos guest primero, si la registration
-    //    falla limpiamos el guest para no dejarlo huérfano).
-    //    Cast a `any` porque guest_players no está en los types generados aún.
-    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    const adminAny = admin as any;
+  const slotIds: { profileId: string | null; guestId: string | null }[] = [];
+  for (const s of slots) {
+    if (s.profileId) {
+      slotIds.push({ profileId: s.profileId, guestId: null });
+      continue;
+    }
     const { data: guestData, error: guestErr } = await adminAny
       .from('guest_players')
-      .insert({
-        tournament_id: tournamentId,
-        display_name: displayName,
-        created_by: user.id,
-      })
+      .insert({ tournament_id: tournamentId, display_name: s.guestName, created_by: user.id })
       .select('id')
       .single();
-    if (guestErr) return { ok: false, error: translateDbError(guestErr.message) };
+    if (guestErr) return failAndRollback(translateDbError(guestErr.message));
     const guestId = (guestData as { id: string }).id;
-
-    const { error } = await admin.from('tournament_registrations').insert({
-      tournament_id: tournamentId,
-      guest_player_id: guestId,
-      registered_by: user.id,
-      status: 'confirmed',
-      payment_amount: 0,
-      confirmed_at: new Date().toISOString(),
-    } as never);
-    if (error) {
-      // Rollback manual del guest huérfano
-      await adminAny.from('guest_players').delete().eq('id', guestId);
-      return { ok: false, error: translateDbError(error.message) };
-    }
+    createdGuestIds.push(guestId);
+    slotIds.push({ profileId: null, guestId });
   }
+
+  // 4. Armar la fila de inscripción según el modo.
+  const baseRow = {
+    tournament_id: tournamentId,
+    registered_by: user.id,
+    status: 'confirmed',
+    payment_amount: 0,
+    confirmed_at: new Date().toISOString(),
+  };
+  const row: Record<string, unknown> =
+    mode === 'single'
+      ? slotIds[0]!.profileId
+        ? { ...baseRow, player_id: slotIds[0]!.profileId }
+        : { ...baseRow, guest_player_id: slotIds[0]!.guestId }
+      : {
+          ...baseRow,
+          ...(slotIds[0]!.profileId
+            ? { player_one_id: slotIds[0]!.profileId }
+            : { guest_player_one_id: slotIds[0]!.guestId }),
+          ...(slotIds[1]!.profileId
+            ? { player_two_id: slotIds[1]!.profileId }
+            : { guest_player_two_id: slotIds[1]!.guestId }),
+        };
+
+  const { error } = await admin.from('tournament_registrations').insert(row as never);
+  if (error) return failAndRollback(translateDbError(error.message));
 
   revalidatePath(`/tournaments/${tournament.slug}`);
   revalidatePath(`/app/tournaments/${tournament.slug}/manage`);

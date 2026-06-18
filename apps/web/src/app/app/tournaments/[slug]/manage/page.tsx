@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, Crown, PlayCircle, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Crown, PlayCircle, Target, Trophy, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ type TournamentRow = {
   format: string;
   courts: number;
   max_teams: number;
+  points_per_match: number;
   starts_at: string;
   clubs: { name: string; owner_id: string } | null;
   communities: { name: string; owner_id: string } | null;
@@ -79,7 +80,7 @@ export default async function ManageTournamentPage({
   // 1. Torneo + ownership check
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, slug, name, status, format, courts, max_teams, starts_at, clubs(name, owner_id), communities(name, owner_id)')
+    .select('id, slug, name, status, format, courts, max_teams, points_per_match, starts_at, clubs(name, owner_id), communities(name, owner_id)')
     .eq('slug', slug)
     .single();
 
@@ -284,9 +285,10 @@ export default async function ManageTournamentPage({
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat icon={Users} label="Inscritos" value={`${registrations.length} / ${tournament.max_teams}`} />
         <Stat icon={PlayCircle} label="Canchas" value={String(tournament.courts ?? 2)} />
+        <Stat icon={Target} label="Puntos" value={`a ${tournament.points_per_match}`} />
         <Stat
           icon={CheckCircle2}
           label="Avance"
@@ -379,6 +381,7 @@ export default async function ManageTournamentPage({
                           initialScoreTwo={m.score_two}
                           status={m.status}
                           reportedByLabel={reportedByLabelOf(m)}
+                          pointsPerMatch={tournament.points_per_match}
                         />
                       </Card>
                     ))}
