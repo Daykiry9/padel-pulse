@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [profileRes, notificationsRes, communitiesRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('display_name, skill_category, gender, city, is_super_admin')
+      .select('display_name, skill_category, gender, city')
       .eq('id', user.id)
       .single(),
     supabase
@@ -37,12 +37,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
 
   const profile = profileRes.data as
-    | { display_name: string; skill_category: string | null; gender: string | null; city: string | null; is_super_admin: boolean }
+    | { display_name: string; skill_category: string | null; gender: string | null; city: string | null }
     | null;
   // El perfil puede no existir todavía (Google OAuth recién creado) o estar
   // sin skill_category — ya no forzamos onboarding. El dashboard muestra un
   // banner "Completa tu perfil" si faltan datos.
-  const isSuperAdmin = profile?.is_super_admin === true;
 
   const notifications = (notificationsRes.data ?? []) as unknown as NotificationItem[];
   const unreadCount = notifications.filter((n) => !n.read_at).length;
@@ -96,7 +95,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               userId={user.id}
               displayName={profile?.display_name ?? user.email?.split('@')[0] ?? 'Jugador'}
               city={profile?.city ?? null}
-              isSuperAdmin={isSuperAdmin}
             />
           </div>
         </div>

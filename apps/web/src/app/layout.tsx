@@ -6,7 +6,7 @@ import { MobileNav } from '@/components/mobile-nav';
 import { MotionProvider } from '@/components/motion-provider';
 import { getBrandFromCookie } from '@/lib/brand';
 import { isNativeApp } from '@/lib/native';
-import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/supabase/server';
 
 import './globals.css';
 
@@ -92,17 +92,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     getSession(),
   ]);
 
-  let isSuperAdmin = false;
-  if (user) {
-    const supabase = await getSupabaseServerClient();
-    const { data } = await supabase
-      .from('profiles')
-      .select('is_super_admin')
-      .eq('id', user.id)
-      .single();
-    isSuperAdmin = (data as { is_super_admin: boolean } | null)?.is_super_admin === true;
-  }
-
   return (
     <html lang="es" suppressHydrationWarning>
       <body
@@ -110,7 +99,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       >
         <MotionProvider>
           {children}
-          <MobileNav isNative={native} isAuthed={Boolean(user)} isSuperAdmin={isSuperAdmin} />
+          <MobileNav isNative={native} isAuthed={Boolean(user)} />
         </MotionProvider>
         <Toaster position="top-center" expand={false} richColors />
       </body>

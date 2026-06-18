@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@radix-ui/react-dropdown-menu';
-import { LogOut, Settings, Shield, User } from 'lucide-react';
+import { LogOut, Settings, User } from 'lucide-react';
 
 import { Avatar } from '@/components/ui/avatar';
 import { signOut } from '@/lib/auth-actions';
@@ -20,12 +20,10 @@ export function UserMenu({
   userId,
   displayName,
   city,
-  isSuperAdmin,
 }: {
   userId: string;
   displayName: string;
   city: string | null;
-  isSuperAdmin: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -82,21 +80,6 @@ export function UserMenu({
             Ver mi perfil público
           </Link>
         </DropdownMenuItem>
-
-        {isSuperAdmin && (
-          <>
-            <DropdownMenuSeparator className="bg-border/40 -mx-1 my-1 h-px" />
-            <DropdownMenuItem asChild>
-              <Link
-                href="/app/admin"
-                className="hover:bg-muted focus:bg-muted text-crown flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none"
-              >
-                <Shield className="size-3.5" />
-                Panel admin
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
 
         <DropdownMenuSeparator className="bg-border/40 -mx-1 my-1 h-px" />
 

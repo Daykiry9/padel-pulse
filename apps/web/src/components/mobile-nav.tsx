@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CircleUser, Home, Shield, Trophy, Users } from 'lucide-react';
+import { CircleUser, Home, Trophy, Users } from 'lucide-react';
 
 const BASE_ITEMS = [
   { href: '/app', icon: Home, label: 'Inicio' },
@@ -27,11 +27,9 @@ const HIDE_ON = ['/login', '/signup'];
 export function MobileNav({
   isNative = false,
   isAuthed = false,
-  isSuperAdmin = false,
 }: {
   isNative?: boolean;
   isAuthed?: boolean;
-  isSuperAdmin?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -50,9 +48,7 @@ export function MobileNav({
 
   if (!show) return null;
 
-  const ITEMS = isSuperAdmin
-    ? [...BASE_ITEMS, { href: '/app/admin', icon: Shield, label: 'Admin' }]
-    : BASE_ITEMS;
+  const ITEMS = BASE_ITEMS;
 
   return (
     <nav

@@ -78,13 +78,13 @@ export default async function CommunitiesPage() {
             COMUNIDADES
           </h1>
           <p className="text-muted-foreground mt-2 max-w-md text-sm">
-            Únete a un grupo activo o crea el tuyo (puedes empezar con 1).
+            Únete a un grupo activo o crea el tuyo en segundos.
           </p>
         </div>
         <Button variant="crown" asChild>
           <Link href="/app/communities/new">
             <Plus className="size-4" />
-            Solicitar nueva
+            Crear comunidad
           </Link>
         </Button>
       </header>
@@ -109,7 +109,7 @@ export default async function CommunitiesPage() {
         <EmptyState
           icon={Globe}
           title="Aún no hay comunidades"
-          description="Sé el primero en armar una comunidad local. Solo necesitas tu nombre para arrancar; un super admin la revisa en 24-48h."
+          description="Sé el primero en armar una comunidad local. Se crea al instante y quedas como owner."
           bullets={[
             'Una comunidad agrupa jugadores de una ciudad o zona',
             'Organiza torneos americanos y eliminatorias',
@@ -119,7 +119,7 @@ export default async function CommunitiesPage() {
             <Button variant="crown" asChild>
               <Link href="/app/communities/new">
                 <Plus className="size-4" />
-                Solicitar comunidad
+                Crear comunidad
               </Link>
             </Button>
           }
