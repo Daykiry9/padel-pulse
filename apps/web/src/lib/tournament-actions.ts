@@ -5,6 +5,8 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { playerRankingTag, teamRankingTag } from './community-ranking';
 
 import {
+  awardTournamentPoints,
+  computeFinalStandings,
   computeGroupStandings,
   computePaddleEloDeltas,
   formatScoreSummary,
@@ -1092,8 +1094,100 @@ export async function generatePlayoffFromGroups(formData: FormData): Promise<Act
 }
 
 /**
- * Finaliza el torneo (organizador). Pasa a 'finished'; el ranking de la
- * comunidad lo toma desde sus matches completados.
+ * Calcula las posiciones finales del torneo y reparte puntos:
+ *  - player_points: cada jugador con cuenta (los invitados quedan fuera).
+ *  - team_points: solo parejas con equipo registrado y categoría estándar.
+ * Usa la fórmula escalonada (awardTournamentPoints). Idempotente vía upsert.
+ */
+async function awardTournamentPositionPoints(
+  tournamentId: string,
+  format: TournamentFormat,
+  category: TeamCategory | null,
+  communityId: string,
+): Promise<void> {
+  const admin = getServiceRoleClient();
+  const { data: mData } = await admin
+    .from('matches')
+    .select('registration_one_id, registration_two_id, score_one, score_two, status, round_number, stage, group_number')
+    .eq('tournament_id', tournamentId);
+  const placementMatches = ((mData ?? []) as unknown as {
+    registration_one_id: string | null;
+    registration_two_id: string | null;
+    score_one: number | null;
+    score_two: number | null;
+    status: string;
+    round_number: number;
+    stage: string | null;
+    group_number: number | null;
+  }[]).map((m) => ({
+    registrationOneId: m.registration_one_id,
+    registrationTwoId: m.registration_two_id,
+    scoreOne: m.score_one,
+    scoreTwo: m.score_two,
+    status: m.status,
+    roundNumber: m.round_number,
+    stage: m.stage,
+    groupNumber: m.group_number,
+  }));
+
+  const ordered = computeFinalStandings(format, placementMatches);
+  if (ordered.length === 0) return;
+
+  const awards = awardTournamentPoints({ finalStandings: ordered, format });
+  const { data: rData } = await admin
+    .from('tournament_registrations')
+    .select('id, team_id, player_one_id, player_two_id, player_id')
+    .in('id', ordered);
+  const regById = new Map(
+    ((rData ?? []) as unknown as {
+      id: string;
+      team_id: string | null;
+      player_one_id: string | null;
+      player_two_id: string | null;
+      player_id: string | null;
+    }[]).map((r) => [r.id, r]),
+  );
+  const weight = weightOf(format);
+
+  const playerRows: Record<string, unknown>[] = [];
+  const teamRows: Record<string, unknown>[] = [];
+  for (const a of awards) {
+    const reg = regById.get(a.teamId);
+    if (!reg) continue;
+    for (const pid of [reg.player_one_id, reg.player_two_id, reg.player_id].filter(Boolean) as string[]) {
+      playerRows.push({
+        profile_id: pid,
+        community_id: communityId,
+        tournament_id: tournamentId,
+        category,
+        position: a.position,
+        points: a.points,
+        weight_applied: weight,
+      });
+    }
+    if (reg.team_id && category) {
+      teamRows.push({
+        team_id: reg.team_id,
+        community_id: communityId,
+        tournament_id: tournamentId,
+        category,
+        position: a.position,
+        points: a.points,
+      });
+    }
+  }
+
+  if (playerRows.length) {
+    await admin.from('player_points').upsert(playerRows as never, { onConflict: 'profile_id,tournament_id' });
+  }
+  if (teamRows.length) {
+    await admin.from('team_points').upsert(teamRows as never, { onConflict: 'team_id,tournament_id' });
+  }
+}
+
+/**
+ * Finaliza el torneo (organizador). Pasa a 'finished'; reparte puntos por
+ * posición al ranking de la comunidad.
  */
 export async function finishTournament(formData: FormData): Promise<ActionResult> {
   const user = await getSession();
@@ -1105,13 +1199,15 @@ export async function finishTournament(formData: FormData): Promise<ActionResult
   const supabase = await getSupabaseServerClient();
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, slug, status, community_id, clubs(owner_id), communities(owner_id, slug)')
+    .select('id, slug, status, format, category, community_id, clubs(owner_id), communities(owner_id, slug)')
     .eq('id', tournamentId)
     .single();
   const t = tData as unknown as {
     id: string;
     slug: string;
     status: string;
+    format: TournamentFormat;
+    category: TeamCategory | null;
     community_id: string | null;
     clubs: { owner_id: string } | null;
     communities: { owner_id: string; slug: string } | null;
@@ -1128,6 +1224,20 @@ export async function finishTournament(formData: FormData): Promise<ActionResult
     .update({ status: 'finished' } as never)
     .eq('id', tournamentId);
   if (error) return { ok: false, error: translateDbError(error.message) };
+
+  // Reparto de puntos por posición (solo torneos de comunidad team-based).
+  // player_points: cada jugador con cuenta. team_points: solo parejas con equipo
+  // registrado y categoría estándar. Idempotente vía upsert (re-finalizar no duplica).
+  const AWARDABLE: TournamentFormat[] = [
+    'americano_fijo',
+    'liga',
+    'liguilla_casual',
+    'eliminacion',
+    'grupos_eliminacion',
+  ];
+  if (t.community_id && AWARDABLE.includes(t.format)) {
+    await awardTournamentPositionPoints(t.id, t.format, t.category, t.community_id);
+  }
 
   revalidatePath(`/tournaments/${t.slug}`);
   revalidatePath(`/tournaments/${t.slug}/live`);
