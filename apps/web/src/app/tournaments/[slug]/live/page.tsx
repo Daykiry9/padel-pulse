@@ -362,6 +362,23 @@ export default async function LiveTournamentPage({
   const completedCount = matches.filter((m) => m.status === 'completed').length;
   const totalCount = matches.length;
 
+  // Puntos de ranking otorgados (torneo finalizado): fuente de verdad = player_points.
+  let awardedPoints: { name: string; position: number; points: number }[] = [];
+  if (tournament.status === 'finished') {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const sbPts = supabase as any;
+    const { data: pp } = await sbPts
+      .from('player_points')
+      .select('profile_id, position, points')
+      .eq('tournament_id', tournament.id)
+      .order('position', { ascending: true });
+    awardedPoints = ((pp ?? []) as { profile_id: string; position: number; points: number }[]).map((r) => ({
+      name: profiles.get(r.profile_id) ?? 'Jugador',
+      position: r.position,
+      points: r.points,
+    }));
+  }
+
   const matchesByRound = new Map<number, MatchRow[]>();
   for (const m of matches) {
     if (!matchesByRound.has(m.round_number)) matchesByRound.set(m.round_number, []);
@@ -463,6 +480,29 @@ export default async function LiveTournamentPage({
               <div className="font-display text-2xl tracking-tight">{championLabel}</div>
             </div>
           </Card>
+        )}
+
+        {awardedPoints.length > 0 && (
+          <section className="mt-6">
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-display text-xl tracking-tight">PUNTOS DEL TORNEO</h2>
+              <span className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                Suman al ranking
+              </span>
+            </div>
+            <Card className="divide-border/30 divide-y overflow-hidden p-0">
+              {awardedPoints.map((p, idx) => (
+                <div
+                  key={`${p.name}-${idx}`}
+                  className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-sm"
+                >
+                  <span className="text-muted-foreground font-display tabular-nums">{p.position}</span>
+                  <span className="truncate">{p.name}</span>
+                  <span className="text-crown font-display tabular-nums">+{p.points}</span>
+                </div>
+              ))}
+            </Card>
+          </section>
         )}
 
         {tournament.status === 'open' && (
