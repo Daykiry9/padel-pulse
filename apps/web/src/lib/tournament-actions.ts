@@ -6,6 +6,7 @@ import { playerRankingTag, teamRankingTag } from './community-ranking';
 
 import {
   awardTournamentPoints,
+  computeAmericanoStandings,
   computeFinalStandings,
   computeGroupStandings,
   computePaddleEloDeltas,
@@ -1186,6 +1187,64 @@ async function awardTournamentPositionPoints(
 }
 
 /**
+ * Awarding para formatos player-based (americano random/express): la posición
+ * sale del standing individual del americano social. Solo player_points (no hay
+ * equipos); los invitados quedan fuera (no tienen cuenta).
+ */
+async function awardPlayerBasedPoints(
+  tournamentId: string,
+  format: TournamentFormat,
+  category: TeamCategory | null,
+  communityId: string,
+): Promise<void> {
+  const admin = getServiceRoleClient();
+  const { data: mData } = await admin
+    .from('matches')
+    .select('pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id, score_one, score_two, status')
+    .eq('tournament_id', tournamentId)
+    .eq('status', 'completed');
+  const rows = (mData ?? []) as unknown as Record<string, string | number | null>[];
+  const results = rows.map((x) => ({
+    pairOnePlayerOneId: (x.pair_one_player_one_id ?? x.pair_one_guest_one_id ?? '') as string,
+    pairOnePlayerTwoId: (x.pair_one_player_two_id ?? x.pair_one_guest_two_id ?? '') as string,
+    pairTwoPlayerOneId: (x.pair_two_player_one_id ?? x.pair_two_guest_one_id ?? '') as string,
+    pairTwoPlayerTwoId: (x.pair_two_player_two_id ?? x.pair_two_guest_two_id ?? '') as string,
+    scoreOne: (x.score_one ?? 0) as number,
+    scoreTwo: (x.score_two ?? 0) as number,
+  }));
+
+  const { data: regData } = await admin
+    .from('tournament_registrations')
+    .select('player_id, guest_player_id')
+    .eq('tournament_id', tournamentId)
+    .eq('status', 'confirmed');
+  const regs = (regData ?? []) as unknown as { player_id: string | null; guest_player_id: string | null }[];
+  const allIds = regs.map((r) => r.player_id ?? r.guest_player_id).filter(Boolean) as string[];
+  const profileSet = new Set(regs.filter((r) => r.player_id).map((r) => r.player_id as string));
+  if (allIds.length === 0) return;
+
+  const standings = computeAmericanoStandings(results, allIds);
+  const orderedIds = standings.map((s) => s.playerId);
+  const awards = awardTournamentPoints({ finalStandings: orderedIds, format });
+  const weight = weightOf(format);
+
+  const playerRows = awards
+    .filter((a) => profileSet.has(a.teamId))
+    .map((a) => ({
+      profile_id: a.teamId,
+      community_id: communityId,
+      tournament_id: tournamentId,
+      category,
+      position: a.position,
+      points: a.points,
+      weight_applied: weight,
+    }));
+  if (playerRows.length) {
+    await admin.from('player_points').upsert(playerRows as never, { onConflict: 'profile_id,tournament_id' });
+  }
+}
+
+/**
  * Finaliza el torneo (organizador). Pasa a 'finished'; reparte puntos por
  * posición al ranking de la comunidad.
  */
@@ -1225,18 +1284,22 @@ export async function finishTournament(formData: FormData): Promise<ActionResult
     .eq('id', tournamentId);
   if (error) return { ok: false, error: translateDbError(error.message) };
 
-  // Reparto de puntos por posición (solo torneos de comunidad team-based).
-  // player_points: cada jugador con cuenta. team_points: solo parejas con equipo
-  // registrado y categoría estándar. Idempotente vía upsert (re-finalizar no duplica).
-  const AWARDABLE: TournamentFormat[] = [
+  // Reparto de puntos por posición (solo torneos de comunidad). Idempotente vía
+  // upsert. team-based reparte player_points + team_points; player-based
+  // (americano random/express) reparte solo player_points por jugador.
+  const TEAM_BASED: TournamentFormat[] = [
     'americano_fijo',
     'liga',
     'liguilla_casual',
     'eliminacion',
     'grupos_eliminacion',
   ];
-  if (t.community_id && AWARDABLE.includes(t.format)) {
-    await awardTournamentPositionPoints(t.id, t.format, t.category, t.community_id);
+  if (t.community_id) {
+    if (TEAM_BASED.includes(t.format)) {
+      await awardTournamentPositionPoints(t.id, t.format, t.category, t.community_id);
+    } else if (t.format === 'americano_random' || t.format === 'express') {
+      await awardPlayerBasedPoints(t.id, t.format, t.category, t.community_id);
+    }
   }
 
   revalidatePath(`/tournaments/${t.slug}`);
