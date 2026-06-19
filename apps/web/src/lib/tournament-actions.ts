@@ -580,6 +580,43 @@ export async function addManualPlayer(formData: FormData): Promise<ActionResult>
   return { ok: true };
 }
 
+/**
+ * Ordena registrations (parejas) por rating descendente para sembrar el bracket
+ * de eliminación: las mejores parejas quedan separadas y no se cruzan temprano.
+ * Rating de pareja = promedio de ELO de sus jugadores (guests/sin perfil = 1000).
+ */
+async function seedRegistrationsByRating(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  regIds: string[],
+): Promise<string[]> {
+  if (regIds.length <= 2) return regIds;
+  const { data } = await supabase
+    .from('tournament_registrations')
+    .select('id, player_one_id, player_two_id, player_id')
+    .in('id', regIds);
+  const regs = (data ?? []) as unknown as {
+    id: string;
+    player_one_id: string | null;
+    player_two_id: string | null;
+    player_id: string | null;
+  }[];
+  const playerIds = [
+    ...new Set(regs.flatMap((r) => [r.player_one_id, r.player_two_id, r.player_id]).filter(Boolean) as string[]),
+  ];
+  const elo = new Map<string, number>();
+  if (playerIds.length) {
+    const { data: profs } = await supabase.from('profiles').select('id, elo_rating').in('id', playerIds);
+    for (const p of (profs ?? []) as { id: string; elo_rating: number }[]) elo.set(p.id, p.elo_rating);
+  }
+  const ratingOf = (r: (typeof regs)[number]): number => {
+    const ids = [r.player_one_id, r.player_two_id, r.player_id].filter(Boolean) as string[];
+    if (!ids.length) return 1000;
+    return ids.reduce((acc, id) => acc + (elo.get(id) ?? 1000), 0) / ids.length;
+  };
+  // Mantener orden original como fallback estable; ordenar por rating desc.
+  return [...regs].sort((a, b) => ratingOf(b) - ratingOf(a)).map((r) => r.id);
+}
+
 // ============================================================
 // Bracket auto-generation (Americano Fijo)
 // ============================================================
@@ -801,8 +838,13 @@ export async function closeRegistrationsAndGenerateBracket(
       if (registrations.length < 2) {
         return { ok: false, error: 'Mínimo 2 parejas inscritas para eliminación directa' };
       }
+      // Sembrar por ranking: las mejores parejas no se cruzan en rondas tempranas.
+      const seededIds = await seedRegistrationsByRating(
+        supabase,
+        registrations.map((r) => r.id),
+      );
       const elimRounds = generateSingleElimination({
-        participantIds: registrations.map((r) => r.id),
+        participantIds: seededIds,
         courts,
       });
       // Persistimos TODO el bracket: pre-generamos un UUID por cada match (su
