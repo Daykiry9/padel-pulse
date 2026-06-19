@@ -24,6 +24,9 @@ type TournamentRow = {
   category_kind: string;
   category: string | null;
   min_sum: number | null;
+  scoring_mode: string | null;
+  num_sets: number | null;
+  games_per_set: number | null;
   clubs: { owner_id: string } | null;
   communities: { owner_id: string } | null;
 };
@@ -47,6 +50,7 @@ type MatchRow = {
   registration_two_id: string | null;
   score_one: number | null;
   score_two: number | null;
+  set_scores: { one: number; two: number }[] | null;
   status: string;
   reported_by_registration_id: string | null;
   reported_by_side: number | null;
@@ -83,7 +87,7 @@ export default async function LiveTournamentPage({
   const { data: tData } = await supabase
     .from('tournaments')
     .select(
-      'id, name, slug, status, format, courts, starts_at, category_kind, category, min_sum, clubs(owner_id), communities(owner_id)',
+      'id, name, slug, status, format, courts, starts_at, category_kind, category, min_sum, scoring_mode, num_sets, games_per_set, clubs(owner_id), communities(owner_id)',
     )
     .eq('slug', slug)
     .single();
@@ -106,7 +110,7 @@ export default async function LiveTournamentPage({
     supabase
       .from('matches')
       .select(
-        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
+        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
       )
       .eq('tournament_id', tournament.id)
       .order('round_number')
@@ -559,6 +563,10 @@ export default async function LiveTournamentPage({
                                         reportedBySide={reportedBySide}
                                         scoreOne={m.score_one}
                                         scoreTwo={m.score_two}
+                                        setScores={m.set_scores}
+                                        scoringMode={(tournament.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
+                                        numSets={tournament.num_sets}
+                                        gamesPerSet={tournament.games_per_set}
                                       />
                                     );
                                   }
@@ -572,6 +580,10 @@ export default async function LiveTournamentPage({
                                       reportedBySide={reportedBySide}
                                       scoreOne={m.score_one}
                                       scoreTwo={m.score_two}
+                                      setScores={m.set_scores}
+                                      scoringMode={(tournament.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
+                                      numSets={tournament.num_sets}
+                                      gamesPerSet={tournament.games_per_set}
                                     />
                                   );
                                 })()}

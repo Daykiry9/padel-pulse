@@ -29,6 +29,9 @@ type TournamentRow = {
   courts: number;
   max_teams: number;
   points_per_match: number;
+  scoring_mode: string | null;
+  num_sets: number | null;
+  games_per_set: number | null;
   starts_at: string;
   clubs: { name: string; owner_id: string } | null;
   communities: { name: string; owner_id: string } | null;
@@ -53,6 +56,7 @@ type MatchRow = {
   registration_two_id: string | null;
   score_one: number | null;
   score_two: number | null;
+  set_scores: { one: number; two: number }[] | null;
   status: string;
   reported_by_registration_id: string | null;
   reported_by_side: number | null;
@@ -80,7 +84,7 @@ export default async function ManageTournamentPage({
   // 1. Torneo + ownership check
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, slug, name, status, format, courts, max_teams, points_per_match, starts_at, clubs(name, owner_id), communities(name, owner_id)')
+    .select('id, slug, name, status, format, courts, max_teams, points_per_match, scoring_mode, num_sets, games_per_set, starts_at, clubs(name, owner_id), communities(name, owner_id)')
     .eq('slug', slug)
     .single();
 
@@ -155,7 +159,7 @@ export default async function ManageTournamentPage({
   const { data: matchesData } = await supabase
     .from('matches')
     .select(
-      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
+      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
     )
     .eq('tournament_id', tournament.id)
     .order('round_number')
@@ -288,7 +292,19 @@ export default async function ManageTournamentPage({
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat icon={Users} label="Inscritos" value={`${registrations.length} / ${tournament.max_teams}`} />
         <Stat icon={PlayCircle} label="Canchas" value={String(tournament.courts ?? 2)} />
-        <Stat icon={Target} label="Puntos" value={`a ${tournament.points_per_match}`} />
+        <Stat
+          icon={Target}
+          label="Marcador"
+          value={
+            tournament.scoring_mode === 'sets'
+              ? tournament.num_sets === 1
+                ? `1 set a ${tournament.games_per_set ?? 6}`
+                : `Mejor de ${tournament.num_sets ?? 3}`
+              : tournament.scoring_mode === 'games'
+                ? `Set a ${tournament.points_per_match} games`
+                : `a ${tournament.points_per_match} pts`
+          }
+        />
         <Stat
           icon={CheckCircle2}
           label="Avance"
@@ -379,9 +395,13 @@ export default async function ManageTournamentPage({
                           labelTwo={sideLabel(m, 'two')}
                           initialScoreOne={m.score_one}
                           initialScoreTwo={m.score_two}
+                          initialSetScores={m.set_scores}
                           status={m.status}
                           reportedByLabel={reportedByLabelOf(m)}
                           pointsPerMatch={tournament.points_per_match}
+                          scoringMode={(tournament.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
+                          numSets={tournament.num_sets}
+                          gamesPerSet={tournament.games_per_set}
                         />
                       </Card>
                     ))}

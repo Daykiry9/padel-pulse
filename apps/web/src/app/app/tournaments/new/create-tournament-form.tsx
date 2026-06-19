@@ -66,6 +66,7 @@ export function CreateTournamentForm({
 }: Props) {
   const [format, setFormat] = useState<TournamentFormat>('americano_fijo');
   const [categoryKind, setCategoryKind] = useState<CategoryKind>('estandar');
+  const [scoringMode, setScoringMode] = useState<'points' | 'games' | 'sets'>('points');
 
   const isClubOwner = myClubs.length > 0;
   const canOrganizeCommunity = organizerCommunities.length > 0;
@@ -276,10 +277,43 @@ export function CreateTournamentForm({
         </Select>
       </FormField>
 
+      <FormField label="Modo de marcador" hint="Cómo se decide cada partido.">
+        <Select
+          name="scoring_mode"
+          value={scoringMode}
+          onChange={(e) => setScoringMode(e.target.value as 'points' | 'games' | 'sets')}
+        >
+          <option value="points">A puntos (un marcador por partido)</option>
+          <option value="games">A games (un set largo)</option>
+          <option value="sets">Por sets (mejor de N)</option>
+        </Select>
+      </FormField>
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Puntos por partido" hint="A cuántos puntos se juega cada partido. Típico: 12 o 16.">
-          <Input name="points_per_match" type="number" min={4} max={64} defaultValue={12} />
-        </FormField>
+        {scoringMode === 'points' && (
+          <FormField label="Puntos por partido" hint="A cuántos puntos se juega. Típico: 12 o 16.">
+            <Input name="points_per_match" type="number" min={4} max={99} defaultValue={12} />
+          </FormField>
+        )}
+        {scoringMode === 'games' && (
+          <FormField label="Games del set" hint="A cuántos games se juega el set. Típico: 6 o 9.">
+            <Input name="points_per_match" type="number" min={1} max={99} defaultValue={9} />
+          </FormField>
+        )}
+        {scoringMode === 'sets' && (
+          <>
+            <FormField label="Sets" hint="Cuántos sets como máximo.">
+              <Select name="num_sets" defaultValue="3">
+                <option value="1">1 set</option>
+                <option value="3">Mejor de 3</option>
+                <option value="5">Mejor de 5</option>
+              </Select>
+            </FormField>
+            <FormField label="Games por set" hint="Games para ganar un set. Típico: 6.">
+              <Input name="games_per_set" type="number" min={1} max={20} defaultValue={6} />
+            </FormField>
+          </>
+        )}
         {isPlayerBased && (
           <FormField
             label="Número de rondas"

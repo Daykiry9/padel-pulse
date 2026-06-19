@@ -6,16 +6,25 @@ import { playerRankingTag, teamRankingTag } from './community-ranking';
 
 import {
   computePaddleEloDeltas,
+  formatScoreSummary,
   generateExpress,
   generateFixedAmericano,
   generateLeague,
   generateLiguillaCasual,
   generateRandomAmericano,
   generateSingleElimination,
+  resolveMatchScore,
   tierOf,
   weightOf,
 } from '@padelking/domain';
-import type { CategoryKind, TeamCategory, TournamentFormat } from '@padelking/domain';
+import type {
+  CategoryKind,
+  ScoringConfig,
+  ScorePayload,
+  SetScore,
+  TeamCategory,
+  TournamentFormat,
+} from '@padelking/domain';
 
 import { getSession, getSupabaseServerClient } from './supabase/server';
 import { getServiceRoleClient } from './supabase/admin';
@@ -56,6 +65,10 @@ export async function createTournament(formData: FormData): Promise<ActionResult
   const pricePerTeam = Number(formData.get('price_per_team') ?? 0);
   const pointsPerMatchRaw = String(formData.get('points_per_match') ?? '').trim();
   const totalRoundsRaw = String(formData.get('total_rounds') ?? '').trim();
+  const scoringModeRaw = String(formData.get('scoring_mode') ?? 'points').trim();
+  const numSetsRaw = String(formData.get('num_sets') ?? '').trim();
+  const gamesPerSetRaw = String(formData.get('games_per_set') ?? '').trim();
+  const scoringMode = ['points', 'games', 'sets'].includes(scoringModeRaw) ? scoringModeRaw : 'points';
   const description = String(formData.get('description') ?? '').trim() || null;
 
   if (!name || name.length < 4) return { ok: false, error: 'Nombre del torneo muy corto' };
@@ -160,6 +173,9 @@ export async function createTournament(formData: FormData): Promise<ActionResult
             : null,
       points_per_match: pointsPerMatchRaw ? Number(pointsPerMatchRaw) : 12,
       total_rounds: totalRoundsRaw ? Number(totalRoundsRaw) : null,
+      scoring_mode: scoringMode,
+      num_sets: scoringMode === 'sets' ? Number(numSetsRaw) || 3 : null,
+      games_per_set: scoringMode === 'sets' ? Number(gamesPerSetRaw) || 6 : null,
       scope,
       club_id: clubId,
       community_id: communityId,
@@ -933,6 +949,7 @@ type MatchCtx = {
   status: string;
   score_one: number | null;
   score_two: number | null;
+  set_scores: SetScore[] | null;
   confirmed_by_one: boolean;
   confirmed_by_two: boolean;
   reported_by_registration_id: string | null;
@@ -967,12 +984,13 @@ async function getMatchContext(
   side: 'one' | 'two' | null;
   isRandom: boolean;
   reportedBySide: 'one' | 'two' | null;
+  scoring: ScoringConfig;
 } | null> {
   const supabase = await getSupabaseServerClient();
   const { data: m } = await supabase
     .from('matches')
     .select(
-      'id, tournament_id, registration_one_id, registration_two_id, status, score_one, score_two, confirmed_by_one, confirmed_by_two, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
+      'id, tournament_id, registration_one_id, registration_two_id, status, score_one, score_two, set_scores, confirmed_by_one, confirmed_by_two, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
     )
     .eq('id', matchId)
     .maybeSingle();
@@ -981,14 +999,24 @@ async function getMatchContext(
 
   const { data: t } = await supabase
     .from('tournaments')
-    .select('slug, clubs(owner_id), communities(owner_id)')
+    .select('slug, scoring_mode, points_per_match, num_sets, games_per_set, clubs(owner_id), communities(owner_id)')
     .eq('id', match.tournament_id)
     .single();
   const tour = t as unknown as {
     slug: string;
+    scoring_mode: string | null;
+    points_per_match: number | null;
+    num_sets: number | null;
+    games_per_set: number | null;
     clubs: { owner_id: string } | null;
     communities: { owner_id: string } | null;
   } | null;
+  const scoring: ScoringConfig = {
+    mode: (tour?.scoring_mode as ScoringConfig['mode']) ?? 'points',
+    pointsPerMatch: tour?.points_per_match ?? 12,
+    numSets: tour?.num_sets ?? null,
+    gamesPerSet: tour?.games_per_set ?? null,
+  };
   const isOrganizer =
     (Boolean(tour?.clubs?.owner_id) && tour?.clubs?.owner_id === userId) ||
     (Boolean(tour?.communities?.owner_id) && tour?.communities?.owner_id === userId);
@@ -1049,7 +1077,7 @@ async function getMatchContext(
         ? 'two'
         : null;
 
-  return { match, slug: tour?.slug ?? null, isOrganizer, side, isRandom, reportedBySide };
+  return { match, slug: tour?.slug ?? null, isOrganizer, side, isRandom, reportedBySide, scoring };
 }
 
 function revalidateMatch(slug: string | null) {
@@ -1071,7 +1099,7 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
   const { data } = await admin
     .from('matches')
     .select(
-      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, elo_applied_at, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id, tournaments(slug, community_id)',
+      'tournament_id, registration_one_id, registration_two_id, score_one, score_two, set_scores, elo_applied_at, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id, tournaments(slug, community_id)',
     )
     .eq('id', matchId)
     .single();
@@ -1081,6 +1109,7 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     registration_two_id: string | null;
     score_one: number | null;
     score_two: number | null;
+    set_scores: SetScore[] | null;
     elo_applied_at: string | null;
     pair_one_player_one_id: string | null;
     pair_one_player_two_id: string | null;
@@ -1096,6 +1125,14 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
 
   const scoreOne = matchData.score_one ?? 0;
   const scoreTwo = matchData.score_two ?? 0;
+  // En modo sets, score_one/two son sets ganados (1-2). El margin real para el
+  // boost del ELO sale de los games totales; en points/games queda undefined
+  // y el ELO usa |scoreOne - scoreTwo| como siempre.
+  const setMargin = Array.isArray(matchData.set_scores)
+    ? Math.abs(
+        matchData.set_scores.reduce((a, s) => a + (s.one - s.two), 0),
+      )
+    : undefined;
 
   type RegRow = {
     id: string;
@@ -1185,6 +1222,7 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
         scoreOne,
         scoreTwo,
         k,
+        marginOverride: setMargin,
       });
 
       /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -1260,27 +1298,37 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
   if (!user) return { ok: false, error: 'No autenticado' };
 
   const matchId = String(formData.get('match_id') ?? '');
-  const scoreOneRaw = String(formData.get('score_one') ?? '').trim();
-  const scoreTwoRaw = String(formData.get('score_two') ?? '').trim();
-
   if (!matchId) return { ok: false, error: 'Match inválido' };
-  if (scoreOneRaw === '' || scoreTwoRaw === '') {
-    return { ok: false, error: 'Faltan los dos marcadores' };
-  }
-  const scoreOne = Number(scoreOneRaw);
-  const scoreTwo = Number(scoreTwoRaw);
-  if (!Number.isInteger(scoreOne) || !Number.isInteger(scoreTwo)) {
-    return { ok: false, error: 'Marcador debe ser número entero' };
-  }
-  if (scoreOne < 0 || scoreTwo < 0 || scoreOne > 99 || scoreTwo > 99) {
-    return { ok: false, error: 'Marcador fuera de rango (0-99)' };
-  }
 
   const ctx = await getMatchContext(matchId, user.id);
   if (!ctx) return { ok: false, error: 'Partido no encontrado' };
   if (!ctx.isOrganizer && !ctx.side) {
     return { ok: false, error: 'No participás en este partido' };
   }
+
+  // Construir el payload del marcador según el modo del torneo y resolverlo
+  // (deriva score_one/score_two — el agregado que decide el ganador — y el
+  // detalle por set). Una sola fuente de verdad: resolveMatchScore en domain.
+  let payload: ScorePayload;
+  if (ctx.scoring.mode === 'sets') {
+    let setScores: SetScore[];
+    try {
+      setScores = JSON.parse(String(formData.get('set_scores') ?? '[]')) as SetScore[];
+    } catch {
+      return { ok: false, error: 'Sets inválidos' };
+    }
+    if (!Array.isArray(setScores)) return { ok: false, error: 'Sets inválidos' };
+    payload = { mode: 'sets', setScores };
+  } else {
+    const a = String(formData.get('score_one') ?? '').trim();
+    const b = String(formData.get('score_two') ?? '').trim();
+    if (a === '' || b === '') return { ok: false, error: 'Faltan los dos marcadores' };
+    payload = { mode: ctx.scoring.mode, scoreOne: Number(a), scoreTwo: Number(b) };
+  }
+  const resolved = resolveMatchScore(ctx.scoring, payload);
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+  const { scoreOne, scoreTwo, setScores } = resolved.resolved;
+  const summary = formatScoreSummary(resolved.resolved);
 
   // Validación + autorización ya resueltas en getMatchContext → usamos
   // service role para el UPDATE (las parejas ad-hoc no pasan la RLS de
@@ -1294,6 +1342,7 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       .update({
         score_one: scoreOne,
         score_two: scoreTwo,
+        set_scores: setScores,
         status: 'completed',
         confirmed_by_one: true,
         confirmed_by_two: true,
@@ -1311,6 +1360,7 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
   const reportUpdate: Record<string, unknown> = {
     score_one: scoreOne,
     score_two: scoreTwo,
+    set_scores: setScores,
     status: 'pending_confirmation',
     reported_at: new Date().toISOString(),
     confirmed_by_one: ctx.side === 'one',
@@ -1357,7 +1407,7 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       otherPids.map((pid) => ({
         profileId: pid,
         type: 'match_result',
-        title: `Confirma el marcador: ${scoreOne} - ${scoreTwo}`,
+        title: `Confirma el marcador: ${summary}`,
         body: 'La otra pareja reportó el resultado. Confírmalo o repórtalo distinto.',
         link: `/tournaments/${ctx.slug}/live`,
       })),

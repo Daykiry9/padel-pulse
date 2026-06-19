@@ -54,6 +54,12 @@ export interface PaddleEloInput {
   scoreTwo: number;
   /** Default 24 (casual). Usar 32 para torneos Tier 1 competitivos. */
   k?: number;
+  /**
+   * Margen para el boost de victoria. Por defecto se usa |scoreOne - scoreTwo|
+   * (correcto en points/games). En modo sets, scoreOne/scoreTwo son sets ganados
+   * (1-2) y el margen real está en los games: pasar acá la diferencia de games.
+   */
+  marginOverride?: number;
 }
 
 export interface PaddleEloOutput {
@@ -77,6 +83,7 @@ export function computePaddleEloDeltas({
   scoreOne,
   scoreTwo,
   k = 24,
+  marginOverride,
 }: PaddleEloInput): PaddleEloDeltasOutput {
   const ratingOne = (pairOne.p1 + pairOne.p2) / 2;
   const ratingTwo = (pairTwo.p1 + pairTwo.p2) / 2;
@@ -97,7 +104,7 @@ export function computePaddleEloDeltas({
     scoreActualTwo = 0.5;
   }
 
-  const margin = Math.abs(scoreOne - scoreTwo);
+  const margin = marginOverride ?? Math.abs(scoreOne - scoreTwo);
   const movBoost = margin > 0 ? Math.log(margin + 1) : 1;
 
   return {

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -1042,6 +1042,7 @@ export type Database = {
           scheduled_at: string | null
           score_one: number | null
           score_two: number | null
+          set_scores: Json | null
           started_at: string | null
           status: Database["public"]["Enums"]["match_status"]
           tournament_id: string
@@ -1072,6 +1073,7 @@ export type Database = {
           scheduled_at?: string | null
           score_one?: number | null
           score_two?: number | null
+          set_scores?: Json | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["match_status"]
           tournament_id: string
@@ -1102,6 +1104,7 @@ export type Database = {
           scheduled_at?: string | null
           score_one?: number | null
           score_two?: number | null
+          set_scores?: Json | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["match_status"]
           tournament_id?: string
@@ -2341,18 +2344,21 @@ export type Database = {
           description: string | null
           ends_at: string
           format: Database["public"]["Enums"]["tournament_format"]
+          games_per_set: number | null
           id: string
           max_player_category_value: number | null
           max_teams: number
           min_sum: number | null
           min_teams: number
           name: string
+          num_sets: number | null
           pairing_mode: Database["public"]["Enums"]["pairing_mode"] | null
           points_per_match: number
           price_per_team: number
           registration_deadline: string
           rotation_games: number
           scope: string
+          scoring_mode: string
           slug: string
           starts_at: string
           status: Database["public"]["Enums"]["tournament_status"]
@@ -2374,18 +2380,21 @@ export type Database = {
           description?: string | null
           ends_at: string
           format?: Database["public"]["Enums"]["tournament_format"]
+          games_per_set?: number | null
           id?: string
           max_player_category_value?: number | null
           max_teams?: number
           min_sum?: number | null
           min_teams?: number
           name: string
+          num_sets?: number | null
           pairing_mode?: Database["public"]["Enums"]["pairing_mode"] | null
           points_per_match?: number
           price_per_team?: number
           registration_deadline: string
           rotation_games?: number
           scope: string
+          scoring_mode?: string
           slug: string
           starts_at: string
           status?: Database["public"]["Enums"]["tournament_status"]
@@ -2407,18 +2416,21 @@ export type Database = {
           description?: string | null
           ends_at?: string
           format?: Database["public"]["Enums"]["tournament_format"]
+          games_per_set?: number | null
           id?: string
           max_player_category_value?: number | null
           max_teams?: number
           min_sum?: number | null
           min_teams?: number
           name?: string
+          num_sets?: number | null
           pairing_mode?: Database["public"]["Enums"]["pairing_mode"] | null
           points_per_match?: number
           price_per_team?: number
           registration_deadline?: string
           rotation_games?: number
           scope?: string
+          scoring_mode?: string
           slug?: string
           starts_at?: string
           status?: Database["public"]["Enums"]["tournament_status"]
