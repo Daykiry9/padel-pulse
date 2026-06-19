@@ -5,15 +5,18 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { playerRankingTag, teamRankingTag } from './community-ranking';
 
 import {
+  computeGroupStandings,
   computePaddleEloDeltas,
   formatScoreSummary,
   generateExpress,
   generateFixedAmericano,
+  generateGroupStage,
   generateLeague,
   generateLiguillaCasual,
   generateRandomAmericano,
   generateSingleElimination,
   resolveMatchScore,
+  seedPlayoffFromGroups,
   tierOf,
   weightOf,
 } from '@padelking/domain';
@@ -69,6 +72,8 @@ export async function createTournament(formData: FormData): Promise<ActionResult
   const numSetsRaw = String(formData.get('num_sets') ?? '').trim();
   const gamesPerSetRaw = String(formData.get('games_per_set') ?? '').trim();
   const scoringMode = ['points', 'games', 'sets'].includes(scoringModeRaw) ? scoringModeRaw : 'points';
+  const numGroupsRaw = String(formData.get('num_groups') ?? '').trim();
+  const qualifiersRaw = String(formData.get('qualifiers_per_group') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim() || null;
 
   if (!name || name.length < 4) return { ok: false, error: 'Nombre del torneo muy corto' };
@@ -176,6 +181,8 @@ export async function createTournament(formData: FormData): Promise<ActionResult
       scoring_mode: scoringMode,
       num_sets: scoringMode === 'sets' ? Number(numSetsRaw) || 3 : null,
       games_per_set: scoringMode === 'sets' ? Number(gamesPerSetRaw) || 6 : null,
+      num_groups: format === 'grupos_eliminacion' ? Number(numGroupsRaw) || 2 : null,
+      qualifiers_per_group: format === 'grupos_eliminacion' ? Number(qualifiersRaw) || 2 : null,
       scope,
       club_id: clubId,
       community_id: communityId,
@@ -595,12 +602,13 @@ export async function closeRegistrationsAndGenerateBracket(
     format: string;
     courts: number;
     total_rounds: number | null;
+    num_groups: number | null;
     clubs: { owner_id: string } | null;
     communities: { owner_id: string } | null;
   };
   const { data: tData } = await supabase
     .from('tournaments')
-    .select('id, slug, status, format, courts, total_rounds, clubs(owner_id), communities(owner_id)')
+    .select('id, slug, status, format, courts, total_rounds, num_groups, clubs(owner_id), communities(owner_id)')
     .eq('id', tournamentId)
     .single();
   const tournament = tData as unknown as TournamentForBracket | null;
@@ -830,6 +838,31 @@ export async function closeRegistrationsAndGenerateBracket(
       break;
     }
 
+    case 'grupos_eliminacion': {
+      // Fase de grupos: round-robin por grupo. El playoff se genera después,
+      // cuando los grupos terminan (generatePlayoffFromGroups).
+      const numGroups = tournament.num_groups ?? 2;
+      if (registrations.length < numGroups * 2) {
+        return { ok: false, error: `Faltan parejas: cada uno de los ${numGroups} grupos necesita mínimo 2.` };
+      }
+      const groupMatches = generateGroupStage({
+        participantIds: registrations.map((r) => r.id),
+        numGroups,
+        courts,
+      });
+      matchRows = groupMatches.map((m) => ({
+        tournament_id: tournamentId,
+        round_number: m.roundNumber,
+        court_number: m.courtNumber,
+        registration_one_id: m.registrationOneId,
+        registration_two_id: m.registrationTwoId,
+        status: 'scheduled' as const,
+        group_number: m.groupNumber,
+        stage: 'group' as const,
+      }));
+      break;
+    }
+
     default: {
       return {
         ok: false,
@@ -889,6 +922,129 @@ export async function closeRegistrationsAndGenerateBracket(
   }
 
   revalidatePath(`/tournaments/${tournament.slug}`);
+  revalidatePath(`/app/tournaments/${tournament.slug}/manage`);
+  return { ok: true };
+}
+
+/**
+ * Cierra la fase de grupos de un torneo híbrido y genera el playoff:
+ * calcula los clasificados de cada grupo y siembra una llave de eliminación.
+ * Requiere que TODOS los matches de grupo estén completed.
+ */
+export async function generatePlayoffFromGroups(formData: FormData): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { ok: false, error: 'No autenticado' };
+  const tournamentId = String(formData.get('tournament_id') ?? '');
+  if (!tournamentId) return { ok: false, error: 'Torneo inválido' };
+
+  const supabase = await getSupabaseServerClient();
+  const { data: tData } = await supabase
+    .from('tournaments')
+    .select('id, slug, format, courts, num_groups, qualifiers_per_group, clubs(owner_id), communities(owner_id)')
+    .eq('id', tournamentId)
+    .single();
+  const tournament = tData as unknown as {
+    id: string;
+    slug: string;
+    format: string;
+    courts: number;
+    num_groups: number | null;
+    qualifiers_per_group: number | null;
+    clubs: { owner_id: string } | null;
+    communities: { owner_id: string } | null;
+  } | null;
+  if (!tournament) return { ok: false, error: 'Torneo no existe' };
+  if (tournament.format !== 'grupos_eliminacion') {
+    return { ok: false, error: 'Este torneo no tiene fase de grupos' };
+  }
+  const isOrganizer =
+    tournament.clubs?.owner_id === user.id || tournament.communities?.owner_id === user.id;
+  if (!isOrganizer) return { ok: false, error: 'Solo el organizador puede generar el playoff' };
+
+  const admin = getServiceRoleClient();
+
+  // Ya hay playoff generado → idempotencia.
+  const { count: playoffCount } = await admin
+    .from('matches')
+    .select('id', { count: 'exact', head: true })
+    .eq('tournament_id', tournamentId)
+    .eq('stage', 'playoff');
+  if ((playoffCount ?? 0) > 0) {
+    return { ok: false, error: 'El playoff ya fue generado' };
+  }
+
+  // Todos los matches de grupo deben estar completed.
+  const { data: groupData } = await admin
+    .from('matches')
+    .select('group_number, registration_one_id, registration_two_id, score_one, score_two, status')
+    .eq('tournament_id', tournamentId)
+    .eq('stage', 'group');
+  const groupMatches = (groupData ?? []) as unknown as {
+    group_number: number | null;
+    registration_one_id: string | null;
+    registration_two_id: string | null;
+    score_one: number | null;
+    score_two: number | null;
+    status: string;
+  }[];
+  if (groupMatches.length === 0) return { ok: false, error: 'No hay fase de grupos' };
+  if (groupMatches.some((m) => m.status !== 'completed')) {
+    return { ok: false, error: 'Faltan partidos de grupos por cerrar' };
+  }
+
+  // Clasificados por grupo (top-K), en orden de grupo.
+  const numGroups = tournament.num_groups ?? 2;
+  const qualifiers = tournament.qualifiers_per_group ?? 2;
+  const standingsInput = groupMatches.map((m) => ({
+    groupNumber: m.group_number,
+    registrationOneId: m.registration_one_id,
+    registrationTwoId: m.registration_two_id,
+    scoreOne: m.score_one,
+    scoreTwo: m.score_two,
+    status: m.status,
+  }));
+  const qualifiersByGroup: string[][] = [];
+  for (let g = 1; g <= numGroups; g++) {
+    const table = computeGroupStandings(standingsInput, g);
+    qualifiersByGroup.push(table.slice(0, qualifiers).map((s) => s.registrationId));
+  }
+  const seeded = seedPlayoffFromGroups(qualifiersByGroup, qualifiers);
+  if (seeded.length < 2) {
+    return { ok: false, error: 'No hay suficientes clasificados para el playoff' };
+  }
+
+  // Generar y persistir el bracket (misma mecánica que el formato eliminación).
+  const elimRounds = generateSingleElimination({ participantIds: seeded, courts: tournament.courts ?? 2 });
+  const totalRounds = elimRounds.length;
+  const idByCode = new Map<string, string>();
+  for (const round of elimRounds) {
+    for (const m of round.matches) idByCode.set(m.matchId, crypto.randomUUID());
+  }
+  const playoffRows = elimRounds.flatMap((round) =>
+    round.matches.map((m, idx) => {
+      const isFinal = round.roundNumber >= totalRounds;
+      const nextCode = isFinal ? null : `r${round.roundNumber + 1}-m${Math.floor(idx / 2) + 1}`;
+      return {
+        id: idByCode.get(m.matchId)!,
+        tournament_id: tournamentId,
+        round_number: m.roundNumber,
+        court_number: m.courtNumber,
+        registration_one_id: m.registrationOne.registrationId,
+        registration_two_id: m.registrationTwo.registrationId,
+        status: m.status,
+        match_code: m.matchId,
+        next_match_id: nextCode ? (idByCode.get(nextCode) ?? null) : null,
+        next_match_slot: isFinal ? null : idx % 2 === 0 ? 1 : 2,
+        is_bye: m.status === 'completed',
+        stage: 'playoff' as const,
+      };
+    }),
+  );
+  const { error: insErr } = await admin.from('matches').insert(playoffRows as never);
+  if (insErr) return { ok: false, error: translateDbError(insErr.message) };
+
+  revalidatePath(`/tournaments/${tournament.slug}`);
+  revalidatePath(`/tournaments/${tournament.slug}/live`);
   revalidatePath(`/app/tournaments/${tournament.slug}/manage`);
   return { ok: true };
 }

@@ -1024,7 +1024,12 @@ export type Database = {
           created_at: string
           elo_applied_at: string | null
           ended_at: string | null
+          group_number: number | null
           id: string
+          is_bye: boolean
+          match_code: string | null
+          next_match_id: string | null
+          next_match_slot: number | null
           pair_one_guest_one_id: string | null
           pair_one_guest_two_id: string | null
           pair_one_player_one_id: string | null
@@ -1043,6 +1048,7 @@ export type Database = {
           score_one: number | null
           score_two: number | null
           set_scores: Json | null
+          stage: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["match_status"]
           tournament_id: string
@@ -1055,7 +1061,12 @@ export type Database = {
           created_at?: string
           elo_applied_at?: string | null
           ended_at?: string | null
+          group_number?: number | null
           id?: string
+          is_bye?: boolean
+          match_code?: string | null
+          next_match_id?: string | null
+          next_match_slot?: number | null
           pair_one_guest_one_id?: string | null
           pair_one_guest_two_id?: string | null
           pair_one_player_one_id?: string | null
@@ -1074,6 +1085,7 @@ export type Database = {
           score_one?: number | null
           score_two?: number | null
           set_scores?: Json | null
+          stage?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["match_status"]
           tournament_id: string
@@ -1086,7 +1098,12 @@ export type Database = {
           created_at?: string
           elo_applied_at?: string | null
           ended_at?: string | null
+          group_number?: number | null
           id?: string
+          is_bye?: boolean
+          match_code?: string | null
+          next_match_id?: string | null
+          next_match_slot?: number | null
           pair_one_guest_one_id?: string | null
           pair_one_guest_two_id?: string | null
           pair_one_player_one_id?: string | null
@@ -1105,12 +1122,20 @@ export type Database = {
           score_one?: number | null
           score_two?: number | null
           set_scores?: Json | null
+          stage?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["match_status"]
           tournament_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "matches_next_match_id_fkey"
+            columns: ["next_match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matches_pair_one_guest_one_id_fkey"
             columns: ["pair_one_guest_one_id"]
@@ -2351,10 +2376,12 @@ export type Database = {
           min_sum: number | null
           min_teams: number
           name: string
+          num_groups: number | null
           num_sets: number | null
           pairing_mode: Database["public"]["Enums"]["pairing_mode"] | null
           points_per_match: number
           price_per_team: number
+          qualifiers_per_group: number | null
           registration_deadline: string
           rotation_games: number
           scope: string
@@ -2387,10 +2414,12 @@ export type Database = {
           min_sum?: number | null
           min_teams?: number
           name: string
+          num_groups?: number | null
           num_sets?: number | null
           pairing_mode?: Database["public"]["Enums"]["pairing_mode"] | null
           points_per_match?: number
           price_per_team?: number
+          qualifiers_per_group?: number | null
           registration_deadline: string
           rotation_games?: number
           scope: string
@@ -2423,10 +2452,12 @@ export type Database = {
           min_sum?: number | null
           min_teams?: number
           name?: string
+          num_groups?: number | null
           num_sets?: number | null
           pairing_mode?: Database["public"]["Enums"]["pairing_mode"] | null
           points_per_match?: number
           price_per_team?: number
+          qualifiers_per_group?: number | null
           registration_deadline?: string
           rotation_games?: number
           scope?: string
@@ -2727,6 +2758,7 @@ export type Database = {
         | "liga"
         | "express"
         | "eliminacion"
+        | "grupos_eliminacion"
       tournament_status:
         | "draft"
         | "open"
@@ -3402,6 +3434,7 @@ export const Constants = {
         "liga",
         "express",
         "eliminacion",
+        "grupos_eliminacion",
       ],
       tournament_status: [
         "draft",

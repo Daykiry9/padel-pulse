@@ -27,6 +27,7 @@ const FORMAT_MULTIPLIER: Record<TournamentFormat, number> = {
   liga: 1.5,
   express: 0.6,
   eliminacion: 1.2,
+  grupos_eliminacion: 1.5,
 };
 
 export interface PointsForPositionInput {

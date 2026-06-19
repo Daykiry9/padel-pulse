@@ -10,6 +10,7 @@ import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
 
 import { FinishTournamentButton } from '@/components/finish-tournament-button';
 import { GenerateBracketButton } from './generate-bracket-button';
+import { GeneratePlayoffButton } from './generate-playoff-button';
 import { MatchScoreForm } from './match-score-form';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -58,6 +59,8 @@ type MatchRow = {
   score_two: number | null;
   set_scores: { one: number; two: number }[] | null;
   match_code: string | null;
+  stage: string | null;
+  group_number: number | null;
   status: string;
   reported_by_registration_id: string | null;
   reported_by_side: number | null;
@@ -160,7 +163,7 @@ export default async function ManageTournamentPage({
   const { data: matchesData } = await supabase
     .from('matches')
     .select(
-      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, match_code, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
+      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, match_code, stage, group_number, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
     )
     .eq('tournament_id', tournament.id)
     .order('round_number')
@@ -280,10 +283,56 @@ export default async function ManageTournamentPage({
             : `RONDA ${rn}`;
   };
 
-  // Campeón: ganador de la final (mayor round) ya completada.
-  const finalMatch = isElim
-    ? (matchesByRound.get(maxRound) ?? []).find((m) => m.status === 'completed')
-    : undefined;
+  // Híbrido grupos + playoff: secciones separadas (grupos por número, playoff por ronda).
+  const isGroups = tournament.format === 'grupos_eliminacion';
+  const playoffMatches = matches.filter((m) => m.stage === 'playoff');
+  const groupStageMatches = matches.filter((m) => m.stage === 'group');
+  const groupsDone =
+    isGroups && groupStageMatches.length > 0 && groupStageMatches.every((m) => m.status === 'completed');
+  const hasPlayoff = playoffMatches.length > 0;
+  const playoffMaxRound = playoffMatches.length
+    ? Math.max(...playoffMatches.map((m) => m.round_number))
+    : 0;
+  const bracketRoundLabel = (rn: number, max: number): string => {
+    const fromEnd = max - rn;
+    return fromEnd === 0
+      ? 'FINAL'
+      : fromEnd === 1
+        ? 'SEMIFINAL'
+        : fromEnd === 2
+          ? 'CUARTOS DE FINAL'
+          : fromEnd === 3
+            ? 'OCTAVOS'
+            : `RONDA ${rn}`;
+  };
+
+  type Section = { label: string; matches: MatchRow[] };
+  const sections: Section[] = [];
+  if (isGroups) {
+    const groupNums = [...new Set(groupStageMatches.map((m) => m.group_number ?? 0))].sort((a, b) => a - b);
+    for (const g of groupNums) {
+      sections.push({ label: `GRUPO ${g}`, matches: groupStageMatches.filter((m) => m.group_number === g) });
+    }
+    const pRounds = [...new Set(playoffMatches.map((m) => m.round_number))].sort((a, b) => a - b);
+    for (const r of pRounds) {
+      sections.push({
+        label: `PLAYOFF · ${bracketRoundLabel(r, playoffMaxRound)}`,
+        matches: playoffMatches.filter((m) => m.round_number === r),
+      });
+    }
+  } else {
+    for (const r of sortedRounds) {
+      sections.push({ label: roundLabel(r), matches: matchesByRound.get(r)! });
+    }
+  }
+
+  // Campeón: ganador de la final ya completada (eliminación, o playoff del híbrido).
+  const championRound = isGroups ? playoffMaxRound : maxRound;
+  const championPool = isGroups ? playoffMatches : matchesByRound.get(maxRound) ?? [];
+  const finalMatch =
+    (isElim || (isGroups && hasPlayoff))
+      ? championPool.find((m) => m.round_number === championRound && m.status === 'completed')
+      : undefined;
   const championRegId = finalMatch
     ? (finalMatch.score_one ?? 0) > (finalMatch.score_two ?? 0)
       ? finalMatch.registration_one_id
@@ -390,22 +439,36 @@ export default async function ManageTournamentPage({
         </Card>
       )}
 
+      {/* Híbrido: cuando los grupos terminan, generar el playoff. */}
+      {tournament.status === 'in_progress' && isGroups && groupsDone && !hasPlayoff && (
+        <Card className="border-crown/30 bg-crown/[0.03] p-6">
+          <h2 className="font-display text-2xl tracking-tight">FASE DE GRUPOS COMPLETA</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            Todos los partidos de grupos están cerrados. Generá el playoff con los clasificados
+            de cada grupo.
+          </p>
+          <div className="mt-5">
+            <GeneratePlayoffButton tournamentId={tournament.id} />
+          </div>
+        </Card>
+      )}
+
       {/* Estado: in_progress → matches con score editor */}
       {tournament.status === 'in_progress' && (
         <div className="space-y-8">
-          {sortedRounds.length === 0 ? (
+          {sections.length === 0 ? (
             <Card className="p-8 text-center text-sm text-muted-foreground">
               No hay matches generados. Algo salió mal en el bracket.
             </Card>
           ) : (
-            sortedRounds.map((roundNumber) => {
-              const roundMatches = matchesByRound.get(roundNumber)!;
+            sections.map((section) => {
+              const roundMatches = section.matches;
               const done = roundMatches.filter((m) => m.status === 'completed').length;
               return (
-                <section key={roundNumber}>
+                <section key={section.label}>
                   <div className="mb-3 flex items-baseline justify-between">
                     <h2 className="font-display text-2xl tracking-tight">
-                      {roundLabel(roundNumber)}
+                      {section.label}
                     </h2>
                     <span className="text-muted-foreground text-xs uppercase tracking-widest">
                       {done} / {roundMatches.length} jugados

@@ -2,6 +2,7 @@ export * from './types';
 export * from './tournament/americano';
 export * from './tournament/standings';
 export * from './tournament/scoring';
+export * from './tournament/groups';
 export * from './eliminacion';
 export * from './liga';
 export * from './express';

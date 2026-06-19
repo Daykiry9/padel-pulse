@@ -27,6 +27,7 @@ const FORMAT_LABELS: Partial<Record<TournamentFormat, string>> = {
   liguilla_casual: 'Liguilla Casual (mini-liga, máx 8 parejas)',
   express: 'Express (americano corto, 6 rondas)',
   eliminacion: 'Eliminación directa',
+  grupos_eliminacion: 'Grupos + Eliminación (round-robin y playoff)',
 };
 
 const FORMAT_COMING_SOON: Partial<Record<TournamentFormat, string>> = {};
@@ -97,6 +98,7 @@ export function CreateTournamentForm({
   const isRandom = format === 'americano_random';
   const isExpress = format === 'express';
   const isPlayerBased = isRandom || isExpress;
+  const isGroups = format === 'grupos_eliminacion';
   const isMasculino = categoryKind === 'estandar';
   const isFemenino = categoryKind === 'queens_estandar';
   const isMixto = categoryKind === 'mixto_estandar';
@@ -276,6 +278,17 @@ export function CreateTournamentForm({
           ))}
         </Select>
       </FormField>
+
+      {isGroups && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Número de grupos" hint="Las parejas se reparten en grupos para el round-robin.">
+            <Input name="num_groups" type="number" min={2} max={16} defaultValue={2} />
+          </FormField>
+          <FormField label="Clasifican por grupo" hint="Cuántos pasan de cada grupo al playoff.">
+            <Input name="qualifiers_per_group" type="number" min={1} max={8} defaultValue={2} />
+          </FormField>
+        </div>
+      )}
 
       <FormField label="Modo de marcador" hint="Cómo se decide cada partido.">
         <Select

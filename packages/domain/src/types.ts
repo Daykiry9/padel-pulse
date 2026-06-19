@@ -227,7 +227,8 @@ export type TournamentFormat =
   | 'liguilla_casual'
   | 'liga'
   | 'express'
-  | 'eliminacion';
+  | 'eliminacion'
+  | 'grupos_eliminacion';
 
 export type CompetitionUnit = 'team' | 'player';
 export type PairingMode = 'fixed' | 'random' | 'mixed';
@@ -242,6 +243,7 @@ export const TIER_BY_FORMAT: Record<TournamentFormat, TournamentTier> = {
   liga: 'competitivo',
   express: 'competitivo',
   eliminacion: 'competitivo',
+  grupos_eliminacion: 'competitivo',
   americano_random: 'casual',
   liguilla_casual: 'casual',
 };
