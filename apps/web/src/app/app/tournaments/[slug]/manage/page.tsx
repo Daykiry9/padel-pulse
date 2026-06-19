@@ -57,6 +57,7 @@ type MatchRow = {
   score_one: number | null;
   score_two: number | null;
   set_scores: { one: number; two: number }[] | null;
+  match_code: string | null;
   status: string;
   reported_by_registration_id: string | null;
   reported_by_side: number | null;
@@ -159,7 +160,7 @@ export default async function ManageTournamentPage({
   const { data: matchesData } = await supabase
     .from('matches')
     .select(
-      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
+      'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, match_code, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
     )
     .eq('tournament_id', tournament.id)
     .order('round_number')
@@ -239,7 +240,9 @@ export default async function ManageTournamentPage({
       return `${labelForSlot(p1, g1)} / ${labelForSlot(p2, g2)}`;
     }
     const regId = side === 'one' ? m.registration_one_id : m.registration_two_id;
-    return (regId && regLabels.get(regId)) || '?';
+    if (regId && regLabels.get(regId)) return regLabels.get(regId)!;
+    // Bracket: slot que espera al ganador de un match previo.
+    return m.match_code ? 'Por definir' : '?';
   };
   const reportedByLabelOf = (m: MatchRow): string | null => {
     if (isRandom) {
@@ -259,6 +262,33 @@ export default async function ManageTournamentPage({
     matchesByRound.get(m.round_number)!.push(m);
   }
   const sortedRounds = Array.from(matchesByRound.keys()).sort((a, b) => a - b);
+
+  // En eliminación las rondas tienen nombre (Final/Semifinal/Cuartos…) en vez de número.
+  const isElim = tournament.format === 'eliminacion';
+  const maxRound = sortedRounds.length ? sortedRounds[sortedRounds.length - 1]! : 0;
+  const roundLabel = (rn: number): string => {
+    if (!isElim) return `RONDA ${rn}`;
+    const fromEnd = maxRound - rn;
+    return fromEnd === 0
+      ? 'FINAL'
+      : fromEnd === 1
+        ? 'SEMIFINAL'
+        : fromEnd === 2
+          ? 'CUARTOS DE FINAL'
+          : fromEnd === 3
+            ? 'OCTAVOS'
+            : `RONDA ${rn}`;
+  };
+
+  // Campeón: ganador de la final (mayor round) ya completada.
+  const finalMatch = isElim
+    ? (matchesByRound.get(maxRound) ?? []).find((m) => m.status === 'completed')
+    : undefined;
+  const championRegId = finalMatch
+    ? (finalMatch.score_one ?? 0) > (finalMatch.score_two ?? 0)
+      ? finalMatch.registration_one_id
+      : finalMatch.registration_two_id
+    : null;
 
   const completedCount = matches.filter((m) => m.status === 'completed').length;
   const totalCount = matches.length;
@@ -322,6 +352,18 @@ export default async function ManageTournamentPage({
       )}
 
       {/* Estado: open → botón generar bracket */}
+      {championRegId && (
+        <Card className="border-crown/40 bg-crown/[0.06] flex items-center gap-3 p-5">
+          <Crown className="text-crown size-6 shrink-0" />
+          <div>
+            <div className="text-muted-foreground text-[10px] uppercase tracking-widest">Campeón</div>
+            <div className="font-display text-xl tracking-tight">
+              {regLabels.get(championRegId) ?? '—'}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {tournament.status === 'open' && (
         <Card className="border-crown/30 bg-crown/[0.03] p-6">
           <h2 className="font-display text-2xl tracking-tight">CERRAR INSCRIPCIONES</h2>
@@ -363,7 +405,7 @@ export default async function ManageTournamentPage({
                 <section key={roundNumber}>
                   <div className="mb-3 flex items-baseline justify-between">
                     <h2 className="font-display text-2xl tracking-tight">
-                      RONDA {roundNumber}
+                      {roundLabel(roundNumber)}
                     </h2>
                     <span className="text-muted-foreground text-xs uppercase tracking-widest">
                       {done} / {roundMatches.length} jugados

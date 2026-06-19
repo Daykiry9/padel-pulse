@@ -797,25 +797,36 @@ export async function closeRegistrationsAndGenerateBracket(
         participantIds: registrations.map((r) => r.id),
         courts,
       });
-      // Para eliminación directa solo insertamos ronda 1 (los participantes ya
-      // están definidos por seeding). Las rondas siguientes se generan cuando
-      // se completan los matches previos (acción pendiente: advanceWinner).
-      // Los matches con BYE quedan auto-completed con winner = lado con
-      // registración válida.
-      matchRows = elimRounds
-        .filter((r) => r.roundNumber === 1)
-        .flatMap((round) =>
-          round.matches
-            .filter((m) => m.registrationOne.registrationId && m.registrationTwo.registrationId)
-            .map((m) => ({
-              tournament_id: tournamentId,
-              round_number: m.roundNumber,
-              court_number: m.courtNumber,
-              registration_one_id: m.registrationOne.registrationId,
-              registration_two_id: m.registrationTwo.registrationId,
-              status: 'scheduled' as const,
-            })),
-        );
+      // Persistimos TODO el bracket: pre-generamos un UUID por cada match (su
+      // match_code sintético) y encadenamos next_match_id/slot para que
+      // advanceWinner sepa a dónde mandar al ganador. Los BYE quedan completed
+      // con el ganador ya propagado por el generador al slot del match siguiente.
+      const totalRounds = elimRounds.length;
+      const idByCode = new Map<string, string>();
+      for (const round of elimRounds) {
+        for (const m of round.matches) idByCode.set(m.matchId, crypto.randomUUID());
+      }
+      matchRows = elimRounds.flatMap((round) =>
+        round.matches.map((m, idx) => {
+          const isFinal = round.roundNumber >= totalRounds;
+          const nextCode = isFinal
+            ? null
+            : `r${round.roundNumber + 1}-m${Math.floor(idx / 2) + 1}`;
+          return {
+            id: idByCode.get(m.matchId)!,
+            tournament_id: tournamentId,
+            round_number: m.roundNumber,
+            court_number: m.courtNumber,
+            registration_one_id: m.registrationOne.registrationId,
+            registration_two_id: m.registrationTwo.registrationId,
+            status: m.status,
+            match_code: m.matchId,
+            next_match_id: nextCode ? (idByCode.get(nextCode) ?? null) : null,
+            next_match_slot: isFinal ? null : idx % 2 === 0 ? 1 : 2,
+            is_bye: m.status === 'completed',
+          };
+        }),
+      );
       break;
     }
 
@@ -950,6 +961,9 @@ type MatchCtx = {
   score_one: number | null;
   score_two: number | null;
   set_scores: SetScore[] | null;
+  match_code: string | null;
+  next_match_id: string | null;
+  next_match_slot: number | null;
   confirmed_by_one: boolean;
   confirmed_by_two: boolean;
   reported_by_registration_id: string | null;
@@ -990,7 +1004,7 @@ async function getMatchContext(
   const { data: m } = await supabase
     .from('matches')
     .select(
-      'id, tournament_id, registration_one_id, registration_two_id, status, score_one, score_two, set_scores, confirmed_by_one, confirmed_by_two, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
+      'id, tournament_id, registration_one_id, registration_two_id, status, score_one, score_two, set_scores, match_code, next_match_id, next_match_slot, confirmed_by_one, confirmed_by_two, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id',
     )
     .eq('id', matchId)
     .maybeSingle();
@@ -1293,6 +1307,38 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
  * - Jugador participante: queda pending_confirmation (sin ELO) hasta que
  *   la otra pareja confirme o el organizador fuerce el cierre.
  */
+/**
+ * Avanza al ganador de un match de bracket al match siguiente. No-op si el
+ * match no es parte de una llave (next_match_id null). Idempotente: re-escribir
+ * el mismo ganador en el slot no cambia nada. Se invoca tras cerrar un match.
+ */
+async function advanceBracketWinner(matchId: string): Promise<void> {
+  const admin = getServiceRoleClient();
+  const { data } = await admin
+    .from('matches')
+    .select('next_match_id, next_match_slot, registration_one_id, registration_two_id, score_one, score_two')
+    .eq('id', matchId)
+    .single();
+  const m = data as unknown as {
+    next_match_id: string | null;
+    next_match_slot: number | null;
+    registration_one_id: string | null;
+    registration_two_id: string | null;
+    score_one: number | null;
+    score_two: number | null;
+  } | null;
+  if (!m || !m.next_match_id || !m.next_match_slot) return;
+  const so = m.score_one ?? 0;
+  const st = m.score_two ?? 0;
+  const winner = so > st ? m.registration_one_id : st > so ? m.registration_two_id : null;
+  if (!winner) return; // empate: no se puede avanzar (validado al cerrar el match)
+  const col = m.next_match_slot === 1 ? 'registration_one_id' : 'registration_two_id';
+  await admin
+    .from('matches')
+    .update({ [col]: winner } as never)
+    .eq('id', m.next_match_id);
+}
+
 export async function reportMatchScore(formData: FormData): Promise<ActionResult> {
   const user = await getSession();
   if (!user) return { ok: false, error: 'No autenticado' };
@@ -1330,6 +1376,11 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
   const { scoreOne, scoreTwo, setScores } = resolved.resolved;
   const summary = formatScoreSummary(resolved.resolved);
 
+  // En una llave (bracket) no puede haber empate: alguien tiene que avanzar.
+  if (ctx.match.match_code && resolved.resolved.winner === null) {
+    return { ok: false, error: 'En una llave de eliminación no puede quedar empate' };
+  }
+
   // Validación + autorización ya resueltas en getMatchContext → usamos
   // service role para el UPDATE (las parejas ad-hoc no pasan la RLS de
   // matches, que solo cubre team_members).
@@ -1353,6 +1404,7 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       .eq('id', matchId);
     if (error) return { ok: false, error: translateDbError(error.message) };
     await applyMatchEloAndNotify(matchId);
+    await advanceBracketWinner(matchId);
     return { ok: true };
   }
 
@@ -1459,6 +1511,7 @@ export async function confirmMatchScore(matchId: string, confirm: boolean): Prom
     .eq('id', matchId);
   if (error) return { ok: false, error: translateDbError(error.message) };
   await applyMatchEloAndNotify(matchId);
+  await advanceBracketWinner(matchId);
   return { ok: true };
 }
 
@@ -1478,6 +1531,10 @@ export async function forceCompleteMatch(matchId: string): Promise<ActionResult>
   if (ctx.match.score_one == null || ctx.match.score_two == null) {
     return { ok: false, error: 'No hay marcador reportado para cerrar' };
   }
+  // En una llave no se puede cerrar con empate (nadie avanzaría).
+  if (ctx.match.match_code && ctx.match.score_one === ctx.match.score_two) {
+    return { ok: false, error: 'En una llave de eliminación no puede quedar empate' };
+  }
 
   const admin = getServiceRoleClient();
   const { error } = await admin
@@ -1491,5 +1548,6 @@ export async function forceCompleteMatch(matchId: string): Promise<ActionResult>
     .eq('id', matchId);
   if (error) return { ok: false, error: translateDbError(error.message) };
   await applyMatchEloAndNotify(matchId);
+  await advanceBracketWinner(matchId);
   return { ok: true };
 }
