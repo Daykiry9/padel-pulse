@@ -51,6 +51,9 @@ type MatchRow = {
   score_one: number | null;
   score_two: number | null;
   set_scores: { one: number; two: number }[] | null;
+  match_code: string | null;
+  stage: string | null;
+  group_number: number | null;
   status: string;
   reported_by_registration_id: string | null;
   reported_by_side: number | null;
@@ -110,7 +113,7 @@ export default async function LiveTournamentPage({
     supabase
       .from('matches')
       .select(
-        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
+        'id, round_number, court_number, registration_one_id, registration_two_id, score_one, score_two, set_scores, match_code, stage, group_number, status, reported_by_registration_id, reported_by_side, pair_one_player_one_id, pair_one_player_two_id, pair_two_player_one_id, pair_two_player_two_id, pair_one_guest_one_id, pair_one_guest_two_id, pair_two_guest_one_id, pair_two_guest_two_id',
       )
       .eq('tournament_id', tournament.id)
       .order('round_number')
@@ -254,7 +257,8 @@ export default async function LiveTournamentPage({
       return `${labelForSlot(p1, g1)} / ${labelForSlot(p2, g2)}`;
     }
     const regId = side === 'one' ? m.registration_one_id : m.registration_two_id;
-    return (regId && regLabels.get(regId)) || '?';
+    if (regId && regLabels.get(regId)) return regLabels.get(regId)!;
+    return m.match_code ? 'Por definir' : '?';
   };
 
   // ¿En qué lado juega el usuario? (random: por jugador; fijo: por registration)
@@ -365,6 +369,40 @@ export default async function LiveTournamentPage({
   }
   const sortedRounds = Array.from(matchesByRound.keys()).sort((a, b) => a - b);
 
+  // Secciones: eliminación usa nombres de ronda; el híbrido separa GRUPOS y PLAYOFF.
+  const isElim = tournament.format === 'eliminacion';
+  const isGroups = tournament.format === 'grupos_eliminacion';
+  const playoffMatches = matches.filter((m) => m.stage === 'playoff');
+  const groupStageMatches = matches.filter((m) => m.stage === 'group');
+  const elimMax = isElim && sortedRounds.length ? sortedRounds[sortedRounds.length - 1]! : 0;
+  const playoffMax = playoffMatches.length ? Math.max(...playoffMatches.map((m) => m.round_number)) : 0;
+  const bracketLabel = (rn: number, max: number): string => {
+    const fromEnd = max - rn;
+    return fromEnd === 0 ? 'FINAL' : fromEnd === 1 ? 'SEMIFINAL' : fromEnd === 2 ? 'CUARTOS' : fromEnd === 3 ? 'OCTAVOS' : `RONDA ${rn}`;
+  };
+  const liveSections: { label: string; matches: MatchRow[] }[] = [];
+  if (isGroups) {
+    const groupNums = [...new Set(groupStageMatches.map((m) => m.group_number ?? 0))].sort((a, b) => a - b);
+    for (const g of groupNums) liveSections.push({ label: `GRUPO ${g}`, matches: groupStageMatches.filter((m) => m.group_number === g) });
+    for (const r of [...new Set(playoffMatches.map((m) => m.round_number))].sort((a, b) => a - b))
+      liveSections.push({ label: `PLAYOFF · ${bracketLabel(r, playoffMax)}`, matches: playoffMatches.filter((m) => m.round_number === r) });
+  } else {
+    for (const r of sortedRounds)
+      liveSections.push({ label: isElim ? bracketLabel(r, elimMax) : `RONDA ${r}`, matches: matchesByRound.get(r)! });
+  }
+
+  // Campeón (eliminación o playoff del híbrido): ganador de la final completada.
+  const champRound = isGroups ? playoffMax : elimMax;
+  const champPool = isGroups ? playoffMatches : matchesByRound.get(elimMax) ?? [];
+  const finalMatch = (isElim || (isGroups && playoffMatches.length > 0))
+    ? champPool.find((m) => m.round_number === champRound && m.status === 'completed')
+    : undefined;
+  const championLabel = finalMatch
+    ? (finalMatch.score_one ?? 0) > (finalMatch.score_two ?? 0)
+      ? sideLabel(finalMatch, 'one')
+      : sideLabel(finalMatch, 'two')
+    : null;
+
   return (
     <div className="bg-background min-h-screen">
       <RealtimeRefresh tournamentId={tournament.id} />
@@ -416,6 +454,16 @@ export default async function LiveTournamentPage({
             </div>
           )}
         </div>
+
+        {championLabel && (
+          <Card className="border-crown/40 bg-crown/[0.06] mt-6 flex items-center gap-3 p-5">
+            <Crown className="text-crown size-6 shrink-0" />
+            <div>
+              <div className="text-muted-foreground text-[10px] uppercase tracking-widest">Campeón</div>
+              <div className="font-display text-2xl tracking-tight">{championLabel}</div>
+            </div>
+          </Card>
+        )}
 
         {tournament.status === 'open' && (
           <Card className="mt-8 p-8 text-center">
@@ -504,13 +552,13 @@ export default async function LiveTournamentPage({
                 </div>
 
                 <div className="space-y-6">
-                  {sortedRounds.map((roundNumber) => {
-                    const roundMatches = matchesByRound.get(roundNumber)!;
+                  {liveSections.map((section) => {
+                    const roundMatches = section.matches;
                     const done = roundMatches.filter((m) => m.status === 'completed').length;
                     return (
-                      <div key={roundNumber}>
+                      <div key={section.label}>
                         <div className="text-muted-foreground mb-2 flex items-baseline justify-between text-[10px] uppercase tracking-widest">
-                          <span>Ronda {roundNumber}</span>
+                          <span>{section.label}</span>
                           <span>
                             {done}/{roundMatches.length}
                           </span>
@@ -541,12 +589,14 @@ export default async function LiveTournamentPage({
                                   <Row
                                     label={sideLabel(m, 'one')}
                                     score={m.score_one}
+                                    detail={m.set_scores?.length ? m.set_scores.map((s) => s.one).join(' ') : null}
                                     winner={oneWon}
                                     dim={!isDone}
                                   />
                                   <Row
                                     label={sideLabel(m, 'two')}
                                     score={m.score_two}
+                                    detail={m.set_scores?.length ? m.set_scores.map((s) => s.two).join(' ') : null}
                                     winner={twoWon}
                                     dim={!isDone}
                                   />
@@ -606,11 +656,14 @@ export default async function LiveTournamentPage({
 function Row({
   label,
   score,
+  detail,
   winner = false,
   dim = false,
 }: {
   label: string;
   score: number | null;
+  /** Games por set de este lado en modo sets, ej "6 6 7". */
+  detail?: string | null;
   winner?: boolean;
   dim?: boolean;
 }) {
@@ -624,12 +677,17 @@ function Row({
         {winner && <Crown className="text-crown size-3.5" />}
         {label}
       </span>
-      <span
-        className={`font-display tabular-nums ${
-          score == null ? 'text-muted-foreground/40' : winner ? 'text-crown' : 'text-foreground'
-        }`}
-      >
-        {score ?? '—'}
+      <span className="flex items-center gap-2">
+        {detail && (
+          <span className="text-muted-foreground font-display text-xs tabular-nums">{detail}</span>
+        )}
+        <span
+          className={`font-display w-4 text-right tabular-nums ${
+            score == null ? 'text-muted-foreground/40' : winner ? 'text-crown' : 'text-foreground'
+          }`}
+        >
+          {score ?? '—'}
+        </span>
       </span>
     </div>
   );
