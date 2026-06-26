@@ -27,6 +27,7 @@ type TournamentRow = {
   scoring_mode: string | null;
   num_sets: number | null;
   games_per_set: number | null;
+  points_per_match: number | null;
   clubs: { owner_id: string } | null;
   communities: { owner_id: string } | null;
 };
@@ -90,7 +91,7 @@ export default async function LiveTournamentPage({
   const { data: tData } = await supabase
     .from('tournaments')
     .select(
-      'id, name, slug, status, format, courts, starts_at, category_kind, category, min_sum, scoring_mode, num_sets, games_per_set, clubs(owner_id), communities(owner_id)',
+      'id, name, slug, status, format, courts, starts_at, category_kind, category, min_sum, scoring_mode, num_sets, games_per_set, points_per_match, clubs(owner_id), communities(owner_id)',
     )
     .eq('slug', slug)
     .single();
@@ -657,6 +658,7 @@ export default async function LiveTournamentPage({
                                         scoringMode={(tournament.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
                                         numSets={tournament.num_sets}
                                         gamesPerSet={tournament.games_per_set}
+                                        pointsPerMatch={tournament.points_per_match ?? undefined}
                                       />
                                     );
                                   }
@@ -674,6 +676,7 @@ export default async function LiveTournamentPage({
                                       scoringMode={(tournament.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
                                       numSets={tournament.num_sets}
                                       gamesPerSet={tournament.games_per_set}
+                                      pointsPerMatch={tournament.points_per_match ?? undefined}
                                     />
                                   );
                                 })()}

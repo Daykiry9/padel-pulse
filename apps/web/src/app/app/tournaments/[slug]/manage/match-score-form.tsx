@@ -61,6 +61,26 @@ export function MatchScoreForm({
     setSets((prev) => prev.map((s, idx) => (idx === i ? { ...s, [side]: value } : s)));
   }
 
+  // Modo "a puntos": la suma es fija (points_per_match), así que al cargar un
+  // lado autocompletamos el del rival para que reportar sea más rápido.
+  const complement = (value: string): string | null => {
+    if (scoringMode !== 'points' || !pointsPerMatch) return null;
+    if (value.trim() === '') return null;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0 || n > pointsPerMatch) return null;
+    return String(pointsPerMatch - n);
+  };
+  function changeScoreOne(value: string) {
+    setScoreOne(value);
+    const c = complement(value);
+    if (c !== null) setScoreTwo(c);
+  }
+  function changeScoreTwo(value: string) {
+    setScoreTwo(value);
+    const c = complement(value);
+    if (c !== null) setScoreOne(c);
+  }
+
   function submit() {
     setError(null);
     startTransition(async () => {
@@ -180,7 +200,7 @@ export function MatchScoreForm({
               inputMode="numeric"
               className="w-16 text-center font-display text-lg"
               value={scoreOne}
-              onChange={(e) => setScoreOne(e.target.value)}
+              onChange={(e) => changeScoreOne(e.target.value)}
               aria-label={`Marcador de ${labelOne}`}
             />
           </div>
@@ -193,7 +213,7 @@ export function MatchScoreForm({
               inputMode="numeric"
               className="w-16 text-center font-display text-lg"
               value={scoreTwo}
-              onChange={(e) => setScoreTwo(e.target.value)}
+              onChange={(e) => changeScoreTwo(e.target.value)}
               aria-label={`Marcador de ${labelTwo}`}
             />
           </div>

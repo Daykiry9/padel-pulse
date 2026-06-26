@@ -28,6 +28,7 @@ export function PlayerMatchActions({
   scoringMode = 'points',
   numSets,
   gamesPerSet,
+  pointsPerMatch,
 }: {
   matchId: string;
   status: string;
@@ -40,6 +41,7 @@ export function PlayerMatchActions({
   scoringMode?: ScoringMode;
   numSets?: number | null;
   gamesPerSet?: number | null;
+  pointsPerMatch?: number;
 }) {
   const router = useRouter();
   const isSets = scoringMode === 'sets';
@@ -113,6 +115,25 @@ export function PlayerMatchActions({
     setSets((prev) => prev.map((s, idx) => (idx === i ? { ...s, [side]: value } : s)));
   }
 
+  // Modo "a puntos": suma fija (pointsPerMatch) → autocompletar el rival.
+  const complement = (value: string): string | null => {
+    if (scoringMode !== 'points' || !pointsPerMatch) return null;
+    if (value.trim() === '') return null;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 0 || n > pointsPerMatch) return null;
+    return String(pointsPerMatch - n);
+  };
+  function changeS1(value: string) {
+    setS1(value);
+    const c = complement(value);
+    if (c !== null) setS2(c);
+  }
+  function changeS2(value: string) {
+    setS2(value);
+    const c = complement(value);
+    if (c !== null) setS1(c);
+  }
+
   // Inputs del marcador: por set (modo sets) o dos cajas (points/games).
   const scoreInputs = isSets ? (
     <div className="space-y-1.5">
@@ -154,7 +175,7 @@ export function PlayerMatchActions({
         inputMode="numeric"
         className="h-9 w-14 text-center font-display"
         value={s1}
-        onChange={(e) => setS1(e.target.value)}
+        onChange={(e) => changeS1(e.target.value)}
         aria-label="Marcador pareja 1"
       />
       <span className="text-muted-foreground text-xs">–</span>
@@ -165,7 +186,7 @@ export function PlayerMatchActions({
         inputMode="numeric"
         className="h-9 w-14 text-center font-display"
         value={s2}
-        onChange={(e) => setS2(e.target.value)}
+        onChange={(e) => changeS2(e.target.value)}
         aria-label="Marcador pareja 2"
       />
     </div>
