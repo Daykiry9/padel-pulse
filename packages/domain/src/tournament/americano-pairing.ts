@@ -47,52 +47,37 @@ export function generateFixedAmericano({
   const totalRounds = total - 1;
 
   const rounds: AmericanoRound[] = [];
+  let physicalRound = 0;
 
   for (let r = 0; r < totalRounds; r++) {
-    const matches = [];
-    const resting: UUID[] = [];
-    const pairs: [UUID | '__BYE__', UUID | '__BYE__'][] = [];
-
+    // Enfrentamientos de esta ronda de Berger (todos disjuntos entre sí).
+    const pairs: [UUID, UUID][] = [];
     for (let i = 0; i < total / 2; i++) {
       const home = teams[i]!;
       const away = teams[total - 1 - i]!;
-      if (home === '__BYE__') {
-        resting.push(away);
-        continue;
-      }
-      if (away === '__BYE__') {
-        resting.push(home);
-        continue;
-      }
-      pairs.push([home, away]);
+      if (home === '__BYE__' || away === '__BYE__') continue; // el que enfrenta al BYE descansa
+      pairs.push([home as UUID, away as UUID]);
     }
 
-    // Distribuir parejas en canchas (round-robin de partidos)
-    let courtIdx = 0;
-    for (const [a, b] of pairs) {
-      if (courtIdx >= courts) break;
-      matches.push({
-        roundNumber: r + 1,
-        courtNumber: courtIdx + 1,
-        pairOne: { playerOneId: a as UUID, playerTwoId: '' as UUID },
-        pairTwo: { playerOneId: b as UUID, playerTwoId: '' as UUID },
+    // Si hay más enfrentamientos que canchas, NO se descartan: se reparten en
+    // rondas físicas sucesivas (tandas). Así el round-robin siempre queda
+    // COMPLETO — todos enfrentan a todos una sola vez — con cualquier nº de canchas.
+    for (let c = 0; c < pairs.length; c += courts) {
+      physicalRound++;
+      const chunk = pairs.slice(c, c + courts);
+      const matches = chunk.map(([a, b], idx) => ({
+        roundNumber: physicalRound,
+        courtNumber: idx + 1,
+        pairOne: { playerOneId: a, playerTwoId: '' as UUID },
+        pairTwo: { playerOneId: b, playerTwoId: '' as UUID },
         status: SCHEDULED,
-      });
-      courtIdx++;
+      }));
+      const playing = new Set<UUID>(chunk.flat());
+      const resting = participantIds.filter((id) => !playing.has(id));
+      rounds.push({ roundNumber: physicalRound, matches, resting });
     }
 
-    // Si hay más enfrentamientos que canchas en esta ronda, los que no juegan descansan
-    if (pairs.length > courts) {
-      for (let i = courts; i < pairs.length; i++) {
-        const [a, b] = pairs[i]!;
-        if (a !== '__BYE__') resting.push(a);
-        if (b !== '__BYE__') resting.push(b);
-      }
-    }
-
-    rounds.push({ roundNumber: r + 1, matches, resting });
-
-    // Rotar (Berger): el 0 fijo, los demás giran
+    // Rotar (Berger): el 0 fijo, los demás giran.
     const fixed = teams[0]!;
     const rotating = teams.slice(1);
     const last = rotating.pop()!;

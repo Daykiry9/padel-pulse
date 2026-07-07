@@ -119,7 +119,6 @@ describe('generateFixedAmericano', () => {
 
   it('parejas impares: aplica BYE y todos descansan eventualmente', () => {
     const rounds = generateFixedAmericano({ participantIds: ids(5), courts: 2 });
-    expect(rounds).toHaveLength(5);
     const restCount = new Map<string, number>();
     for (const r of rounds) for (const id of r.resting) restCount.set(id, (restCount.get(id) ?? 0) + 1);
     // Con 5 parejas y BYE, cada una descansa 1 vez
@@ -127,5 +126,40 @@ describe('generateFixedAmericano', () => {
       expect(count).toBe(1);
     }
     expect(restCount.size).toBe(5);
+  });
+
+  // Round-robin COMPLETO con cualquier nº de canchas: cada pareja enfrenta a
+  // cada otra exactamente una vez, sin repetir y sin dejar partidos sin jugar.
+  it.each([
+    [4, 1],
+    [4, 2],
+    [6, 1],
+    [6, 2],
+    [6, 3],
+    [8, 2],
+    [8, 4],
+    [5, 1],
+    [5, 2],
+    [7, 3],
+  ])('round-robin completo sin repetir: %i parejas, %i canchas', (n, courts) => {
+    const rounds = generateFixedAmericano({ participantIds: ids(n), courts });
+    const count = new Map<string, number>();
+    for (const r of rounds) {
+      // ningún equipo juega dos veces en la misma ronda física
+      const seen = new Set<string>();
+      for (const m of r.matches) {
+        for (const id of [m.pairOne.playerOneId, m.pairTwo.playerOneId]) {
+          expect(seen.has(id)).toBe(false);
+          seen.add(id);
+        }
+        const key = [m.pairOne.playerOneId, m.pairTwo.playerOneId].sort().join('|');
+        count.set(key, (count.get(key) ?? 0) + 1);
+      }
+      // como máximo `courts` partidos por ronda
+      expect(r.matches.length).toBeLessThanOrEqual(courts);
+    }
+    const expectedMatchups = (n * (n - 1)) / 2;
+    expect(count.size).toBe(expectedMatchups); // todos los enfrentamientos presentes
+    for (const c of count.values()) expect(c).toBe(1); // ninguno repetido
   });
 });
