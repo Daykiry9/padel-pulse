@@ -75,8 +75,9 @@ export function PlayerMatchActions({
       }
       fd.set('set_scores', JSON.stringify(filled));
     } else {
-      fd.set('score_one', s1);
-      fd.set('score_two', s2);
+      // Lado vacío → usa la sugerencia (resta al total); si escribiste algo, se respeta.
+      fd.set('score_one', s1.trim() !== '' ? s1 : suggested1);
+      fd.set('score_two', s2.trim() !== '' ? s2 : suggested2);
     }
     return true;
   }
@@ -115,24 +116,17 @@ export function PlayerMatchActions({
     setSets((prev) => prev.map((s, idx) => (idx === i ? { ...s, [side]: value } : s)));
   }
 
-  // Modo "a puntos": suma fija (pointsPerMatch) → autocompletar el rival.
-  const complement = (value: string): string | null => {
-    if (scoringMode !== 'points' || !pointsPerMatch) return null;
-    if (value.trim() === '') return null;
+  // Modo "a puntos": sugerimos el marcador del rival como AYUDA (placeholder),
+  // sin imponerlo. Si dejas un lado vacío se completa con la resta al total;
+  // pero puedes escribir CUALQUIER valor (marcadores libres, suma de games).
+  const suggestFrom = (value: string): string => {
+    if (scoringMode !== 'points' || !pointsPerMatch) return '';
     const n = Number(value);
-    if (!Number.isInteger(n) || n < 0 || n > pointsPerMatch) return null;
+    if (value.trim() === '' || !Number.isInteger(n) || n < 0 || n > pointsPerMatch) return '';
     return String(pointsPerMatch - n);
   };
-  function changeS1(value: string) {
-    setS1(value);
-    const c = complement(value);
-    if (c !== null) setS2(c);
-  }
-  function changeS2(value: string) {
-    setS2(value);
-    const c = complement(value);
-    if (c !== null) setS1(c);
-  }
+  const suggested1 = suggestFrom(s2); // placeholder para el marcador de la pareja 1
+  const suggested2 = suggestFrom(s1); // placeholder para el marcador de la pareja 2
 
   // Inputs del marcador: por set (modo sets) o dos cajas (points/games).
   const scoreInputs = isSets ? (
@@ -175,7 +169,11 @@ export function PlayerMatchActions({
         inputMode="numeric"
         className="h-9 w-14 text-center font-display"
         value={s1}
-        onChange={(e) => changeS1(e.target.value)}
+        onChange={(e) => setS1(e.target.value)}
+        onBlur={() => {
+          if (s1.trim() !== '' && s2.trim() === '' && suggested2) setS2(suggested2);
+        }}
+        placeholder={suggested1 || undefined}
         aria-label="Marcador pareja 1"
       />
       <span className="text-muted-foreground text-xs">–</span>
@@ -186,7 +184,11 @@ export function PlayerMatchActions({
         inputMode="numeric"
         className="h-9 w-14 text-center font-display"
         value={s2}
-        onChange={(e) => changeS2(e.target.value)}
+        onChange={(e) => setS2(e.target.value)}
+        onBlur={() => {
+          if (s2.trim() !== '' && s1.trim() === '' && suggested1) setS1(suggested1);
+        }}
+        placeholder={suggested2 || undefined}
         aria-label="Marcador pareja 2"
       />
     </div>

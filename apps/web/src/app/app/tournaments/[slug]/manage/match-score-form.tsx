@@ -61,25 +61,18 @@ export function MatchScoreForm({
     setSets((prev) => prev.map((s, idx) => (idx === i ? { ...s, [side]: value } : s)));
   }
 
-  // Modo "a puntos": la suma es fija (points_per_match), así que al cargar un
-  // lado autocompletamos el del rival para que reportar sea más rápido.
-  const complement = (value: string): string | null => {
-    if (scoringMode !== 'points' || !pointsPerMatch) return null;
-    if (value.trim() === '') return null;
+  // Modo "a puntos": sugerimos el marcador del rival como AYUDA (placeholder),
+  // sin imponerlo. Si cargas un lado y dejas el otro vacío, al guardar se
+  // completa solo con la resta al total; pero puedes escribir CUALQUIER valor y
+  // se respeta (p. ej. ligas que anotan la suma de games, marcadores libres).
+  const suggestFrom = (value: string): string => {
+    if (scoringMode !== 'points' || !pointsPerMatch) return '';
     const n = Number(value);
-    if (!Number.isInteger(n) || n < 0 || n > pointsPerMatch) return null;
+    if (value.trim() === '' || !Number.isInteger(n) || n < 0 || n > pointsPerMatch) return '';
     return String(pointsPerMatch - n);
   };
-  function changeScoreOne(value: string) {
-    setScoreOne(value);
-    const c = complement(value);
-    if (c !== null) setScoreTwo(c);
-  }
-  function changeScoreTwo(value: string) {
-    setScoreTwo(value);
-    const c = complement(value);
-    if (c !== null) setScoreOne(c);
-  }
+  const suggestedOne = suggestFrom(scoreTwo); // placeholder para el marcador de labelOne
+  const suggestedTwo = suggestFrom(scoreOne); // placeholder para el marcador de labelTwo
 
   function submit() {
     setError(null);
@@ -97,8 +90,10 @@ export function MatchScoreForm({
         }
         fd.set('set_scores', JSON.stringify(filled));
       } else {
-        fd.set('score_one', scoreOne);
-        fd.set('score_two', scoreTwo);
+        // Si un lado quedó vacío, usamos la sugerencia (resta al total); si
+        // escribiste un valor, se respeta tal cual.
+        fd.set('score_one', scoreOne.trim() !== '' ? scoreOne : suggestedOne);
+        fd.set('score_two', scoreTwo.trim() !== '' ? scoreTwo : suggestedTwo);
       }
       const result = await reportMatchScore(fd);
       if (!result.ok) {
@@ -200,7 +195,12 @@ export function MatchScoreForm({
               inputMode="numeric"
               className="w-16 text-center font-display text-lg"
               value={scoreOne}
-              onChange={(e) => changeScoreOne(e.target.value)}
+              onChange={(e) => setScoreOne(e.target.value)}
+              onBlur={() => {
+                if (scoreOne.trim() !== '' && scoreTwo.trim() === '' && suggestedTwo)
+                  setScoreTwo(suggestedTwo);
+              }}
+              placeholder={suggestedOne || undefined}
               aria-label={`Marcador de ${labelOne}`}
             />
           </div>
@@ -213,7 +213,12 @@ export function MatchScoreForm({
               inputMode="numeric"
               className="w-16 text-center font-display text-lg"
               value={scoreTwo}
-              onChange={(e) => changeScoreTwo(e.target.value)}
+              onChange={(e) => setScoreTwo(e.target.value)}
+              onBlur={() => {
+                if (scoreTwo.trim() !== '' && scoreOne.trim() === '' && suggestedOne)
+                  setScoreOne(suggestedOne);
+              }}
+              placeholder={suggestedTwo || undefined}
               aria-label={`Marcador de ${labelTwo}`}
             />
           </div>
