@@ -1473,12 +1473,46 @@ function revalidateMatch(slug: string | null) {
 }
 
 /**
- * Aplica ELO a los 4 jugadores del match + notifica. Idempotente: no
- * re-aplica si elo_applied_at ya está seteado. Se invoca al completar un
- * match (confirmación de ambas parejas, override del organizador, o cron).
- * Exportada para que el cron de auto-confirm la reutilice.
+ * Revierte el ELO ya aplicado de un match: aplica el delta inverso a cada
+ * profile afectado y limpia su historial. Sirve para re-editar un resultado
+ * cerrado sin dejar el ranking basado en el marcador viejo. Es exacto para el
+ * caso común (corregir un partido recién cerrado); si los jugadores jugaron
+ * otros partidos entremedio, la reversión es aproximada en los extremos del
+ * clamp de ELO (200-3500).
  */
-export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
+async function reverseMatchElo(matchId: string): Promise<void> {
+  const admin = getServiceRoleClient();
+  const { data } = await admin
+    .from('elo_history')
+    .select('profile_id, delta')
+    .eq('match_id', matchId);
+  const rows = (data ?? []) as unknown as { profile_id: string; delta: number }[];
+  if (rows.length === 0) return;
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const rpc = (admin as any).rpc.bind(admin) as (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ error: { message: string } | null }>;
+  await Promise.all(
+    rows.map((row) =>
+      rpc('apply_elo_delta', { p_profile_id: row.profile_id, p_delta: -row.delta, p_match_id: matchId }),
+    ),
+  );
+  // Borra el historial del match (delta original + reversa) para re-aplicar limpio.
+  await admin.from('elo_history').delete().eq('match_id', matchId);
+}
+
+/**
+ * Aplica ELO a los 4 jugadores del match + notifica. Idempotente: no
+ * re-aplica si elo_applied_at ya está seteado, salvo que se pida `recompute`
+ * (re-edición del organizador → revierte el ELO previo y recalcula). Se invoca
+ * al completar un match (confirmación de ambas parejas, override del
+ * organizador, o cron). Exportada para que el cron de auto-confirm la reutilice.
+ */
+export async function applyMatchEloAndNotify(
+  matchId: string,
+  opts?: { recompute?: boolean },
+): Promise<void> {
   // service role en todas las lecturas para que el cron (sin sesión) funcione.
   const admin = getServiceRoleClient();
   const { data } = await admin
@@ -1506,7 +1540,14 @@ export async function applyMatchEloAndNotify(matchId: string): Promise<void> {
     pair_two_guest_two_id: string | null;
     tournaments: { slug: string; community_id: string | null } | null;
   } | null;
-  if (!matchData || matchData.elo_applied_at) return;
+  if (!matchData) return;
+  if (matchData.elo_applied_at) {
+    // Ya aplicado: no re-aplicar, salvo re-edición explícita del organizador.
+    if (!opts?.recompute) return;
+    // Revertir el ELO previo; abajo se recalcula con el marcador nuevo y se
+    // vuelve a sellar elo_applied_at.
+    await reverseMatchElo(matchId);
+  }
 
   const scoreOne = matchData.score_one ?? 0;
   const scoreTwo = matchData.score_two ?? 0;
@@ -1703,6 +1744,16 @@ async function advanceBracketWinner(matchId: string): Promise<void> {
   const st = m.score_two ?? 0;
   const winner = so > st ? m.registration_one_id : st > so ? m.registration_two_id : null;
   if (!winner) return; // empate: no se puede avanzar (validado al cerrar el match)
+  // No pisar el slot si el partido siguiente ya se jugó: al re-editar un
+  // resultado, sobreescribir el rival de una llave ya disputada la corrompería.
+  // Solo propagamos hacia partidos aún no jugados (scheduled).
+  const { data: nextData } = await admin
+    .from('matches')
+    .select('status')
+    .eq('id', m.next_match_id)
+    .maybeSingle();
+  const nextStatus = (nextData as { status: string } | null)?.status;
+  if (nextStatus && nextStatus !== 'scheduled') return;
   const col = m.next_match_slot === 1 ? 'registration_one_id' : 'registration_two_id';
   await admin
     .from('matches')
@@ -1759,6 +1810,43 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
 
   // Organizador: autoridad, cierra directo.
   if (ctx.isOrganizer) {
+    const wasCompleted = ctx.match.status === 'completed';
+
+    // Re-edición de un partido de llave ya cerrado que INVIERTE al ganador: si
+    // el partido siguiente de la llave ya se jugó, bloquear (corregir primero
+    // hacia abajo) para no dejar el bracket inconsistente.
+    if (wasCompleted && ctx.match.next_match_id) {
+      const prevOne = ctx.match.score_one ?? 0;
+      const prevTwo = ctx.match.score_two ?? 0;
+      const oldWinner =
+        prevOne > prevTwo
+          ? ctx.match.registration_one_id
+          : prevTwo > prevOne
+            ? ctx.match.registration_two_id
+            : null;
+      const newWinner =
+        resolved.resolved.winner === 'one'
+          ? ctx.match.registration_one_id
+          : resolved.resolved.winner === 'two'
+            ? ctx.match.registration_two_id
+            : null;
+      if (oldWinner !== newWinner) {
+        const { data: nextData } = await admin
+          .from('matches')
+          .select('status')
+          .eq('id', ctx.match.next_match_id)
+          .maybeSingle();
+        const nextStatus = (nextData as { status: string } | null)?.status;
+        if (nextStatus && nextStatus !== 'scheduled') {
+          return {
+            ok: false,
+            error:
+              'Este cambio invierte al ganador, pero el siguiente partido de la llave ya se jugó. Corrige primero ese partido.',
+          };
+        }
+      }
+    }
+
     const { error } = await admin
       .from('matches')
       .update({
@@ -1774,7 +1862,7 @@ export async function reportMatchScore(formData: FormData): Promise<ActionResult
       } as never)
       .eq('id', matchId);
     if (error) return { ok: false, error: translateDbError(error.message) };
-    await applyMatchEloAndNotify(matchId);
+    await applyMatchEloAndNotify(matchId, { recompute: wasCompleted });
     await advanceBracketWinner(matchId);
     return { ok: true };
   }
