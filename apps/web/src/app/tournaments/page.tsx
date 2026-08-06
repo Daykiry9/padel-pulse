@@ -29,6 +29,12 @@ export default async function TournamentsPage({
   }
   const cityFilter = cityParam && cityParam !== 'all' ? cityParam : myCity;
 
+  // Mismo corte que usa TournamentListView para descartar torneos pasados. Si el
+  // filtro no vive en la query, el contador de arriba cuenta torneos que la lista
+  // luego descarta y la página queda en blanco sin caer en el empty state.
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
   const { data } = await supabase
     .from('tournaments')
     .select(
@@ -36,6 +42,7 @@ export default async function TournamentsPage({
     )
     .in('category_kind', ['estandar', 'suma', 'mixto_estandar', 'mixto_suma', 'casual'])
     .eq('status', 'open')
+    .gte('starts_at', startOfToday.toISOString())
     .order('starts_at', { ascending: true });
 
   const tournamentsAll = (data ?? []) as unknown as TournamentRow[];
