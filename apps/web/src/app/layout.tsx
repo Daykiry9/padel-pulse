@@ -3,6 +3,7 @@ import { Archivo_Black, JetBrains_Mono, Manrope } from 'next/font/google';
 import { Toaster } from 'sonner';
 
 import { MobileNav } from '@/components/mobile-nav';
+import { PwaInstall } from '@/components/pwa-install';
 import { MotionProvider } from '@/components/motion-provider';
 import { getBrandFromCookie } from '@/lib/brand';
 import { isNativeApp } from '@/lib/native';
@@ -100,6 +101,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <MotionProvider>
           {children}
           <MobileNav isNative={native} isAuthed={Boolean(user)} />
+          <PwaInstall isNative={native} />
         </MotionProvider>
         <Toaster position="top-center" expand={false} richColors />
       </body>

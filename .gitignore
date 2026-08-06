@@ -85,6 +85,7 @@ apps/web/ios/.DS_Store
 *.keystore
 *.jks
 *.p12
+*.p8
 *.mobileprovision
 keystore.properties
 apps/web/android/app/keystore.properties
