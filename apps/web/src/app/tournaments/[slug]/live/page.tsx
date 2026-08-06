@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { computeAmericanoStandings } from '@padelking/domain';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
+import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
 
 import { PlayerMatchActions } from './player-match-actions';
 import { FinishTournamentButton } from '@/components/finish-tournament-button';
@@ -452,8 +453,8 @@ export default async function LiveTournamentPage({
                 <span className="text-live font-mono text-xs uppercase tracking-widest">EN VIVO</span>
               </>
             )}
-            <Badge variant={tournament.status === 'in_progress' ? 'success' : 'muted'}>
-              {tournament.status}
+            <Badge variant={TOURNAMENT_STATUS[tournament.status]?.variant ?? 'muted'}>
+              {TOURNAMENT_STATUS[tournament.status]?.label ?? tournament.status}
             </Badge>
             <span className="text-muted-foreground text-xs uppercase tracking-widest">
               {tournament.format.replace('_', ' ')}
@@ -463,7 +464,7 @@ export default async function LiveTournamentPage({
             {tournament.name}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {completedCount} / {totalCount} matches jugados · {registrations.length} inscritos ·{' '}
+            {completedCount} / {totalCount} partidos jugados · {registrations.length} inscritos ·{' '}
             {tournament.courts} canchas
           </p>
           {isOwner && tournament.status === 'in_progress' && (
@@ -552,7 +553,9 @@ export default async function LiveTournamentPage({
                       >
                         {idx + 1}
                       </span>
-                      <span className="truncate">
+                      {/* min-w-0: la columna 1fr tampoco baja de su min-width
+                          auto, y sin esto las columnas PG/DIF/GF se salen. */}
+                      <span className="min-w-0 truncate">
                         {idx === 0 && <Crown className="text-crown mr-1 inline size-3" />}
                         {s.label}
                       </span>
@@ -583,7 +586,7 @@ export default async function LiveTournamentPage({
               {/* Matches por ronda */}
               <section>
                 <div className="mb-4 flex items-baseline justify-between">
-                  <h2 className="font-display text-2xl tracking-tight">MATCHES</h2>
+                  <h2 className="font-display text-2xl tracking-tight">PARTIDOS</h2>
                   {inProgress.length > 0 && (
                     <span className="text-live flex items-center gap-1.5 text-xs uppercase tracking-widest">
                       <span className="bg-live size-1.5 animate-pulse rounded-full" />
@@ -716,11 +719,14 @@ function Row({
         winner ? 'font-semibold' : ''
       } ${dim && !winner ? 'opacity-60' : ''}`}
     >
-      <span className="flex items-center gap-1.5 truncate">
-        {winner && <Crown className="text-crown size-3.5" />}
-        {label}
+      {/* min-w-0 + shrink-0: sin eso el nombre largo empuja el marcador fuera de
+          pantalla en móvil, porque un flex item no baja de su min-width: auto
+          y el truncate nunca llega a aplicarse. */}
+      <span className="flex min-w-0 items-center gap-1.5">
+        {winner && <Crown className="text-crown size-3.5 shrink-0" />}
+        <span className="truncate">{label}</span>
       </span>
-      <span className="flex items-center gap-2">
+      <span className="flex shrink-0 items-center gap-2">
         {detail && (
           <span className="text-muted-foreground font-display text-xs tabular-nums">{detail}</span>
         )}
