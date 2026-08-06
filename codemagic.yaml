@@ -9,13 +9,12 @@ workflows:
       groups:
         - app_store_credentials
       vars:
-        XCODE_WORKSPACE: "App.xcworkspace"
+        XCODE_PROJECT: "App.xcodeproj"
         XCODE_SCHEME: "App"
         BUNDLE_ID: "co.padelking.app"
         APP_STORE_APPLE_ID: $APP_STORE_APPLE_ID
       node: 22
       xcode: latest
-      cocoapods: default
     triggering:
       events:
         - tag
@@ -31,10 +30,6 @@ workflows:
         script: |
           cd apps/web
           pnpm exec cap sync ios
-      - name: pod install
-        script: |
-          cd apps/web/ios/App
-          pod install
       - name: Set up provisioning + signing
         script: |
           keychain initialize
@@ -50,7 +45,7 @@ workflows:
         script: |
           cd apps/web/ios/App
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
     artifacts:
       - apps/web/ios/App/build/ios/ipa/*.ipa
@@ -69,7 +64,6 @@ workflows:
     environment:
       node: 22
       xcode: latest
-      cocoapods: default
     triggering:
       events:
         - pull_request
@@ -86,14 +80,10 @@ workflows:
         script: |
           cd apps/web
           pnpm exec cap sync ios
-      - name: pod install
-        script: |
-          cd apps/web/ios/App
-          pod install
       - name: Build sin firmar (validación)
         script: |
           cd apps/web/ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug \
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
             -destination 'generic/platform=iOS' \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
             build
