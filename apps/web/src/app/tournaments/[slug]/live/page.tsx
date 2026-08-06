@@ -523,7 +523,10 @@ export default async function LiveTournamentPage({
 
         {(tournament.status === 'in_progress' || tournament.status === 'finished') &&
           totalCount > 0 && (
-            <div className="mt-10 grid gap-10 lg:grid-cols-[1.1fr_1.2fr]">
+            {/* minmax(0,…) en vez de 1fr: una columna de grid se dimensiona a
+                max-content por defecto, asi que los nombres largos estiraban
+                la columna y desbordaban la pagina entera en movil. */}
+            <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)]">
               {/* Standings */}
               <section>
                 <div className="mb-4 flex items-baseline justify-between">
