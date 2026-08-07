@@ -79,6 +79,18 @@ export default function TermsPage() {
             Plataforma con el fin de operar el servicio (perfiles públicos, rankings, historial de
             partidos).
           </p>
+          <p className="mt-3">
+            No se permite contenido ofensivo, acosador, sexual, discriminatorio, spam ni
+            suplantación de identidad, ni en el chat ni en nombres de equipos, comunidades o
+            jugadores invitados. Cualquier usuario puede reportar un mensaje desde el chat y
+            bloquear a otro usuario, lo que oculta todos sus mensajes. Revisamos los reportes y
+            podemos eliminar contenido o suspender cuentas que incumplan estas reglas. Si algo
+            requiere atención urgente, escríbenos a{' '}
+            <a href="mailto:hola@padelking.co" className="text-crown underline underline-offset-2">
+              hola@padelking.co
+            </a>
+            .
+          </p>
         </Section>
 
         <Section title="6. Torneos y comunidades">

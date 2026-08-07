@@ -8,6 +8,7 @@ import { Loader2, Send } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { MessageModeration } from '@/components/message-moderation';
 import { postChatMessage } from '@/lib/chat-actions';
 import { formatTime } from '@/lib/format-date';
 
@@ -33,6 +34,15 @@ export function TournamentChat({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
+  // RLS ya filtra a los bloqueados en servidor y en Realtime, pero eso solo
+  // aplica al proximo fetch. Esto los saca de la vista en el momento.
+  const [blocked, setBlocked] = useState<string[]>([]);
+
+  const onBlocked = useCallback((authorId: string) => {
+    setBlocked((prev) => (prev.includes(authorId) ? prev : [...prev, authorId]));
+  }, []);
+
+  const visible = messages.filter((m) => !blocked.includes(m.profile_id));
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -123,14 +133,15 @@ export function TournamentChat({
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 ? (
+        {visible.length === 0 ? (
           <p className="text-muted-foreground py-6 text-center text-xs">
             Sin mensajes aún. Sé el primero en romper el hielo.
           </p>
         ) : (
           <AnimatePresence initial={false}>
-          {messages.map((m) => {
+          {visible.map((m) => {
             const isMe = m.profile_id === currentUserId;
+            const authorName = m.profiles?.display_name ?? 'Anon';
             return (
               <motion.div
                 key={m.id}
@@ -152,7 +163,7 @@ export function TournamentChat({
                       isMe ? 'text-crown' : 'text-muted-foreground'
                     }`}
                   >
-                    {isMe ? 'Tú' : (m.profiles?.display_name ?? 'Anon')}
+                    {isMe ? 'Tú' : authorName}
                     <span className="text-muted-foreground ml-1.5 normal-case tabular-nums">
                       {formatTime(m.created_at)}
                     </span>
@@ -166,6 +177,15 @@ export function TournamentChat({
                   >
                     {m.body}
                   </div>
+                  {/* Solo en mensajes ajenos: reportarse a si mismo no tiene sentido. */}
+                  {!isMe && (
+                    <MessageModeration
+                      messageId={m.id}
+                      authorId={m.profile_id}
+                      authorName={authorName}
+                      onBlocked={onBlocked}
+                    />
+                  )}
                 </div>
               </motion.div>
             );
