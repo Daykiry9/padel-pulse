@@ -40,6 +40,11 @@ workflows:
           pnpm exec cap sync ios
       - name: Set up provisioning + signing
         script: |
+          # set -e obligatorio: sin esto, si fetch-signing-files falla (p.ej. la
+          # private key no es PEM valido) el paso igual sale en verde, y el build
+          # revienta recien en 'Build IPA' con "requires a provisioning profile",
+          # que es el sintoma y no la causa. Costo: media hora de diagnostico.
+          set -e
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
