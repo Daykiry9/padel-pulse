@@ -46,7 +46,15 @@ workflows:
           # que es el sintoma y no la causa. Costo: media hora de diagnostico.
           set -e
           keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          # --certificate-key es obligatorio aunque ya tengamos la API key:
+          # Apple solo guarda la parte publica del certificado de distribucion,
+          # asi que la CLI necesita una llave RSA propia para generar el CSR al
+          # crearlo (y para poder usarlo despues). Vive en CERTIFICATE_PRIVATE_KEY,
+          # generada una sola vez y guardada como secreto en Codemagic.
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --certificate-key=@env:CERTIFICATE_PRIVATE_KEY \
+            --create
           keychain add-certificates
           xcode-project use-profiles
       - name: Bump build number
