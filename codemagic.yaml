@@ -3,8 +3,14 @@ workflows:
     name: iOS — build + TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
-    integrations:
-      app_store_connect: PadelKing ASC
+    # Sin 'integrations:' a proposito. Las integraciones con nombre son feature
+    # de cuentas Team; en Individual no resuelven. Las credenciales viajan como
+    # variables del grupo app_store_credentials, que funciona en cualquier tier:
+    #   APP_STORE_CONNECT_ISSUER_ID
+    #   APP_STORE_CONNECT_KEY_IDENTIFIER
+    #   APP_STORE_CONNECT_PRIVATE_KEY   (contenido del .p8, marcado como secreto)
+    #   APP_STORE_APPLE_ID
+    # La CLI de Codemagic lee las tres primeras del entorno automaticamente.
     environment:
       groups:
         - app_store_credentials
@@ -12,7 +18,6 @@ workflows:
         XCODE_PROJECT: "App.xcodeproj"
         XCODE_SCHEME: "App"
         BUNDLE_ID: "co.padelking.app"
-        APP_STORE_APPLE_ID: $APP_STORE_APPLE_ID
       node: 22
       xcode: latest
     triggering:
@@ -52,10 +57,12 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
-        auth: integration
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
-        beta_groups:
-          - "Internal Testers"
+        # Sin beta_groups: el grupo tiene que existir ya en TestFlight y la app
+        # se acaba de crear. La build queda disponible para testers internos.
 
   ios-pr-validate:
     name: iOS — PR build validation (sin firmar)
