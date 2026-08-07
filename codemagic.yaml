@@ -5,15 +5,18 @@ workflows:
     max_build_duration: 60
     # Sin 'integrations:' a proposito. Las integraciones con nombre son feature
     # de cuentas Team; en Individual no resuelven. Las credenciales viajan como
-    # variables del grupo app_store_credentials, que funciona en cualquier tier:
+    # variables de entorno del grupo 'Main' (el grupo por defecto de Codemagic,
+    # que es donde estan cargadas en la app padel-pulse):
     #   APP_STORE_CONNECT_ISSUER_ID
     #   APP_STORE_CONNECT_KEY_IDENTIFIER
     #   APP_STORE_CONNECT_PRIVATE_KEY   (contenido del .p8, marcado como secreto)
     #   APP_STORE_APPLE_ID
     # La CLI de Codemagic lee las tres primeras del entorno automaticamente.
+    # Si algun dia se mueven de grupo, hay que cambiar el nombre aca tambien:
+    # si no coincide, no se inyectan y la firma falla sin decir por que.
     environment:
       groups:
-        - app_store_credentials
+        - Main
       vars:
         XCODE_PROJECT: "App.xcodeproj"
         XCODE_SCHEME: "App"
