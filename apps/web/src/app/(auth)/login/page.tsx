@@ -87,6 +87,17 @@ export default async function LoginPage({
           Ingresar
         </SubmitButton>
       </ActionForm>
+
+      {/* Salida sin cuenta. Los torneos, brackets y rankings son publicos, asi
+          que quien todavia no tiene razon para registrarse puede mirar primero. */}
+      <div className="border-border/40 border-t pt-6 text-center">
+        <Link
+          href="/tournaments"
+          className="text-muted-foreground hover:text-crown text-sm underline underline-offset-4"
+        >
+          Ver torneos sin crear cuenta
+        </Link>
+      </div>
     </div>
   );
 }

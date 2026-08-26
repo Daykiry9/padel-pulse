@@ -37,11 +37,14 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = AUTH_PAGES.some((p) => path.startsWith(p));
   const isNative = (request.headers.get('user-agent') ?? '').includes('PadelKingApp');
 
-  // App nativa: no mostramos la landing marketing. Entrar siempre a /app
-  // (que redirige a /login si no hay sesión).
+  // App nativa: no mostramos la landing marketing, pero tampoco el muro de
+  // login. Entrar a /tournaments, que es publico: quien abre la app por primera
+  // vez ve torneos y brackets reales antes de que se le pida una cuenta.
+  // Antes esto apuntaba a /app, y como /app esta protegido la primera pantalla
+  // de la app era siempre /login, sin contexto ni forma de mirar nada.
   if (isNative && path === '/') {
     const url = request.nextUrl.clone();
-    url.pathname = '/app';
+    url.pathname = '/tournaments';
     return NextResponse.redirect(url);
   }
 

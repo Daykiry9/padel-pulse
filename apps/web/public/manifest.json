@@ -2,7 +2,7 @@
   "name": "PadelKing",
   "short_name": "PadelKing",
   "description": "Comunidades, torneos y rankings del pádel colombiano. Para Kings y Queens.",
-  "start_url": "/app",
+  "start_url": "/tournaments",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
