@@ -122,3 +122,60 @@ Como grabarlo sin tener iPhone propio:
    respuesta del Resolution Center.
 
 Duracion util: 2 a 4 minutos. No hace falta narrarlo.
+
+---
+
+## Mensaje para el tester que graba el video
+
+El orden importa: el chat de torneo es solo para participantes, asi que la
+cuenta recien creada NO lo ve. Por eso se entra primero con la cuenta demo
+(que ya esta inscrita en dos torneos) para mostrar reportar/bloquear, y solo
+despues se crea la cuenta desechable que se borra en camara.
+
+```
+Parce, necesito un favor de 5 minutos y me destrabas la app en el App Store
+
+Apple me pide un video grabado desde un iPhone real y yo no tengo. Es solo
+grabar la pantalla mientras recorres la app, sin narrar ni nada.
+
+1. Instala TestFlight del App Store
+2. Abre este link e instala PadelKing: [LINK]
+3. Prende la grabacion de pantalla ANTES de abrir la app
+   (deslizas desde arriba a la derecha, boton del circulo)
+
+Y haz esto, con calma, sin saltarte pasos:
+
+  a. Abre PadelKing. Deja que cargue la lista de torneos.
+  b. Toca un torneo cualquiera y mira el detalle.
+  c. Devuelvete y entra a Ranking.
+  d. Inicia sesion con el usuario y clave que te paso aparte.
+  e. Entra a un torneo donde ya estoy inscrito y abre el Chat.
+  f. En un mensaje que NO sea tuyo, toca los tres puntitos y deja ver
+     las opciones de Reportar y Bloquear. No tienes que usarlas, solo
+     que se vean en pantalla.
+  g. Cierra sesion.
+  h. Crea una cuenta nueva con tu propio correo.
+  i. Ve a Perfil > Zona peligrosa > Eliminar mi cuenta, escribe ELIMINAR
+     y confirma. (Es la cuenta que acabas de crear, no pasa nada.)
+
+4. Para la grabacion y me la mandas por aca.
+
+Si algo se traba o se ve raro, sigue grabando igual y me dices. Gracias!
+```
+
+Aparte, por el mismo chat, se le pasan las credenciales de la cuenta demo
+(`demo@padelking.co`). No van en el mismo mensaje para que no se confunda y
+las use en el paso h.
+
+### Por que ese guion y no otro
+
+Cubre exactamente los cuatro puntos que Apple listo en el rechazo:
+
+- registro, login y **borrado de cuenta** -> pasos d, h, i
+- contenido de usuarios con **reportar y bloquear** -> pasos e, f
+- prompts de permisos -> no hay ninguno, y que el video lo demuestre por
+  ausencia es justamente lo que sirve
+- flujo tipico desde el lanzamiento -> pasos a, b, c
+
+Si el video llega sin el paso f o sin el i, no sirve: son los dos que Apple
+nombro explicitamente y por los que rechazaria de nuevo.
