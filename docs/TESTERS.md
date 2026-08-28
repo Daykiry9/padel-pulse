@@ -52,36 +52,58 @@ ninguna tienda, así que no hay revisión ni demora. Es lo que sirve hoy.
 
 ---
 
-## Estado del cupo de Google (2026-08-07)
+## Estado del cupo de Google (2026-08-28)
 
-Google exige, para pedir acceso a producción:
+Google exige tres cosas para habilitar el botón "Solicitar acceso a producción":
 
-1. Publicar una versión de prueba cerrada — hecho
-2. **12 testers que hayan aceptado** — el contador va en 0
-3. Correr la prueba **14 días** con esos 12 sosteniéndose
+1. Publicar una versión de prueba cerrada — **hecho** (`alpha`, release `final test`, 6 ago)
+2. 12 testers que hayan aceptado — **hecho el 28 de agosto**
+3. Correr la prueba **14 días** con esos 12 sosteniéndose — **pendiente**
 
-En la lista `First version int` hay **13 correos**, pero eso no es lo mismo que
-12 testers. De esos 13:
+El criterio 3 no cuenta desde que publicaste la versión: cuenta días continuos
+con 12 o más testers aceptados. El umbral se cruzó el 28 de agosto, así que la
+fecha objetivo es alrededor del **11 de septiembre de 2026**.
 
-- 3 son cuentas propias de Juan (`daikydev`, `juan.vergara@influur`, `juanesvgarcia`)
-- 3 son iPhone confirmados (Danny, Nath, Vanesa) → no pueden instalar
-- 2 son Android confirmados (Tole, Enano)
-- 5 sin identificar
+### El canal ya no usa lista de correos
 
-En el mejor caso quedan 10 que puedan instalar. **Falta reclutar 3 a 5 más.**
-Apuntar a 17-18 correos en la lista para que sobrevivan 12 Android.
+`alpha` está configurado con **Grupo de Google**, no con lista privada:
 
-No hace falta encuestar a nadie sobre su teléfono: manda el mensaje a todos y
-el contador de instalaciones de la consola hace el censo solo.
+    testers-community@googlegroups.com
+
+Es el grupo del servicio de intercambio "Testers Community" (instalas apps de
+otros para ganar créditos, gastas créditos para que instalen la tuya). Eso es lo
+que llevó el contador de 11 a 12+; los 13 correos de conocidos por sí solos no
+alcanzaban.
+
+Consecuencia operativa: **la membresía es volátil**. En los servicios de
+intercambio el tester instala, reclama su crédito y se sale. Si el conteo cae a
+11 un solo día, el criterio 3 se rompe y el reloj de 14 días vuelve a cero.
+
+- No cerrar la campaña en Testers Community antes del 11 de septiembre.
+- Mantener colchón: apuntar a 18-20 aceptados, no a 12 exactos.
+- Revisar el panel cada 2-3 días. Si el criterio 2 se destacha, hay que saberlo
+  ese día, no dos semanas después.
+
+### Riesgo del testeo recíproco
+
+La solicitud de acceso a producción trae un cuestionario sobre qué se aprendió
+de la prueba cerrada y cómo interactuaron los testers. Google cruza esas
+respuestas con las métricas reales de engagement. Hay reportes públicos de
+cuentas suspendidas cuando detectan testers que instalan y desinstalan sin uso
+genuino.
+
+Mitigación: usar estas dos semanas para conseguir uso real de los conocidos que
+sí juegan pádel (Tole, Enano, los que se sumen). El cuestionario necesita
+respuestas verdaderas sobre bugs encontrados y comportamiento de usuarios, y eso
+un grupo de intercambio no lo produce.
 
 ---
 
-## Pendiente: link público de TestFlight
+## iOS
 
-Para iOS lo ideal es un link público de TestFlight (cualquiera se une sin que lo
-agregues, hasta 10.000). Requiere crear un grupo externo en App Store Connect,
-lo que dispara una revisión beta de Apple (rápida, no es la del App Store).
+Ya no depende de testers. La versión 1.2 se envió a revisión del App Store el
+2026-08-28 con publicación **manual**, así que al aprobarse no sale sola.
 
-El build 1.2 ya está procesado y la información de pruebas está completa, así
-que solo falta crear el grupo. Cuando exista, se reemplaza el bloque de iPhone
-del mensaje por ese link.
+TestFlight externo nunca apareció para esta app (solo "PRUEBAS INTERNAS"), pero
+dejó de ser bloqueante: iOS permite enviar a revisión con cero testers. Para
+iPhone, mientras tanto, sigue sirviendo la PWA de `padelking.co`.
