@@ -139,7 +139,8 @@ Apple me pide un video grabado desde un iPhone real y yo no tengo. Es solo
 grabar la pantalla mientras recorres la app, sin narrar ni nada.
 
 1. Instala TestFlight del App Store
-2. Abre este link e instala PadelKing: [LINK]
+2. Abre este link e instala PadelKing:
+   https://testflight.apple.com/join/K5cQbgFb
 3. Prende la grabacion de pantalla ANTES de abrir la app
    (deslizas desde arriba a la derecha, boton del circulo)
 
@@ -179,3 +180,44 @@ Cubre exactamente los cuatro puntos que Apple listo en el rechazo:
 
 Si el video llega sin el paso f o sin el i, no sirve: son los dos que Apple
 nombro explicitamente y por los que rechazaria de nuevo.
+
+---
+
+## Link publico de TestFlight
+
+    https://testflight.apple.com/join/K5cQbgFb
+
+Grupo externo `Testers iPhone`, abierto a todo el mundo, sin limite de testers.
+Se creo el 2026-08-31 junto con el envio del build 1.2 a revision beta.
+
+**El link no funciona todavia.** App Store Connect lo dice explicito: los testers
+no pueden unirse hasta que el grupo tenga una compilacion aprobada. El build 1.2
+quedo en *Pendiente de revision*; la revision beta de Apple suele tardar menos de
+24 h y es mucho mas liviana que la del App Store.
+
+Cuando este aprobado, ese mismo link sirve para cualquiera con iPhone: se toca,
+se instala TestFlight y ya. No hay que invitar a nadie, ni pedirle su Apple ID,
+ni meterlo a App Store Connect.
+
+### Por que se abandono el tester interno
+
+Se intento primero con Daniel Botero como tester interno (usuario de App Store
+Connect + invitacion por correo). Fallo por dos razones acumuladas:
+
+1. **El flujo de aceptar la invitacion no funciona en Safari de iPhone.** Toca
+   "Sign in with Apple Account", carga, y vuelve a la misma pantalla. Bucle
+   infinito. Habria que aceptarla desde un computador.
+2. **El Apple ID del telefono tiene que ser exactamente el invitado.** Si el
+   iPhone tiene el App Store logueado con otra cuenta, TestFlight no muestra la
+   app por mas que se acepte la invitacion.
+
+El enlace publico no tiene ninguno de los dos problemas: se canjea contra la
+cuenta que ya tenga el telefono.
+
+### Nota sobre la casilla de inicio de sesion
+
+El asistente de "Añadir compilaciones" marca **"Es necesario iniciar sesion"**
+por defecto y exige usuario y contraseña para continuar. Se desmarco, que es lo
+que ya estaba guardado en *Informacion para las pruebas* y es cierto: las
+pantallas publicas de la app (lista de torneos, detalle, bracket, ranking)
+funcionan sin cuenta. Las notas para el revisor beta ya lo explican.
