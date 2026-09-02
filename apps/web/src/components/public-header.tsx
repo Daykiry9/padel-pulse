@@ -30,11 +30,19 @@ export async function PublicHeader({
 
   return (
     <header className="border-border/40 bg-background/60 sticky top-0 z-40 border-b backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2">
+      {/* Medido en un iPhone de 375px: esta fila pedia 480px (136 el grupo del
+          logo + 280 el del switcher y "Unete" + 48 de padding + 16 de gap), asi
+          que la pagina entera scrolleaba de lado 81px y el boton "Unete"
+          quedaba en left:385 — fuera de la pantalla. Al deslizar, el contenido
+          se iba horizontalmente y los botones desaparecian.
+          Por eso el wordmark se oculta bajo sm (el logo ya identifica la marca)
+          y el grupo izquierdo lleva min-w-0 + truncate: aunque el contenido
+          crezca, cede el texto en vez de desbordar la pagina. */}
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-4">
+          <Link href="/" className="flex min-w-0 items-center gap-2">
             <KingLogo />
-            <span className="font-display text-base tracking-tight">
+            <span className="font-display hidden truncate text-base tracking-tight sm:inline">
               PADEL<span className={accentColor}>{accentLabel}</span>
             </span>
           </Link>
@@ -52,7 +60,7 @@ export async function PublicHeader({
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <div className="hidden md:block">
             <CommandPalette />
           </div>
