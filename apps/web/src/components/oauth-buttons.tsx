@@ -1,29 +1,21 @@
 import { signInWithOAuthProvider } from '@/lib/auth-actions';
 
 /**
- * Botones de Sign in with Apple / Google. Server-rendered: el form invoca el
- * server action que arma la URL del proveedor y redirige. Sigue (a grandes
- * rasgos) las guidelines de marca de cada proveedor: Apple negro con su logo,
- * Google blanco con su logo "G" multicolor.
+ * Botón de Google. Server-rendered: el form invoca el server action que arma la
+ * URL del proveedor y redirige. Sigue (a grandes rasgos) las guidelines de marca
+ * de Google: fondo blanco con su logo "G" multicolor.
+ *
+ * El botón de Apple se quitó el 2026-09-02: `external_apple_enabled` está en
+ * false en Supabase y nunca tuvo `client_id`, así que tocarlo mandaba al usuario
+ * a `<proyecto>.supabase.co` con un JSON crudo en pantalla:
+ *   {"code":400,"error_code":"validation_failed",
+ *    "msg":"Unsupported provider: provider is not enabled"}
+ * Un tester de iPhone lo encontró y sin eso el envío al App Store se caía por
+ * guideline 2.1. Para devolverlo hay que habilitar el provider primero (Services
+ * ID + key en el portal de Apple) y recién entonces volver a renderizarlo; el
+ * componente original está en el historial de git.
  */
 
-export function AppleSignInButton({ next }: { next?: string }) {
-  return (
-    <form action={signInWithOAuthProvider}>
-      <input type="hidden" name="provider" value="apple" />
-      {next && <input type="hidden" name="next" value={next} />}
-      <button
-        type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-black px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-900"
-      >
-        <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
-          <path d="M17.05 12.5c-.03-2.84 2.32-4.21 2.43-4.27-1.32-1.94-3.39-2.2-4.13-2.23-1.76-.18-3.43 1.03-4.32 1.03-.9 0-2.27-1-3.73-.97-1.92.03-3.69 1.12-4.68 2.83-2 3.47-.51 8.6 1.43 11.42.95 1.38 2.07 2.92 3.54 2.86 1.42-.06 1.96-.92 3.68-.92 1.71 0 2.2.92 3.71.89 1.53-.03 2.5-1.4 3.43-2.78 1.08-1.6 1.53-3.15 1.56-3.23-.03-.01-2.99-1.15-3.02-4.55zM14.16 4.31c.78-.95 1.31-2.27 1.16-3.58-1.13.05-2.49.75-3.3 1.7-.73.84-1.36 2.18-1.19 3.46 1.26.1 2.55-.64 3.33-1.58z" />
-        </svg>
-        Continuar con Apple
-      </button>
-    </form>
-  );
-}
 
 export function GoogleSignInButton({ next }: { next?: string }) {
   return (
@@ -61,7 +53,6 @@ export function GoogleSignInButton({ next }: { next?: string }) {
 export function OAuthButtons({ next }: { next?: string }) {
   return (
     <div className="space-y-2">
-      <AppleSignInButton next={next} />
       <GoogleSignInButton next={next} />
     </div>
   );
