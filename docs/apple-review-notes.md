@@ -260,3 +260,52 @@ Verificar al final: la cuenta demo con 2 inscripciones y el torneo
 `express-cali-friday` ("Express Cali Viernes") es **el unico** con chat
 sembrado. Si el tester entra a otro, va a ver "Sin mensajes aun" y no podra
 mostrar reportar/bloquear. Por eso el guion lo nombra explicito.
+
+---
+
+## Guion v2 (el v1 fallo dos veces)
+
+**Por que fallo el v1, y es culpa del guion, no del tester.** Decia "inicia
+sesion con el usuario y clave que te paso aparte", pero el tester **ya estaba
+logueado** con su propia cuenta de la grabacion anterior. Nunca vio una pantalla
+de login, asi que se salto ese paso y con el todo lo que dependia de la cuenta
+demo: el chat, reportar, bloquear. En la segunda toma se fue a crear una
+comunidad propia y vacia, donde no hay torneos ni chat.
+
+**El paso que faltaba es el primero: cerrar sesion.**
+
+Tambien se fue a "Ver mi perfil publico" (`/players/[id]`) en vez de "Mi perfil"
+(`/app/profile`). El borrado de cuenta solo existe en el segundo:
+`DeleteAccountSection` se renderiza en `app/profile/page.tsx:246`.
+
+```
+1. Menu de arriba a la derecha (tu inicial) > CERRAR SESION
+   (esto es lo primero, sin esto nada mas funciona)
+
+2. Ingresa con:
+     demo@padelking.co
+     PadelKingDemo2026
+
+3. Abajo toca TORNEOS > "EXPRESS CALI VIERNES"
+   (ese, no otro — es el unico con chat)
+
+4. Baja hasta el CHAT. Vas a ver mensajes de Camilo, Camila y Carlos.
+   En cualquiera de ELLOS (no en el tuyo) toca los tres puntitos.
+   Deja que se vean REPORTAR y BLOQUEAR unos segundos.
+
+5. Menu arriba a la derecha > CERRAR SESION
+
+6. Toca "Crea tu cuenta" y registrate con TU correo.
+
+7. Menu arriba a la derecha > MI PERFIL
+   (no "Ver mi perfil publico")
+   Baja hasta el fondo, hasta "ZONA PELIGROSA".
+   Toca ELIMINAR MI CUENTA, escribe ELIMINAR y confirma.
+```
+
+Siete pasos, dos o tres toques cada uno. Deberia dar unos dos minutos.
+
+**Recomendacion de metodo:** despues de dos intentos fallidos, hacerlo por
+videollamada guiando al tester en vivo, o conseguir el iPhone prestado. Un
+guion de siete pasos por WhatsApp ya demostro que no sobrevive el contacto con
+la realidad.
