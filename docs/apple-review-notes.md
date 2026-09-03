@@ -150,7 +150,8 @@ Y haz esto, con calma, sin saltarte pasos:
   b. Toca un torneo cualquiera y mira el detalle.
   c. Devuelvete y entra a Ranking.
   d. Inicia sesion con el usuario y clave que te paso aparte.
-  e. Entra a un torneo donde ya estoy inscrito y abre el Chat.
+  e. Entra al torneo "EXPRESS CALI VIERNES" (es el unico con chat) y abre
+     la pestaña de Chat.
   f. En un mensaje que NO sea tuyo, toca los tres puntitos y deja ver
      las opciones de Reportar y Bloquear. No tienes que usarlas, solo
      que se vean en pantalla.
@@ -221,3 +222,41 @@ por defecto y exige usuario y contraseña para continuar. Se desmarco, que es lo
 que ya estaba guardado en *Informacion para las pruebas* y es cierto: las
 pantallas publicas de la app (lista de torneos, detalle, bracket, ranking)
 funcionan sin cuenta. Las notas para el revisor beta ya lo explican.
+
+---
+
+## Estado de la data demo (2026-09-02)
+
+Tres cosas se refrescaron antes de la segunda grabacion, porque las tres
+habrian costado otra ronda de rechazo:
+
+1. **Los torneos del demo habian envejecido.** Los dos de la cuenta demo
+   arrancaban el 28 y 29 de agosto, ya en el pasado, asi que desaparecian de
+   `/tournaments` (la pagina filtra `starts_at >= hoy`). Se corrio
+   `seed-demo-prod.mjs --apply`, que los movio al 5 y 6 de septiembre.
+
+2. **Ese script borra y reinserta las inscripciones de esos torneos**, asi que
+   se llevo la de la cuenta demo. Hay que correr `seed-demo-account.mjs`
+   **despues**, siempre en ese orden.
+
+3. **El chat estaba vacio.** `MessageModeration` vive dentro de un
+   `{!isMe && ...}`, asi que sin mensajes ajenos no hay nada que reportar ni
+   bloquear — y eso es exactamente lo que Apple pidio ver. Las inscripciones
+   sembradas son parejas de invitados sin perfil (`player_one_id` null), asi que
+   ninguna podia escribir. Se creo `seed-demo-chat.mjs`, que siembra 6 mensajes
+   en `express-cali-friday`: 5 de otros perfiles y 1 de la cuenta demo.
+
+### Orden correcto para refrescar todo
+
+    node scripts/seed-demo-prod.mjs --apply
+    node scripts/seed-demo-account.mjs
+    node scripts/seed-demo-chat.mjs --apply
+
+Verificar al final: la cuenta demo con 2 inscripciones y el torneo
+`express-cali-friday` con 5 mensajes reportables.
+
+### El torneo del guion no es cualquiera
+
+`express-cali-friday` ("Express Cali Viernes") es **el unico** con chat
+sembrado. Si el tester entra a otro, va a ver "Sin mensajes aun" y no podra
+mostrar reportar/bloquear. Por eso el guion lo nombra explicito.
