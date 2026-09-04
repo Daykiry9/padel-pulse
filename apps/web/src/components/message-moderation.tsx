@@ -70,14 +70,21 @@ export function MessageModeration({
   }
 
   if (!open) {
+    // Antes era solo la bandera de 12px en text-muted-foreground/50: sobre el
+    // fondo negro quedaba invisible. Tres testers seguidos no la encontraron y
+    // el revisor de Apple tampoco iba a poder — que es justo el hallazgo que
+    // busca la guideline 1.2 ("no pudimos ubicar el mecanismo de reporte").
+    // Lleva la palabra al lado y contraste pleno; el min-h-11 mantiene el hit
+    // target de 44px.
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label={`Reportar o bloquear a ${authorName}`}
-        className="text-muted-foreground/50 hover:text-foreground flex size-11 shrink-0 items-center justify-center transition-colors"
+        className="text-muted-foreground hover:text-foreground -ml-1 flex min-h-11 shrink-0 items-center gap-1.5 px-1 text-[11px] uppercase tracking-wider transition-colors"
       >
         <Flag className="size-3" />
+        Reportar
       </button>
     );
   }
