@@ -13,8 +13,8 @@
  * hace falta que lo esten: la policy `tournament chat read` exige que **quien
  * mira** sea owner o inscrito confirmado, no que lo sea el autor.
  *
- * Es idempotente: borra los mensajes del torneo demo y los vuelve a insertar.
- * Solo toca ese `target_id`.
+ * Es idempotente: borra los mensajes de los torneos demo y los vuelve a
+ * insertar. Solo toca esos `target_id`.
  *
  *   node scripts/seed-demo-chat.mjs --dry-run
  *   node scripts/seed-demo-chat.mjs --apply
@@ -24,7 +24,11 @@ import { readFileSync } from 'node:fs';
 
 const PROJECT = 'ulwieksgoamoqnpenabr';
 const APPLY = process.argv.includes('--apply');
-const SLUG = 'express-cali-friday';
+// Los dos torneos donde la cuenta demo esta inscrita. Van los dos a proposito:
+// cuando solo se sembro `express-cali-friday`, el tester abrio el otro, encontro
+// "Sin mensajes aun" y no pudo mostrar reportar/bloquear. Si el chat depende de
+// que alguien elija el torneo correcto, la trampa es del seed, no del tester.
+const SLUGS = ['express-cali-friday', 'americano-poblado-sabado'];
 
 const env = Object.fromEntries(
   readFileSync(new URL('../.env.local', import.meta.url), 'utf8')
@@ -70,27 +74,33 @@ const HILO = [
 ];
 
 const rows = await sql(
-  `select t.id, (select id from auth.users where email = 'demo@padelking.co') as demo_id
-     from public.tournaments t where t.slug = ${q(SLUG)}`
+  `select t.id, t.slug, (select id from auth.users where email = 'demo@padelking.co') as demo_id
+     from public.tournaments t
+    where t.slug in (${SLUGS.map(q).join(', ')})`
 );
-const { id: tournamentId, demo_id: demoId } = rows[0] ?? {};
-if (!tournamentId) throw new Error(`No existe el torneo ${SLUG}`);
+const demoId = rows[0]?.demo_id;
+if (rows.length !== SLUGS.length) {
+  throw new Error(`Esperaba ${SLUGS.length} torneos (${SLUGS.join(', ')}) y encontre ${rows.length}`);
+}
 if (!demoId) throw new Error('No existe demo@padelking.co — corre seed-demo-account.mjs primero');
 
-const statements = [
-  `delete from public.chat_messages
-     where target_kind = 'tournament' and target_id = ${q(tournamentId)}`,
-  ...HILO.map(
-    ([autor, texto, hace]) =>
+const statements = [];
+for (const { id: tournamentId, slug } of rows) {
+  statements.push(
+    `delete from public.chat_messages
+       where target_kind = 'tournament' and target_id = ${q(tournamentId)}`
+  );
+  for (const [autor, texto, hace] of HILO) {
+    statements.push(
       `insert into public.chat_messages (target_kind, target_id, profile_id, body, created_at)
          values ('tournament', ${q(tournamentId)}, ${q(autor ?? demoId)}, ${q(texto)},
                  now() - interval '${hace} minutes')`
-  ),
-];
-
-console.log(`Torneo: ${SLUG} (${tournamentId})`);
-for (const [autor, texto] of HILO) {
-  console.log(`  · ${autor ? autor.slice(0, 8) : 'DEMO    '} — ${texto.slice(0, 62)}`);
+    );
+  }
+  console.log(`Torneo: ${slug} (${tournamentId})`);
+  for (const [autor, texto] of HILO) {
+    console.log(`  · ${autor ? autor.slice(0, 8) : 'DEMO    '} — ${texto.slice(0, 56)}`);
+  }
 }
 console.log(`\n${statements.length} sentencias.`);
 
@@ -104,11 +114,14 @@ await sql(`begin;\n${statements.join(';\n')};\ncommit;`);
 console.log('OK. Verificando…');
 
 const check = await sql(
-  `select count(*) as mensajes,
-          count(distinct profile_id) as autores,
-          sum(case when profile_id = ${q(demoId)} then 1 else 0 end) as del_demo,
-          count(*) - sum(case when profile_id = ${q(demoId)} then 1 else 0 end) as reportables
-     from public.chat_messages
-    where target_kind = 'tournament' and target_id = ${q(tournamentId)}`
+  `select t.slug,
+          count(c.id) as mensajes,
+          count(distinct c.profile_id) as autores,
+          count(c.id) - sum(case when c.profile_id = ${q(demoId)} then 1 else 0 end) as reportables
+     from public.tournaments t
+     left join public.chat_messages c
+            on c.target_id = t.id and c.target_kind = 'tournament'
+    where t.slug in (${SLUGS.map(q).join(', ')})
+    group by t.slug order by t.slug`
 );
 console.table(check);
