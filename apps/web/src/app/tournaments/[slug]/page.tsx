@@ -63,14 +63,23 @@ export default async function TournamentDetailPage({
   }) | null;
   if (!tournament) notFound();
 
+  const user = await getSession();
+
   // Si el torneo es scope=community, su detalle vive bajo el hub de la comunidad
-  // (gate por membresía / privacy). Esta ruta pública sigue existiendo para
-  // compartir links externos y para scope=club_open/club_private.
-  if (tournament.scope === 'community' && tournament.communities?.slug) {
+  // (gate por membresía / privacy), y alla se manda a quien tenga sesion.
+  //
+  // El `user &&` es la parte importante: antes el redirect era incondicional y
+  // la ruta de destino esta protegida, asi que un visitante anonimo terminaba
+  // en /login. La lista publica de /tournaments enlaza aca y anuncia
+  // "INSCRIBIRME" en cada card, asi que el link prometia un torneo y entregaba
+  // un muro de login. Una tester lo reporto como "no veo donde hptas me
+  // inscribo a un torneo" — y no habia donde, el detalle nunca se renderizaba.
+  //
+  // Sin sesion se queda en esta ruta publica, que ya sabe renderizarse sin
+  // usuario (la tarjeta de inscripcion muestra "Inicia sesion para inscribirte").
+  if (user && tournament.scope === 'community' && tournament.communities?.slug) {
     redirect(`/app/communities/${tournament.communities.slug}/tournaments/${tournament.slug}`);
   }
-
-  const user = await getSession();
   const isOrganizer = Boolean(
     user &&
       (tournament.clubs?.owner_id === user.id || tournament.communities?.owner_id === user.id),
@@ -376,44 +385,12 @@ export default async function TournamentDetailPage({
             </Card>
           )}
 
-          {/* Compartir torneo — visible para todos los autenticados */}
-          {user && (
-            <div className="flex flex-wrap gap-3">
-              <ShareInviteButton
-                kind="tournament"
-                targetId={tournament.id}
-                name={tournament.name}
-                variant="outline"
-                size="lg"
-                label="Invitar por WhatsApp"
-              />
-              <ShareStoryButton
-                slug={tournament.slug}
-                tournamentName={tournament.name}
-                variant="outline"
-                size="lg"
-              />
-              {tournament.status === 'finished' && (
-                <SharePodiumButton
-                  slug={tournament.slug}
-                  tournamentName={tournament.name}
-                  variant="crown"
-                  size="lg"
-                />
-              )}
-            </div>
-          )}
-
-          {/* Chat del torneo — solo participantes / organizador */}
-          {canChat && user && (
-            <TournamentChat
-              tournamentId={tournament.id}
-              initialMessages={initialChatMessages}
-              currentUserId={user.id}
-            />
-          )}
-
-          {/* Inscripción */}
+          {/* Inscripcion. Va aca arriba, antes de compartir / chat / bracket,
+              porque es la decision principal de la pagina. Estaba al fondo,
+              debajo del chat: una tester entro, vio las tarjetas de info y el
+              boton de invitar por WhatsApp, y escribio "no veo donde me
+              inscribo a un torneo". La lista publica promete "INSCRIBIRME" en
+              cada card, asi que el detalle tiene que cumplirlo sin scroll. */}
           <Card className="p-6">
             <h2 className="font-display mb-4 text-2xl tracking-tight">INSCRIPCIÓN</h2>
             {!user ? (
@@ -504,6 +481,44 @@ export default async function TournamentDetailPage({
               </div>
             )}
           </Card>
+
+          {/* Compartir torneo — visible para todos los autenticados */}
+          {user && (
+            <div className="flex flex-wrap gap-3">
+              <ShareInviteButton
+                kind="tournament"
+                targetId={tournament.id}
+                name={tournament.name}
+                variant="outline"
+                size="lg"
+                label="Invitar por WhatsApp"
+              />
+              <ShareStoryButton
+                slug={tournament.slug}
+                tournamentName={tournament.name}
+                variant="outline"
+                size="lg"
+              />
+              {tournament.status === 'finished' && (
+                <SharePodiumButton
+                  slug={tournament.slug}
+                  tournamentName={tournament.name}
+                  variant="crown"
+                  size="lg"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Chat del torneo — solo participantes / organizador */}
+          {canChat && user && (
+            <TournamentChat
+              tournamentId={tournament.id}
+              initialMessages={initialChatMessages}
+              currentUserId={user.id}
+            />
+          )}
+
 
           {/* Inscritos */}
           <div>

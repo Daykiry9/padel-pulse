@@ -1,13 +1,22 @@
 import Link from 'next/link';
-import { Crown, KeyRound, Plus } from 'lucide-react';
+import { Crown, KeyRound, Plus, Trophy } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { JoinWithCodeModal } from '@/components/join-with-code-modal';
 
 /**
  * Empty state full-screen del HUB cuando el usuario no pertenece a ninguna
- * comunidad. El nuevo Home vive dentro de tu comunidad: sin una, no hay home,
- * solo un onboarding que invita a unirse con código o crear la tuya.
+ * comunidad.
+ *
+ * Las dos acciones originales eran "unirme con código" y "crear mi comunidad",
+ * y la copia decía que PadelKing "arranca con tu comunidad". Las dos cosas
+ * dejaban sin salida a quien acaba de registrarse: no tiene código, no quiere
+ * fundar nada, y las comunidades del listado son cerradas (piden aprobación de
+ * un admin). Una tester quedó atrapada justo ahí.
+ *
+ * La comunidad no es un requisito para competir — los torneos abiertos aceptan
+ * a cualquiera. Así que la acción primaria ahora es verlos, que es lo único que
+ * funciona sin depender de terceros.
  */
 export function NoCommunityEmptyState() {
   return (
@@ -26,14 +35,22 @@ export function NoCommunityEmptyState() {
           Aún no estás en ninguna comunidad
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-          PadelKing arranca con tu comunidad. Únete con un código de
-          invitación o crea la tuya y arma torneos con tu grupo.
+          No necesitas una para jugar: los torneos abiertos de tu ciudad
+          aceptan a cualquiera. Las comunidades son para armar tu propio grupo
+          y organizarle torneos.
         </p>
 
-        <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
+        <Button variant="crown" size="lg" asChild className="mt-8 w-full">
+          <Link href="/tournaments">
+            <Trophy className="size-4" />
+            Ver torneos abiertos
+          </Link>
+        </Button>
+
+        <div className="mt-3 grid w-full gap-3 sm:grid-cols-2">
           <JoinWithCodeModal
             trigger={
-              <Button variant="crown" size="lg" className="w-full">
+              <Button variant="outline" size="lg" className="w-full">
                 <KeyRound className="size-4" />
                 Unirme con código
               </Button>

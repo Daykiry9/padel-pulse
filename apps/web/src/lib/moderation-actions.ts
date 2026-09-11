@@ -8,16 +8,6 @@ import type { ActionResult } from './auth-actions';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** Motivos ofrecidos al denunciar. El valor viaja tal cual a la DB. */
-export const REPORT_REASONS = [
-  'Lenguaje ofensivo o insultos',
-  'Acoso o amenazas',
-  'Spam o publicidad',
-  'Contenido sexual o inapropiado',
-  'Suplantación de identidad',
-  'Otro',
-] as const;
-
 export async function reportContent(formData: FormData): Promise<ActionResult> {
   const user = await getSession();
   if (!user) return { ok: false, error: 'No autenticado' };

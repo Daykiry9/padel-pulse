@@ -6,7 +6,8 @@ import { Ban, Check, Flag, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { REPORT_REASONS, blockUser, reportContent } from '@/lib/moderation-actions';
+import { blockUser, reportContent } from '@/lib/moderation-actions';
+import { REPORT_REASONS } from '@/lib/moderation-reasons';
 
 /**
  * Reportar contenido y bloquear al autor.

@@ -116,39 +116,15 @@ export default async function TournamentsInboxPage({
 
   const myCommunities = (myCommunitiesData ?? []) as unknown as CommunityMem[];
 
-  if (myCommunities.length === 0) {
-    return (
-      <div className="space-y-10">
-        <Header />
-        <EmptyState
-          icon={Globe}
-          title="Únete a una comunidad primero"
-          description="Los torneos viven dentro de comunidades. Únete a una o crea la tuya para ver y organizar torneos."
-          bullets={[
-            'Verás los torneos de tu comunidad en este inbox',
-            'Inscríbete con un tap y sigue tu pareja o ad-hoc',
-            'Si eres organizador, abrís torneos para tus miembros',
-          ]}
-          primaryAction={
-            <Button variant="crown" asChild>
-              <Link href="/app/communities">
-                <Globe className="size-4" />
-                Explorar comunidades
-              </Link>
-            </Button>
-          }
-          secondaryAction={
-            <Button variant="outline" asChild>
-              <Link href="/app/communities/new">
-                <Plus className="size-4" />
-                Crear comunidad
-              </Link>
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
+  // Aca habia un early return con el empty state de "Unete a una comunidad
+  // primero". Cortaba la pagina ANTES de consultar las inscripciones, asi que
+  // un usuario sin comunidad no veia los torneos en los que YA estaba inscrito:
+  // la cuenta demo estaba inscrita en dos y no veia ninguno. Una tester de
+  // iPhone lo reporto como "una vez metes la cuenta se pierden los torneos", y
+  // tenia razon — estar logueado mostraba menos que estar anonimo.
+  // Ahora la pagina siempre consulta, y el llamado a unirse a una comunidad
+  // vive abajo (ver `bothEmpty`) para cuando de verdad no hay nada que mostrar.
+  const hasNoCommunity = myCommunities.length === 0;
 
   const myCommunityIds = myCommunities
     .map((c) => c.communities?.id)
@@ -174,11 +150,15 @@ export default async function TournamentsInboxPage({
         .or(
           `player_id.eq.${user.id},player_one_id.eq.${user.id},player_two_id.eq.${user.id}`,
         ),
-      supabase
-        .from('tournaments')
-        .select(tournamentSelect)
-        .in('community_id', myCommunityIds)
-        .order('starts_at', { ascending: true }),
+      // Sin comunidades el `.in(...)` iria con lista vacia, que PostgREST
+      // rechaza. Se salta la consulta y se resuelve vacio.
+      myCommunityIds.length > 0
+        ? supabase
+            .from('tournaments')
+            .select(tournamentSelect)
+            .in('community_id', myCommunityIds)
+            .order('starts_at', { ascending: true })
+        : Promise.resolve({ data: [] as Tournament[] }),
       showClubOpen
         ? myCityIds.length > 0
           ? supabase
@@ -316,12 +296,24 @@ export default async function TournamentsInboxPage({
             title="Sin inscripciones todavía"
             description="Cuando te inscribas a un torneo aparecerá aquí con su estado y fecha."
             primaryAction={
-              <Button variant="outline" asChild>
-                <Link href="#community-tournaments">
-                  <ArrowRight className="size-4" />
-                  Ver torneos de mi comunidad
-                </Link>
-              </Button>
+              // Sin comunidad, el ancla a #community-tournaments lleva a una
+              // seccion vacia: es un callejon sin salida. El catalogo publico
+              // si tiene torneos abiertos a los que cualquiera se inscribe.
+              hasNoCommunity ? (
+                <Button variant="crown" asChild>
+                  <Link href="/tournaments">
+                    <Trophy className="size-4" />
+                    Ver torneos abiertos
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" asChild>
+                  <Link href="#community-tournaments">
+                    <ArrowRight className="size-4" />
+                    Ver torneos de mi comunidad
+                  </Link>
+                </Button>
+              )
             }
           />
         ) : (
@@ -372,7 +364,37 @@ export default async function TournamentsInboxPage({
         }
       >
         <div id="community-tournaments" />
-        {communityTournaments.length === 0 ? (
+        {hasNoCommunity ? (
+          // Este es el estado que antes se comia la pagina entera. Ahora vive
+          // aca, donde corresponde, y siempre ofrece una salida: el catalogo
+          // publico tiene torneos abiertos sin necesidad de pertenecer a nada.
+          <EmptyState
+            icon={Globe}
+            title="Todavía no estás en ninguna comunidad"
+            description="Las comunidades son grupos de jugadores que organizan sus propios torneos. No necesitas una para competir: los torneos abiertos de tu ciudad aceptan a cualquiera."
+            bullets={[
+              'Únete a una comunidad y verás sus torneos internos acá',
+              'O inscríbete directo a un torneo abierto',
+              'Si organizas, crea tu comunidad y abre torneos para tu grupo',
+            ]}
+            primaryAction={
+              <Button variant="crown" asChild>
+                <Link href="/tournaments">
+                  <Trophy className="size-4" />
+                  Ver torneos abiertos
+                </Link>
+              </Button>
+            }
+            secondaryAction={
+              <Button variant="outline" asChild>
+                <Link href="/app/communities">
+                  <Globe className="size-4" />
+                  Explorar comunidades
+                </Link>
+              </Button>
+            }
+          />
+        ) : communityTournaments.length === 0 ? (
           <EmptyState
             icon={Globe}
             title="Tu comunidad no ha publicado torneos"
