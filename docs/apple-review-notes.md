@@ -309,3 +309,34 @@ Siete pasos, dos o tres toques cada uno. Deberia dar unos dos minutos.
 videollamada guiando al tester en vivo, o conseguir el iPhone prestado. Un
 guion de siete pasos por WhatsApp ya demostro que no sobrevive el contacto con
 la realidad.
+
+---
+
+## ATENCION: los seeds caducan en ~4 dias
+
+`seed-demo-prod.mjs` coloca los torneos del demo "en 2 y 3 dias". A los cuatro
+o cinco dias vuelven a quedar en el pasado y **desaparecen de /tournaments**,
+que filtra `starts_at >= hoy`. La cuenta demo queda entonces sin nada visible y
+quien grabe el video no encuentra ningun torneo.
+
+Ya paso dos veces (2026-09-02 y 2026-09-11). **Correr los tres seeds el mismo
+dia de la grabacion**, en este orden:
+
+    node scripts/seed-demo-prod.mjs --apply     # refresca fechas
+    node scripts/seed-demo-account.mjs --apply  # el anterior borra sus inscripciones
+    node scripts/seed-demo-chat.mjs --apply     # el anterior borra los mensajes
+
+Ojo con `seed-demo-account.mjs`: sin `--apply` corre en dry-run y no escribe
+nada, pero imprime casi lo mismo. Verificar que diga "OK. Verificando..." y la
+tabla con `inscripciones = 2`.
+
+Lo mismo aplica antes de que Apple revise el envio: si el revisor entra con la
+cuenta demo y los torneos vencieron, ve una app vacia.
+
+## Link publico de TestFlight para testers nuevos
+
+    https://testflight.apple.com/join/K5cQbgFb
+
+Confirmado vivo el 2026-09-11. Sirve para cualquier iPhone sin invitacion ni
+Apple ID especifico — es la via para sumar testers nuevos sin repetir el lio
+del tester interno.
