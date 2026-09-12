@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { OAuthButtons } from '@/components/oauth-buttons';
@@ -68,10 +69,9 @@ export default async function LoginPage({
         </FormField>
 
         <FormField label="Contraseña" htmlFor="password">
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="current-password"
             required
           />

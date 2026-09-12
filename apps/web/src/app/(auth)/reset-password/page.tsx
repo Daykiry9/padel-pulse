@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { getSession } from '@/lib/supabase/server';
@@ -38,10 +38,9 @@ export default async function ResetPasswordPage() {
 
       <ActionForm action={updatePassword}>
         <FormField label="Contraseña nueva" htmlFor="password" hint="Mínimo 8 caracteres">
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}

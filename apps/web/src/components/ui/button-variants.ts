@@ -35,12 +35,18 @@ export const buttonVariants = cva(
         link:
           'text-crown underline-offset-4 hover:underline',
       },
+      // `pointer-coarse:` solo aplica en dispositivos táctiles, así que el
+      // escritorio conserva sus alturas (40px y 32px, que es lo normal en
+      // herramientas densas) y el teléfono sube al mínimo de 44px que pide la
+      // HIG. Se midió en la app: en /tournaments había 22 controles por debajo
+      // de 44px, incluidos los filtros de ciudad y el CTA "Inscribirme".
+      // `lg` (48px) y `xl` (56px) ya pasaban.
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-8 rounded-md px-3 text-xs',
+        default: 'h-10 pointer-coarse:min-h-11 px-4 py-2',
+        sm: 'h-8 pointer-coarse:min-h-11 rounded-md px-3 text-xs',
         lg: 'h-12 rounded-lg px-6 text-base',
         xl: 'h-14 rounded-lg px-8 text-base',
-        icon: 'h-10 w-10',
+        icon: 'h-10 w-10 pointer-coarse:min-h-11 pointer-coarse:min-w-11',
       },
     },
     defaultVariants: {
