@@ -1,13 +1,5 @@
 import Link from 'next/link';
-import {
-  ArrowRight,
-  Calendar,
-  Crown,
-  MapPin,
-  Plus,
-  Trophy,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, Calendar, Crown, MapPin, Plus, Trophy } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 import { Badge } from '@/components/ui/badge';
@@ -55,9 +47,9 @@ interface CommunityHubHomeProps {
  * Sections:
  *  a) Header sticky con avatar + CommunitySwitcher.
  *  b) Próximo torneo de la comunidad (cupos + CTA) o empty state.
- *  c) Mi posición en el ranking interno (ELO + posición).
- *  d) Top 5 preview del ranking de la comunidad.
- *  e) Quick actions: Crear torneo (si owner), Invitar, Ver todos.
+ *  c) Ranking de la comunidad: top 5, con tu fila añadida abajo solo si
+ *     quedaste fuera del top.
+ *  d) Acciones: Crear torneo (si owner) e Invitar.
  */
 export async function CommunityHubHome({
   user,
@@ -259,100 +251,80 @@ export async function CommunityHubHome({
         )}
       </Section>
 
-      {/* C) MI POSICIÓN EN EL RANKING INTERNO */}
-      <Section title="Mi posición" density="tight">
-        <Card className="border-border/60 p-5">
-          {myRankingEntry && myRankingPosition ? (
-            <div className="flex items-center gap-4">
-              <div className="bg-crown/15 text-crown flex size-12 shrink-0 items-center justify-center rounded-xl">
-                <span className="font-display text-xl tabular-nums">
-                  #{myRankingPosition}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-display text-base tracking-tight">
-                  {myRankingEntry.name}
-                </div>
-                <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs uppercase tracking-widest tabular-nums">
-                  <span>ELO {myRankingEntry.elo}</span>
-                  <span aria-hidden>·</span>
-                  <span>{myRankingEntry.matches} PJ</span>
-                  <span aria-hidden>·</span>
-                  <span>{myRankingEntry.wins} W</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-start gap-3">
-              <div className="bg-muted text-muted-foreground rounded-full p-2">
-                <Crown className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-display text-base">
-                  Aún no tienes ranking en esta comunidad
-                </div>
-                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                  Juega tu primer torneo para entrar al ranking interno.
-                </p>
-              </div>
-            </div>
-          )}
-        </Card>
-      </Section>
-
-      {/* D) TOP 5 PREVIEW DEL RANKING */}
-      {top5.length > 0 && (
-        <Section
-          title="Top 5 de la comunidad"
-          density="tight"
-          action={
+      {/* C) RANKING DE LA COMUNIDAD — top 5 y tu posición en la misma tarjeta.
+          Antes eran dos secciones separadas, "Mi posición" y "Top 5", que
+          mostraban el mismo ranking dos veces: leías tu ELO arriba y volvías a
+          buscarte abajo. Ahora el top vive junto a tu fila, que solo se agrega
+          cuando quedas fuera del top 5 — si ya estás dentro, resaltada basta. */}
+      <Section
+        title="Ranking de la comunidad"
+        density="tight"
+        action={
+          top5.length > 0 && (
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/app/communities/${activeCommunity.slug}`}>
                 Ver ranking
                 <ArrowRight className="size-3" />
               </Link>
             </Button>
-          }
-        >
+          )
+        }
+      >
+        {top5.length > 0 ? (
           <Card className="divide-border/30 divide-y overflow-hidden p-0">
-            {top5.map((r, idx) => {
-              const isMe = r.playerId === user.id;
-              return (
-                <div
-                  key={r.playerId}
-                  className={`grid grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-sm ${
-                    idx === 0 ? 'bg-crown/[0.04]' : ''
-                  } ${isMe ? 'bg-crown/[0.06]' : ''}`}
-                >
-                  <span
-                    className={`font-display text-base tabular-nums ${
-                      idx === 0 ? 'text-crown' : 'text-muted-foreground'
-                    }`}
-                  >
-                    {idx + 1}
-                  </span>
-                  <span className="flex min-w-0 items-center gap-2 truncate">
-                    {idx === 0 && (
-                      <Crown className="text-crown size-3 shrink-0" />
-                    )}
-                    <span className="truncate">{r.name}</span>
-                    {isMe && (
-                      <Badge variant="muted" className="text-[9px]">
-                        Tú
-                      </Badge>
-                    )}
-                  </span>
-                  <span className="font-display tabular-nums">{r.elo}</span>
-                </div>
-              );
-            })}
-          </Card>
-        </Section>
-      )}
+            {top5.map((r, idx) => (
+              <RankRow
+                key={r.playerId}
+                position={idx + 1}
+                name={r.name}
+                elo={r.elo}
+                isMe={r.playerId === user.id}
+                isLeader={idx === 0}
+              />
+            ))}
 
-      {/* E) QUICK ACTIONS */}
-      <Section title="Acciones rápidas" density="tight">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {myRankingEntry && myRankingPosition && myRankingPosition > 5 && (
+              <RankRow
+                position={myRankingPosition}
+                name={myRankingEntry.name}
+                elo={myRankingEntry.elo}
+                isMe
+                detail={`${myRankingEntry.matches} PJ · ${myRankingEntry.wins} W`}
+              />
+            )}
+
+            {!myRankingEntry && (
+              <p className="text-muted-foreground px-4 py-3 text-xs leading-relaxed">
+                Todavía no estás en el ranking. Juega tu primer torneo para
+                entrar.
+              </p>
+            )}
+          </Card>
+        ) : (
+          <Card className="border-border/60 p-6">
+            <div className="flex items-start gap-3">
+              <div className="bg-muted text-muted-foreground rounded-full p-2">
+                <Crown className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-base">
+                  Esta comunidad todavía no tiene ranking
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                  El ranking se construye con cada partido jugado. Cuando se
+                  juegue el primer torneo, aparece acá.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+      </Section>
+
+      {/* D) ACCIONES. Se quitó el botón "Ver todos": llevaba a la misma
+          comunidad que el enlace del header y que "Ver ranking" del bloque de
+          arriba. Tres accesos al mismo destino en una pantalla. */}
+      <Section title="Acciones" density="tight">
+        <div className="grid gap-3 sm:grid-cols-2">
           {isOwner && (
             <Button variant="crown" asChild className="h-12 justify-start">
               <Link href={`/app/tournaments/new?community=${activeCommunity.id}`}>
@@ -369,14 +341,60 @@ export async function CommunityHubHome({
             variant="outline"
             size="default"
           />
-          <Button variant="outline" asChild className="h-12 justify-start">
-            <Link href={`/app/communities/${activeCommunity.slug}`}>
-              <Users className="size-4" />
-              Ver todos
-            </Link>
-          </Button>
         </div>
       </Section>
+    </div>
+  );
+}
+
+/**
+ * Una fila del ranking. Se usa para el top 5 y para la fila propia cuando el
+ * usuario queda fuera de él, así ambas se ven idénticas y no hay dos maneras
+ * de dibujar lo mismo.
+ */
+function RankRow({
+  position,
+  name,
+  elo,
+  isMe = false,
+  isLeader = false,
+  detail,
+}: {
+  position: number;
+  name: string;
+  elo: number;
+  isMe?: boolean;
+  isLeader?: boolean;
+  detail?: string;
+}) {
+  return (
+    <div
+      className={`grid grid-cols-[2rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-sm ${
+        isMe ? 'bg-crown/[0.06]' : isLeader ? 'bg-crown/[0.04]' : ''
+      }`}
+    >
+      <span
+        className={`font-display text-base tabular-nums ${
+          isLeader ? 'text-crown' : 'text-muted-foreground'
+        }`}
+      >
+        {position}
+      </span>
+      <span className="flex min-w-0 items-center gap-2">
+        {isLeader && <Crown className="text-crown size-3 shrink-0" />}
+        <span className="truncate">{name}</span>
+        {isMe && (
+          <Badge variant="muted" className="shrink-0 text-[9px]">
+            Tú
+          </Badge>
+        )}
+        {detail && (
+          <span className="text-muted-foreground shrink-0 text-[10px] uppercase tracking-widest tabular-nums">
+            {detail}
+          </span>
+        )}
+      </span>
+      <span className="font-display tabular-nums">{elo}</span>
     </div>
   );
 }

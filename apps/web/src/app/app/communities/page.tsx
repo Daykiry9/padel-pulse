@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Globe, Plus, Users } from 'lucide-react';
+import { Globe, Lock, Plus, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ type Community = {
   city: string;
   rating: number;
   logo_url: string | null;
+  is_public: boolean;
   member_count?: number;
   recent_members?: { profile_id: string; display_name: string | null }[];
 };
@@ -29,7 +30,12 @@ export default async function CommunitiesPage() {
   const [allRes, mineRes] = await Promise.all([
     supabase
       .from('communities')
-      .select('id, slug, name, description, city, rating, logo_url')
+      .select('id, slug, name, description, city, rating, logo_url, is_public')
+      // Públicas primero y luego por rating. Antes solo ordenaba por rating, y
+      // como la comunidad mejor puntuada es cerrada, encabezaba la lista: una
+      // tester tocó la primera tarjeta, cayó en "solicitud enviada" y quedó
+      // esperando la aprobación de un admin que no iba a llegar.
+      .order('is_public', { ascending: false })
       .order('rating', { ascending: false })
       .limit(50),
     supabase.from('community_members').select('community_id').eq('profile_id', user.id),
@@ -141,7 +147,17 @@ function CommunityCard({ community, isMember }: { community: Community; isMember
             src={community.logo_url ?? null}
             size="xl"
           />
-          {isMember && <Badge variant="success">Miembro</Badge>}
+          {isMember ? (
+            <Badge variant="success">Miembro</Badge>
+          ) : community.is_public ? (
+            <Badge variant="muted">Abierta</Badge>
+          ) : (
+            // Saberlo antes de tocar evita el viaje a "solicitud enviada".
+            <Badge variant="muted" className="gap-1">
+              <Lock className="size-2.5" />
+              Por aprobación
+            </Badge>
+          )}
         </div>
 
         <h3 className="font-display mt-4 line-clamp-2 text-lg tracking-tight">

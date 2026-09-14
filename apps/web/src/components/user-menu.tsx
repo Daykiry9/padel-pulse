@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@radix-ui/react-dropdown-menu';
-import { LogOut, Settings, User } from 'lucide-react';
+import { ExternalLink, LogOut, Settings } from 'lucide-react';
 
 import { Avatar } from '@/components/ui/avatar';
 import { signOut } from '@/lib/auth-actions';
@@ -61,13 +61,19 @@ export function UserMenu({
 
         <DropdownMenuSeparator className="bg-border/40 -mx-1 my-1 h-px" />
 
+        {/* Los iconos estaban cruzados: el engranaje colgaba de "Ver mi perfil
+            público" y el de usuario de la pantalla de ajustes. Dos testers
+            buscando borrar su cuenta se fueron al perfil público, que no tiene
+            esa opción. Ahora el engranaje va con la cuenta, el de enlace
+            externo con la página pública, y la etiqueta dice "cuenta y datos"
+            para que no compita con "perfil público". */}
         <DropdownMenuItem asChild>
           <Link
             href="/app/profile"
             className="hover:bg-muted focus:bg-muted flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none"
           >
-            <User className="size-3.5" />
-            Mi perfil
+            <Settings className="size-3.5" />
+            Mi cuenta y datos
           </Link>
         </DropdownMenuItem>
 
@@ -76,7 +82,7 @@ export function UserMenu({
             href={`/players/${userId}`}
             className="hover:bg-muted focus:bg-muted flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none"
           >
-            <Settings className="size-3.5" />
+            <ExternalLink className="size-3.5" />
             Ver mi perfil público
           </Link>
         </DropdownMenuItem>

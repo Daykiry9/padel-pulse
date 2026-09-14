@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Check, Crown, ExternalLink, Trophy, Users } from 'lucide-react';
+import { Check, ExternalLink } from 'lucide-react';
 
 import {
   CATEGORY_LABELS,
@@ -120,16 +120,42 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      {/* Stats card */}
-      <div className="grid gap-3 md:grid-cols-3">
-        <StatCard icon={Trophy} label="Categoría" value={profile.skill_category ? CATEGORY_LABELS[profile.skill_category] ?? profile.skill_category : '—'} />
-        <StatCard icon={Crown} label="ELO" value={String(profile.elo_rating ?? 1000)} accent="text-data" />
-        <StatCard
-          icon={Users}
-          label="Género"
-          value={profile.gender === 'male' ? 'Masculino' : profile.gender === 'female' ? 'Femenino' : '—'}
-        />
-      </div>
+      {/* Categoría, ELO y género eran tres tarjetas que en móvil se apilaban:
+          tres valores de una línea ocupando media pantalla. Misma franja de
+          tres columnas que usa el detalle del torneo, para que los datos
+          compactos se vean igual en toda la app. */}
+      <dl className="divide-border/40 border-border/40 bg-card grid grid-cols-3 divide-x overflow-hidden rounded-xl border">
+        <div className="px-3 py-3 md:px-4">
+          <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+            Categoría
+          </dt>
+          <dd className="font-display mt-1 text-sm leading-snug tracking-tight">
+            {profile.skill_category
+              ? (CATEGORY_LABELS[profile.skill_category] ?? profile.skill_category)
+              : '—'}
+          </dd>
+        </div>
+        <div className="px-3 py-3 md:px-4">
+          <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+            ELO
+          </dt>
+          <dd className="font-display text-data mt-1 text-sm leading-snug tracking-tight tabular-nums">
+            {profile.elo_rating ?? 1000}
+          </dd>
+        </div>
+        <div className="px-3 py-3 md:px-4">
+          <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+            Género
+          </dt>
+          <dd className="font-display mt-1 text-sm leading-snug tracking-tight">
+            {profile.gender === 'male'
+              ? 'Masculino'
+              : profile.gender === 'female'
+                ? 'Femenino'
+                : '—'}
+          </dd>
+        </div>
+      </dl>
 
       {/* Edit form */}
       <Card className="p-6">
@@ -248,24 +274,3 @@ export default async function ProfilePage({
   );
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  accent = 'text-foreground',
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  accent?: string;
-}) {
-  return (
-    <Card className="p-4">
-      <div className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
-        <Icon className="size-3.5" />
-        {label}
-      </div>
-      <div className={`font-display mt-1 text-2xl tracking-tight ${accent}`}>{value}</div>
-    </Card>
-  );
-}
