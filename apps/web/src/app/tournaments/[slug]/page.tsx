@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Calendar, Check, Crown, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Trophy } from 'lucide-react';
 
 import { CATEGORY_LABELS } from '@padelking/domain';
 import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
@@ -8,6 +8,7 @@ import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PriceTag } from '@/components/ui/price-tag';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { ManualPlayerForm } from '@/components/manual-player-form';
 import { RemoveRegistrationButton } from '@/components/remove-registration-button';
@@ -15,7 +16,7 @@ import { ShareInviteButton } from '@/components/share-invite-button';
 import { SharePodiumButton } from '@/components/share-podium-button';
 import { ShareStoryButton } from '@/components/share-story-button';
 import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
-import { formatDateTime } from '@/lib/format-date';
+import { formatShort } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { GenerateBracketButton } from '@/app/app/tournaments/[slug]/manage/generate-bracket-button';
 import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
@@ -351,32 +352,6 @@ export default async function TournamentDetailPage({
             )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <InfoCard
-              icon={Calendar}
-              label="Fecha"
-              value={formatDateTime(tournament.starts_at)}
-            />
-            <InfoCard
-              icon={Crown}
-              label="Categoría"
-              value={
-                tournament.category_kind === 'suma' ||
-                tournament.category_kind === 'mixto_suma' ||
-                tournament.category_kind === 'queens_suma'
-                  ? `Suma ≥ ${tournament.min_sum}${tournament.max_player_category_value ? ` (tope ${tournament.max_player_category_value} por jugador)` : ''}`
-                  : tournament.category
-                    ? (CATEGORY_LABELS[tournament.category] ?? tournament.category)
-                    : 'Casual'
-              }
-            />
-            <InfoCard
-              icon={Users}
-              label="Inscritos"
-              value={`${registrations?.length ?? 0} / ${tournament.max_teams} ${isIndividual ? 'jugadores' : 'equipos'}`}
-            />
-          </div>
-
           {tournament.description && (
             <Card className="p-6">
               <p className="text-foreground/80 whitespace-pre-wrap text-sm">
@@ -391,9 +366,57 @@ export default async function TournamentDetailPage({
               boton de invitar por WhatsApp, y escribio "no veo donde me
               inscribo a un torneo". La lista publica promete "INSCRIBIRME" en
               cada card, asi que el detalle tiene que cumplirlo sin scroll. */}
-          <Card className="p-6">
-            <h2 className="font-display mb-4 text-2xl tracking-tight">INSCRIPCIÓN</h2>
-            {!user ? (
+          <Card className="overflow-hidden p-0">
+            {/* Fecha, categoría y cupos vivían en tres tarjetas apiladas encima:
+                en móvil eran ~300px de alto para tres datos de una línea cada
+                uno, y empujaban la inscripción fuera de la primera pantalla.
+                Fusionadas con el CTA, los datos que decides mirar antes de
+                inscribirte quedan pegados al botón con el que te inscribes. */}
+            <dl className="divide-border/40 border-border/40 grid grid-cols-3 divide-x border-b">
+              <div className="px-3 py-3 md:px-4">
+                <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                  Fecha
+                </dt>
+                {/* formatShort ("vie · 24 may · 19:00") en vez de formatDateTime:
+                    el largo se partia en tres lineas dentro de una columna de
+                    ~110px y estiraba la franja entera. */}
+                <dd className="font-display mt-1 text-sm leading-snug tracking-tight">
+                  {formatShort(tournament.starts_at)}
+                </dd>
+              </div>
+              <div className="px-3 py-3 md:px-4">
+                <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                  Categoría
+                </dt>
+                <dd className="font-display mt-1 text-sm leading-snug tracking-tight">
+                  {tournament.category_kind === 'suma' ||
+                  tournament.category_kind === 'mixto_suma' ||
+                  tournament.category_kind === 'queens_suma'
+                    ? `Suma ≥ ${tournament.min_sum}${tournament.max_player_category_value ? ` (tope ${tournament.max_player_category_value})` : ''}`
+                    : tournament.category
+                      ? (CATEGORY_LABELS[tournament.category] ?? tournament.category)
+                      : 'Casual'}
+                </dd>
+              </div>
+              <div className="px-3 py-3 md:px-4">
+                <dt className="text-muted-foreground text-[10px] uppercase tracking-widest">
+                  Cupos
+                </dt>
+                <dd className="font-display mt-1 text-sm leading-snug tracking-tight tabular-nums">
+                  {registrations?.length ?? 0} / {tournament.max_teams}
+                  <span className="text-muted-foreground ml-1 text-[10px] uppercase tracking-widest">
+                    {isIndividual ? 'jug.' : 'eq.'}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+
+            <div className="p-6">
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-display text-2xl tracking-tight">INSCRIPCIÓN</h2>
+                <PriceTag value={tournament.price_per_team} size="lg" />
+              </div>
+              {!user ? (
               <div className="flex items-center justify-between">
                 <p className="text-muted-foreground text-sm">Inicia sesión para inscribirte.</p>
                 <Button variant="crown" asChild>
@@ -479,7 +502,8 @@ export default async function TournamentDetailPage({
                   <RegisterButton tournamentId={tournament.id} mode="adhoc" />
                 </div>
               </div>
-            )}
+              )}
+            </div>
           </Card>
 
           {/* Compartir torneo — visible para todos los autenticados */}
@@ -561,22 +585,3 @@ export default async function TournamentDetailPage({
   );
 }
 
-function InfoCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-}) {
-  return (
-    <Card className="p-4">
-      <div className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
-        <Icon className="size-3.5" />
-        {label}
-      </div>
-      <div className="font-display mt-1.5 text-lg tracking-tight capitalize">{value}</div>
-    </Card>
-  );
-}
