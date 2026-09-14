@@ -83,8 +83,18 @@ for (const p of PLAN) {
   const pares = Math.min(p.pares, t.max_teams);
 
   // Fechas. registration_deadline <= starts_at <= ends_at (constraint valid_dates).
-  const starts = `now() + interval '${p.dias} days'`;
-  const startsAjustado = p.dias === 0 ? `now() - interval '2 hours'` : `date_trunc('hour', ${starts}) + interval '18 hours'`;
+  // 6 PM hora de Bogota, que es cuando se juega de verdad.
+  //
+  // Antes era `date_trunc('hour', ...) + 18 hours`, que trunca a la HORA en
+  // curso y no al dia: el torneo terminaba cayendo 18 horas despues del momento
+  // exacto en que corrias el seed. Segun la hora de ejecucion salian torneos a
+  // la 1 p.m., a las 10 a.m. o a las 5 de la manana, que es lo que se veia en
+  // la app. Se trunca al dia en zona Bogota y se vuelve a timestamptz.
+  const starts = `(now() AT TIME ZONE 'America/Bogota') + interval '${p.dias} days'`;
+  const startsAjustado =
+    p.dias === 0
+      ? `now() - interval '2 hours'`
+      : `((date_trunc('day', ${starts}) + interval '18 hours') AT TIME ZONE 'America/Bogota')`;
 
   stmts.push(`update tournaments set
       name = ${q(p.nombre)},
