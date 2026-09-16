@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@radix-ui/react-dropdown-menu';
-import { ExternalLink, LogOut, Settings } from 'lucide-react';
+import { ExternalLink, LogOut, Settings, Trash2 } from 'lucide-react';
 
 import { Avatar } from '@/components/ui/avatar';
 import { signOut } from '@/lib/auth-actions';
@@ -84,6 +84,23 @@ export function UserMenu({
           >
             <ExternalLink className="size-3.5" />
             Ver mi perfil público
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="bg-border/40 -mx-1 my-1 h-px" />
+
+        {/* Enlace directo al borrado de cuenta. Vivía solo al final del
+            formulario de perfil, diez campos abajo, y tres testers seguidos no
+            lo encontraron. La guideline 5.1.1(v) de Apple pide que el borrado
+            sea fácilmente accesible, y "bajar hasta el fondo de otra pantalla"
+            no lo es. */}
+        <DropdownMenuItem asChild>
+          <Link
+            href="/app/profile#eliminar-cuenta"
+            className="hover:bg-muted focus:bg-muted text-muted-foreground flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none"
+          >
+            <Trash2 className="size-3.5" />
+            Eliminar mi cuenta
           </Link>
         </DropdownMenuItem>
 

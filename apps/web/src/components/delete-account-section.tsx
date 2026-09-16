@@ -14,7 +14,14 @@ export function DeleteAccountSection({ showError }: { showError?: 'confirmation'
   const enabled = confirm === 'ELIMINAR';
 
   return (
-    <div className="border-destructive/30 bg-destructive/[0.04] mt-8 rounded-lg border p-6">
+    <div
+      // Ancla para el enlace directo del menú de cuenta. Vive al final de un
+      // formulario de diez campos, así que llegar scrolleando no funcionaba:
+      // tres testers seguidos se rindieron buscándolo. scroll-mt deja aire
+      // bajo el header sticky al saltar acá.
+      id="eliminar-cuenta"
+      className="border-destructive/30 bg-destructive/[0.04] mt-8 scroll-mt-24 rounded-lg border p-6"
+    >
       <div className="flex items-center gap-2">
         <AlertTriangle className="text-destructive size-4" />
         <h2 className="font-display text-lg tracking-tight">ZONA PELIGROSA</h2>
