@@ -1,4 +1,5 @@
 import { signInWithOAuthProvider } from '@/lib/auth-actions';
+import { isNativeApp } from '@/lib/native';
 
 /**
  * Botón de Google. Server-rendered: el form invoca el server action que arma la
@@ -15,7 +16,6 @@ import { signInWithOAuthProvider } from '@/lib/auth-actions';
  * ID + key en el portal de Apple) y recién entonces volver a renderizarlo; el
  * componente original está en el historial de git.
  */
-
 
 export function GoogleSignInButton({ next }: { next?: string }) {
   return (
@@ -50,10 +50,31 @@ export function GoogleSignInButton({ next }: { next?: string }) {
   );
 }
 
-export function OAuthButtons({ next }: { next?: string }) {
+/**
+ * Google + el separador "o" hacia el form de email. En la app nativa no se
+ * renderiza: Google bloquea OAuth dentro de un WebView, asi que Capacitor abre
+ * accounts.google.com en Safari/Chrome, el callback cae en el navegador y la
+ * sesion queda ahi — el usuario termina logueado en la web y la app sigue en
+ * el login. Hacerlo bien pide @capacitor/browser + un URL scheme propio, que
+ * son cambios nativos (build nuevo en ambas tiendas).
+ */
+export async function OAuthButtons({ next }: { next?: string }) {
+  if (await isNativeApp()) return null;
+
   return (
-    <div className="space-y-2">
-      <GoogleSignInButton next={next} />
-    </div>
+    <>
+      <div className="space-y-2">
+        <GoogleSignInButton next={next} />
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="border-border w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background text-muted-foreground px-2 tracking-widest">o</span>
+        </div>
+      </div>
+    </>
   );
 }

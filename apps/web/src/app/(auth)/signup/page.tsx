@@ -38,15 +38,6 @@ export default async function SignupPage({
 
       <OAuthButtons next={invite ? `/i/${invite}` : '/app'} />
 
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="border-border w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background text-muted-foreground px-2 tracking-widest">o</span>
-        </div>
-      </div>
-
       <ActionForm action={signUp}>
         {invite && <input type="hidden" name="invite" value={invite} />}
 
