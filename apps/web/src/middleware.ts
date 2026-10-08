@@ -5,6 +5,19 @@ import type { Database } from '@padelking/supabase';
 
 const PROTECTED_PREFIXES = ['/app'];
 const AUTH_PAGES = ['/login', '/signup'];
+// En la app nativa el login es obligatorio: sin sesion solo se puede entrar a
+// estas rutas (auth, callback de OAuth, legales y el borrado de cuenta).
+const NATIVE_PUBLIC = [
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/auth',
+  '/api',
+  '/privacy',
+  '/terms',
+  '/eliminar-cuenta',
+];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -37,15 +50,22 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = AUTH_PAGES.some((p) => path.startsWith(p));
   const isNative = (request.headers.get('user-agent') ?? '').includes('PadelKingApp');
 
-  // App nativa: no mostramos la landing marketing, pero tampoco el muro de
-  // login. Entrar a /tournaments, que es publico: quien abre la app por primera
-  // vez ve torneos y brackets reales antes de que se le pida una cuenta.
-  // Antes esto apuntaba a /app, y como /app esta protegido la primera pantalla
-  // de la app era siempre /login, sin contexto ni forma de mirar nada.
-  if (isNative && path === '/') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/tournaments';
-    return NextResponse.redirect(url);
+  // App nativa: login obligatorio. Antes se podia navegar sin sesion, pero la
+  // app nativa no tiene header y la barra inferior es la de la cuenta, asi que
+  // un usuario sin sesion quedaba en /tournaments sin navegacion ni forma de
+  // ingresar. Con sesion, '/' entra directo al panel.
+  if (isNative) {
+    if (path === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = user ? '/app' : '/login';
+      return NextResponse.redirect(url);
+    }
+    if (!user && !NATIVE_PUBLIC.some((p) => path.startsWith(p))) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('next', path);
+      return NextResponse.redirect(url);
+    }
   }
 
   if (isProtected && !user) {

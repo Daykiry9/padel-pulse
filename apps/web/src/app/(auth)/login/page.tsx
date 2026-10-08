@@ -6,6 +6,7 @@ import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { OAuthButtons } from '@/components/oauth-buttons';
 import { signIn } from '@/lib/auth-actions';
+import { isNativeApp } from '@/lib/native';
 
 export default async function LoginPage({
   searchParams,
@@ -13,6 +14,9 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; verify?: string; oauth_error?: string }>;
 }) {
   const { next, verify, oauth_error: oauthError } = await searchParams;
+  // En la app nativa el login es obligatorio, asi que la salida sin cuenta
+  // solo rebotaria de vuelta aca.
+  const native = await isNativeApp();
 
   return (
     <div className="space-y-8">
@@ -90,14 +94,16 @@ export default async function LoginPage({
 
       {/* Salida sin cuenta. Los torneos, brackets y rankings son publicos, asi
           que quien todavia no tiene razon para registrarse puede mirar primero. */}
-      <div className="border-border/40 border-t pt-6 text-center">
-        <Link
-          href="/tournaments"
-          className="text-muted-foreground hover:text-crown text-sm underline underline-offset-4"
-        >
-          Ver torneos sin crear cuenta
-        </Link>
-      </div>
+      {!native && (
+        <div className="border-border/40 border-t pt-6 text-center">
+          <Link
+            href="/tournaments"
+            className="text-muted-foreground hover:text-crown text-sm underline underline-offset-4"
+          >
+            Ver torneos sin crear cuenta
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
