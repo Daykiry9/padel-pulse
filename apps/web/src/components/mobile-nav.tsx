@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CircleUser, Home, Trophy, Users } from 'lucide-react';
+import { CircleUser, Home, LogIn, Trophy, Users } from 'lucide-react';
 
 const BASE_ITEMS = [
   { href: '/app', icon: Home, label: 'Inicio' },
@@ -13,16 +13,23 @@ const BASE_ITEMS = [
   { href: '/app/profile', icon: CircleUser, label: 'Perfil' },
 ];
 
+// En la app nativa no hay header (lo oculta PublicHeader), asi que sin sesion
+// este nav es la UNICA navegacion. Antes solo existia con sesion: quien
+// instalaba la app de cero caia en /tournaments sin header, sin barra abajo
+// y sin forma de llegar al login. Asi lo vio un tester nuevo de iPhone.
+const GUEST_ITEMS = [
+  { href: '/tournaments', icon: Trophy, label: 'Torneos' },
+  { href: '/login', icon: LogIn, label: 'Ingresar' },
+];
+
 const HIDE_ON = ['/login', '/signup'];
 
 /**
- * Bottom nav de la experiencia app. Visible cuando:
- * - hay sesión, y
- * - no estamos en una pantalla de auth, y
- * - estamos en la app nativa (Capacitor) O en una ruta /app (web mobile).
+ * Bottom nav de la experiencia app.
  *
- * En la app nativa el nav es permanente en toda la navegación. En web
- * solo aparece dentro de /app y solo en mobile (desktop tiene header nav).
+ * App nativa (Capacitor): siempre visible. Con sesion muestra las cuatro
+ * secciones (salvo en login/signup); sin sesion, Torneos + Ingresar.
+ * Web: solo con sesion, dentro de /app y en mobile (desktop tiene header).
  */
 export function MobileNav({
   isNative = false,
@@ -34,7 +41,11 @@ export function MobileNav({
   const pathname = usePathname();
 
   const hiddenRoute = HIDE_ON.some((p) => pathname.startsWith(p));
-  const show = isAuthed && !hiddenRoute && (isNative || pathname.startsWith('/app'));
+  const show = isNative
+    ? isAuthed
+      ? !hiddenRoute
+      : true
+    : isAuthed && !hiddenRoute && pathname.startsWith('/app');
 
   // Reserva espacio al final del body para que el nav fixed no tape contenido
   // (incluye el safe-area inferior de la barra de gestos en nativo).
@@ -48,7 +59,7 @@ export function MobileNav({
 
   if (!show) return null;
 
-  const ITEMS = BASE_ITEMS;
+  const ITEMS = isAuthed ? BASE_ITEMS : GUEST_ITEMS;
 
   return (
     <nav

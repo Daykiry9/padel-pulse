@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowRight, Crown, Trophy, Users, Globe } from 'lucide-react';
+import { ArrowRight, Trophy, Users, Globe } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,12 +59,7 @@ function Hero() {
         aria-hidden
       />
       <div className="mx-auto max-w-3xl px-6 pb-24 pt-20 text-center md:pt-28">
-        <Badge variant="crown" className="px-3 py-1">
-          <Crown className="size-3" />
-          Beta privada · Bogotá
-        </Badge>
-
-        <h1 className="font-display mt-6 text-balance text-5xl leading-[0.95] tracking-tight md:text-7xl">
+        <h1 className="font-display text-balance text-5xl leading-[0.95] tracking-tight md:text-7xl">
           PADELKING — LA LIGA DEL{' '}
           <span className="text-crown">PÁDEL</span>{' '}
           COLOMBIANO.

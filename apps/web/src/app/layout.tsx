@@ -32,7 +32,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'PadelKing — comunidades, torneos y rankings del pádel colombiano',
+    default: 'PadelKing',
     template: '%s · PadelKing',
   },
   description:

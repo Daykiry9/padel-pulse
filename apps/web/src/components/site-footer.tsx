@@ -105,9 +105,6 @@ export async function SiteFooter() {
             <Crown className="text-gold-400 size-3" />© {new Date().getFullYear()} PadelKing · Hecho
             en Bogotá
           </div>
-          <div className="text-muted-foreground text-[10px] uppercase tracking-[0.18em]">
-            v0.4 · beta privada
-          </div>
         </div>
       </div>
     </footer>
