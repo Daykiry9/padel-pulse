@@ -1,0 +1,20 @@
+# El plan gratis de Supabase pausa el proyecto tras ~7 dias sin actividad.
+# Paso el 2026-10-28: la base quedo INACTIVE y la app entera (perfil, borrar
+# cuenta, torneos) dejo de cargar datos. /tournaments consulta la base desde el
+# servidor, asi que pedirla una vez al dia cuenta como actividad.
+name: supabase-keepalive
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping padelking.co
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://padelking.co/tournaments)
+          echo "HTTP $code"
+          test "$code" = 200
