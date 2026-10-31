@@ -1,13 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Calendar, Crown, Hand, Instagram, MapPin } from 'lucide-react';
+import { Crown, Instagram, MapPin } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { PublicHeader } from '@/components/public-header';
+import { ShareLinkButton } from '@/components/share-link-button';
 import { SiteFooter } from '@/components/site-footer';
-import { CATEGORY_LABELS } from '@padelking/domain';
+import { CATEGORY_LABELS_SHORT } from '@padelking/domain';
 
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getCommunityPlayerRanking } from '@/lib/community-ranking';
@@ -48,6 +49,17 @@ type CommunityRankingItem = {
   elo: number;
   totalPlayers: number;
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const sb = (await getSupabaseServerClient()) as any;
+  const { data } = await sb.from('profiles_public').select('display_name, elo_rating').eq('id', id).maybeSingle();
+  const p = data as { display_name: string; elo_rating: number | null } | null;
+  if (!p) return {};
+  const description = `Carta de jugador · ${p.elo_rating ?? 1000} ELO en PadelKing`;
+  return { title: p.display_name, description, openGraph: { title: p.display_name, description } };
+}
 
 export default async function PublicPlayerPage({
   params,
@@ -191,134 +203,139 @@ export default async function PublicPlayerPage({
   // 800 → 1.0, 1000 → 2.0, 1200 → 3.0, 1400 → 4.0, etc.
   const elo = player.elo_rating ?? 1000;
   const estimatedLevel = Math.max(1.0, Math.min(7.0, 1.0 + (elo - 800) / 200));
+  const levelLabel = elo < 1000 ? 'Rookie' : elo < 1400 ? 'Intermedio' : 'Avanzado';
+  const accentText = isQueens ? 'text-queens' : 'text-crown';
+  const categoryShort = player.skill_category
+    ? (CATEGORY_LABELS_SHORT[player.skill_category] ?? player.skill_category).toUpperCase()
+    : null;
+  const initials = player.display_name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('');
+  const stats = [
+    { label: 'Torneos', value: String(tournamentsPlayed) },
+    { label: 'Nivel', value: estimatedLevel.toFixed(1) },
+    {
+      label: 'Posición',
+      value: player.favorite_position ? (POSITION_LABELS[player.favorite_position] ?? '—') : '—',
+    },
+    {
+      label: yearsPlaying !== null ? 'Años' : 'Mano',
+      value:
+        yearsPlaying !== null
+          ? String(yearsPlaying)
+          : player.dominant_hand
+            ? (HAND_LABELS[player.dominant_hand] ?? '—')
+            : '—',
+    },
+  ];
 
   return (
     <div className={`bg-background min-h-screen ${isQueens ? 'theme-queens' : ''}`}>
       <PublicHeader brand={isQueens ? 'queens' : 'kings'} />
 
       <main className="mx-auto max-w-3xl px-6 py-10">
-        <div className="space-y-2">
-          {player.skill_category && (
-            <Badge variant={isQueens ? 'queens' : 'crown'}>
-              {CATEGORY_LABELS[player.skill_category] ?? player.skill_category}
-            </Badge>
-          )}
-          <h1 className="font-display text-3xl tracking-tight md:text-4xl">
-            {player.display_name}
-          </h1>
-          {player.city && (
-            <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
-              <MapPin className="size-3.5" />
-              {player.city}
+        {/* Carta de jugador (estilo Kings League): antes eran tarjetas sueltas
+            de ELO / torneos / "perfil de juego" (esta ultima casi siempre
+            vacia). Una carta reune lo mismo en algo que dan ganas de compartir. */}
+        <div className="mx-auto max-w-sm">
+          <div
+            className={`relative isolate overflow-hidden rounded-[28px] border p-6 ${
+              isQueens ? 'border-queens/50 bg-queens/[0.06]' : 'border-crown/50 bg-crown/[0.06]'
+            } shadow-[0_24px_60px_-30px_rgba(0,0,0,0.9)]`}
+          >
+            <div className="court-grid absolute inset-0 -z-10 opacity-40" aria-hidden />
+            <div
+              aria-hidden
+              className={`absolute -right-16 -top-16 -z-10 size-56 rounded-full blur-3xl ${
+                isQueens ? 'bg-queens/25' : 'bg-crown/25'
+              }`}
+            />
+
+            <div className="flex items-start justify-between">
+              <div>
+                <div className={`font-display text-6xl leading-none tabular-nums tracking-tight ${accentText}`}>
+                  {elo}
+                </div>
+                <div className="text-muted-foreground mt-1 text-[10px] uppercase tracking-widest">ELO</div>
+                {categoryShort && (
+                  <div className={`font-display mt-3 text-2xl leading-none tracking-tight ${accentText}`}>
+                    {categoryShort}
+                  </div>
+                )}
+              </div>
+              <Crown className={`size-7 ${accentText}`} strokeWidth={1.5} aria-hidden />
+            </div>
+
+            <div
+              className={`font-display mx-auto mt-2 flex size-36 items-center justify-center rounded-full border-2 text-5xl tracking-tight ${
+                isQueens ? 'border-queens/60 bg-queens/10' : 'border-crown/60 bg-crown/10'
+              }`}
+              aria-hidden
+            >
+              {initials}
+            </div>
+
+            <h1 className="font-display mt-5 text-balance text-center text-3xl leading-none tracking-tight">
+              {player.display_name.toUpperCase()}
+            </h1>
+            <p className="text-muted-foreground mt-2 flex items-center justify-center gap-1.5 text-xs uppercase tracking-widest">
+              {player.city && (
+                <>
+                  <MapPin className="size-3" />
+                  {player.city} ·{' '}
+                </>
+              )}
+              {levelLabel}
             </p>
-          )}
-        </div>
 
-        {/* Stats principales */}
-        <div className="mt-8 grid gap-3 md:grid-cols-2">
-          <Card className={`p-5 ${isQueens ? 'border-queens/30 bg-queens/[0.04]' : 'border-crown/30 bg-crown/[0.04]'}`}>
-            <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-              ELO individual
-            </div>
-            <div className={`font-display mt-1 text-4xl tabular-nums tracking-tight ${isQueens ? 'text-queens' : 'text-crown'}`}>
-              {player.elo_rating ?? 1000}
-            </div>
-            <div className="text-muted-foreground mt-1 text-xs">
-              Nivel estimado{' '}
-              <span className="text-foreground font-semibold tabular-nums">
-                {estimatedLevel.toFixed(1)}
-              </span>{' '}
-              ·{' '}
-              {(player.elo_rating ?? 1000) < 1000
-                ? 'Rookie'
-                : (player.elo_rating ?? 1000) < 1400
-                  ? 'Intermedio'
-                  : 'Avanzado'}
-            </div>
-            {/* Reliability bar */}
-            <div className="border-border/40 mt-3 border-t pt-3">
-              <div className="text-muted-foreground flex items-center justify-between text-[10px] uppercase tracking-widest">
-                <span>Confianza</span>
-                <span
-                  className={
-                    reliability.level === 'high'
-                      ? 'text-success'
-                      : reliability.level === 'medium'
-                        ? 'text-foreground'
-                        : 'text-muted-foreground'
-                  }
-                >
-                  {reliability.label}
+            <div className={`my-5 h-px ${isQueens ? 'bg-queens/30' : 'bg-crown/30'}`} />
+
+            <dl className="grid grid-cols-4 text-center">
+              {stats.map((st) => (
+                <div key={st.label} className="flex flex-col-reverse">
+                  <dt className="text-muted-foreground mt-0.5 text-[9px] uppercase tracking-widest">{st.label}</dt>
+                  <dd className="font-display text-xl tabular-nums tracking-tight">{st.value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="text-muted-foreground mt-5 flex items-center justify-between gap-3 text-[10px] uppercase tracking-widest">
+              <span>Confianza del ELO</span>
+              <span className="flex flex-1 items-center gap-2">
+                <span className="bg-muted/60 h-1 flex-1 overflow-hidden rounded-full">
+                  <span
+                    className={`block h-full rounded-full ${isQueens ? 'bg-queens' : 'bg-crown'}`}
+                    style={{ width: `${reliability.pct}%` }}
+                  />
                 </span>
-              </div>
-              <div className="bg-muted/40 mt-1.5 h-1 overflow-hidden rounded-full">
-                <div
-                  className={`h-full rounded-full ${
-                    reliability.level === 'high'
-                      ? 'bg-success'
-                      : reliability.level === 'medium'
-                        ? isQueens
-                          ? 'bg-queens'
-                          : 'bg-crown'
-                        : 'bg-muted-foreground'
-                  }`}
-                  style={{ width: `${reliability.pct}%` }}
-                />
-              </div>
-              <div className="text-muted-foreground mt-1 text-[10px]">
-                {tournamentsPlayed === 0
-                  ? 'Sin torneos aún'
-                  : `Basado en ${tournamentsPlayed} torneo${tournamentsPlayed === 1 ? '' : 's'}`}
-              </div>
+                {reliability.label}
+              </span>
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-5">
-            <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-              Torneos
-            </div>
-            <div className="font-display mt-1 text-4xl tabular-nums tracking-tight">
-              {tournamentsPlayed}
-            </div>
-            <div className="text-muted-foreground mt-1 text-xs">
-              jugados en total
-            </div>
-          </Card>
+          <div className="mt-4 space-y-3">
+            <ShareLinkButton
+              label="Compartir carta"
+              text={`${player.display_name} en PadelKing: ${elo} ELO${categoryShort ? ` · ${categoryShort}` : ''}. ¿Te le mides?`}
+            />
+            {player.instagram_handle && (
+              <Link
+                href={`https://instagram.com/${player.instagram_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground flex min-h-11 items-center justify-center gap-1.5 text-xs uppercase tracking-widest"
+              >
+                <Instagram className="size-3.5" />@{player.instagram_handle}
+              </Link>
+            )}
+          </div>
         </div>
 
-        {/* Detalles del jugador */}
-        <Card className="mt-6 p-6">
-          <h2 className="font-display mb-4 text-lg tracking-tight">PERFIL DE JUEGO</h2>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            {player.dominant_hand && (
-              <DetailRow icon={Hand} label="Mano dominante" value={HAND_LABELS[player.dominant_hand] ?? player.dominant_hand} />
-            )}
-            {player.favorite_position && (
-              <DetailRow icon={Crown} label="Posición preferida" value={POSITION_LABELS[player.favorite_position] ?? player.favorite_position} />
-            )}
-            {yearsPlaying !== null && (
-              <DetailRow icon={Calendar} label="Años jugando" value={`${yearsPlaying} años (desde ${player.playing_since_year})`} />
-            )}
-            {player.instagram_handle && (
-              <DetailRow
-                icon={Instagram}
-                label="Instagram"
-                value={
-                  <Link
-                    href={`https://instagram.com/${player.instagram_handle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-crown hover:underline"
-                  >
-                    @{player.instagram_handle}
-                  </Link>
-                }
-              />
-            )}
-          </dl>
-        </Card>
-
-        {/* Ranking en sus comunidades */}
+        {/* Ranking en sus comunidades (solo si hay algo que mostrar) */}
+        {communityRankings.length > 0 && (
         <Card className="mt-6 p-6">
           <h2 className="font-display text-lg tracking-tight">RANKING EN SUS COMUNIDADES</h2>
           <p className="text-muted-foreground mt-1 text-xs">
@@ -362,6 +379,7 @@ export default async function PublicPlayerPage({
             </ul>
           )}
         </Card>
+        )}
 
         {/* Players in common: compartió torneo con */}
         <Card className="mt-6 p-6">
@@ -402,26 +420,6 @@ export default async function PublicPlayerPage({
       </main>
 
       <SiteFooter />
-    </div>
-  );
-}
-
-function DetailRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div>
-      <dt className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
-        <Icon className="size-3" />
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm">{value}</dd>
     </div>
   );
 }
