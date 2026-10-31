@@ -5,6 +5,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { OAuthButtons } from '@/components/oauth-buttons';
+import { TournamentTicket, getTournamentFromNext } from '@/components/tournament-ticket';
 import { signUp } from '@/lib/auth-actions';
 
 export default async function SignupPage({
@@ -14,11 +15,22 @@ export default async function SignupPage({
 }) {
   const { invite, next } = await searchParams;
   const afterAuth = invite ? `/i/${invite}` : next ?? '/app';
+  const ticket = invite ? null : await getTournamentFromNext(next);
 
   return (
     <div className="space-y-8">
+      {ticket && <TournamentTicket tournament={ticket} />}
+
       <div>
-        <h1 className="font-display text-4xl">CREAR CUENTA</h1>
+        <h1 className={`font-display ${ticket ? 'text-3xl md:text-4xl' : 'text-4xl'}`}>
+          {ticket ? (
+            <>
+              CREA TU CUENTA Y <span className="text-crown">ASEGURA TU CUPO</span>
+            </>
+          ) : (
+            'CREAR CUENTA'
+          )}
+        </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           ¿Ya tienes cuenta?{' '}
           <Link

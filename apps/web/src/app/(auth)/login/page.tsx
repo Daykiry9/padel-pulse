@@ -5,6 +5,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { FormField } from '@/components/ui/form-field';
 import { ActionForm, SubmitButton } from '@/components/forms/action-form';
 import { OAuthButtons } from '@/components/oauth-buttons';
+import { TournamentTicket, getTournamentFromNext } from '@/components/tournament-ticket';
 import { signIn } from '@/lib/auth-actions';
 import { isNativeApp } from '@/lib/native';
 
@@ -17,14 +18,26 @@ export default async function LoginPage({
   // En la app nativa el login es obligatorio, asi que la salida sin cuenta
   // solo rebotaria de vuelta aca.
   const native = await isNativeApp();
+  const ticket = await getTournamentFromNext(next);
 
   return (
     <div className="space-y-8">
+      {ticket && <TournamentTicket tournament={ticket} />}
+
       <div>
-        <h1 className="font-display text-4xl">INGRESAR</h1>
+        <h1 className={`font-display ${ticket ? 'text-3xl md:text-4xl' : 'text-4xl'}`}>
+          {ticket ? (
+            <>
+              INGRESA Y <span className="text-crown">ASEGURA TU CUPO</span>
+            </>
+          ) : (
+            'INGRESAR'
+          )}
+        </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           ¿Primera vez?{' '}
-          <Link href="/signup" className="text-crown underline">
+          {/* Conserva el destino: antes este link perdia el ?next= del torneo. */}
+          <Link href={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'} className="text-crown underline">
             Crea tu cuenta
           </Link>
           .
