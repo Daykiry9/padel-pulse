@@ -1,6 +1,7 @@
 import { ProfileCompletionBanner } from '@/components/profile-completion-banner';
 import { CommunityHubHome } from '@/components/community-hub-home';
 import { NoCommunityEmptyState } from '@/components/no-community-empty-state';
+import { getOpenTournaments } from '@/components/open-tournaments-rail';
 import { getActiveCommunityId, getUserCommunities } from '@/lib/active-community';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -41,10 +42,11 @@ export default async function DashboardPage() {
   const profile = profileRes.data as unknown as Profile | null;
 
   if (allCommunities.length === 0) {
+    const openTournaments = await getOpenTournaments(supabase);
     return (
       <div className="space-y-10">
         <ProfileCompletionBanner profile={profile} userId={user.id} />
-        <NoCommunityEmptyState />
+        <NoCommunityEmptyState name={profile?.display_name ?? null} tournaments={openTournaments} />
       </div>
     );
   }

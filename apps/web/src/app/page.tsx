@@ -3,26 +3,11 @@ import { redirect } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Countdown } from '@/components/ui/countdown';
-import { PriceTag } from '@/components/ui/price-tag';
 import { KingLogo } from '@/components/marketing/king-logo';
 import { LevelFinder, type LevelFinderTournament } from '@/components/marketing/level-finder';
-import { formatShort } from '@/lib/format-date';
+import { getOpenTournaments, OpenTournamentsRail, type OpenTournament } from '@/components/open-tournaments-rail';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
-
-type OpenTournament = {
-  id: string;
-  slug: string;
-  name: string;
-  starts_at: string;
-  category_kind: string;
-  category: string | null;
-  max_teams: number;
-  price_per_team: number;
-  clubs: { city: string } | null;
-  taken: number;
-};
 
 export default async function HomePage() {
   const user = await getSession();
@@ -33,29 +18,7 @@ export default async function HomePage() {
   // Torneos abiertos reales: alimentan el ticker del hero, el carrusel
   // "Juega esta semana" y las recomendaciones del test de nivel.
   const supabase = await getSupabaseServerClient();
-  const { data } = await supabase
-    .from('tournaments')
-    .select('id, slug, name, starts_at, category_kind, category, max_teams, price_per_team, clubs(city)')
-    .eq('status', 'open')
-    .gte('starts_at', new Date().toISOString())
-    .order('starts_at')
-    .limit(12);
-  const rows = (data ?? []) as unknown as Omit<OpenTournament, 'taken'>[];
-  const counts = new Map<string, number>();
-  if (rows.length) {
-    const { data: regs } = await supabase
-      .from('tournament_registrations')
-      .select('tournament_id')
-      .in('tournament_id', rows.map((t) => t.id))
-      .eq('status', 'confirmed');
-    for (const r of (regs ?? []) as { tournament_id: string }[]) {
-      counts.set(r.tournament_id, (counts.get(r.tournament_id) ?? 0) + 1);
-    }
-  }
-  const open: OpenTournament[] = rows.map((t) => ({
-    ...t,
-    taken: Math.min(counts.get(t.id) ?? 0, t.max_teams),
-  }));
+  const open = await getOpenTournaments(supabase);
   const tournaments: LevelFinderTournament[] = open
     .filter((t) => t.category_kind === 'casual' || t.category_kind === 'estandar')
     .map((t) => ({
@@ -177,47 +140,8 @@ function OpenNow({ tournaments }: { tournaments: OpenTournament[] }) {
         </Link>
       </div>
 
-      <div className="mx-auto flex max-w-6xl snap-x snap-mandatory scroll-px-6 gap-3 overflow-x-auto px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {tournaments.map((t) => {
-          const left = t.max_teams - t.taken;
-          const almostFull = left > 0 && left <= Math.max(2, Math.ceil(t.max_teams * 0.25));
-          return (
-            <Link key={t.id} href={`/tournaments/${t.slug}`} className="w-[78%] shrink-0 snap-start sm:w-72">
-              <Card className="hover:border-crown/50 flex h-full flex-col gap-3 p-5 transition-colors">
-                <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-widest">
-                  <span className="text-muted-foreground truncate">{t.clubs?.city ?? 'Colombia'}</span>
-                  <Countdown target={t.starts_at} size="sm" className="text-crown shrink-0" />
-                </div>
-                <div className="font-display line-clamp-2 min-h-[3.25rem] text-xl leading-tight tracking-tight">
-                  {t.name.toUpperCase()}
-                </div>
-                <div className="text-muted-foreground text-xs">{formatShort(t.starts_at)}</div>
-                <div className="mt-auto space-y-2 pt-2">
-                  <div className="flex gap-0.5" aria-hidden>
-                    {Array.from({ length: t.max_teams }, (_, i) => (
-                      <span
-                        key={i}
-                        className={`h-1.5 flex-1 rounded-full ${
-                          i < t.taken ? (almostFull ? 'bg-live' : 'bg-crown') : 'bg-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span
-                      className={`text-xs uppercase tracking-widest ${
-                        almostFull ? 'text-live font-semibold' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {left === 0 ? 'Cupo completo' : left === 1 ? 'Queda 1 cupo' : `Quedan ${left} cupos`}
-                    </span>
-                    <PriceTag value={t.price_per_team} />
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          );
-        })}
+      <div className="mx-auto max-w-6xl">
+        <OpenTournamentsRail tournaments={tournaments} />
       </div>
     </section>
   );
