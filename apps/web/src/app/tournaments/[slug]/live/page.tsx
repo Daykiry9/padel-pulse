@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Crown, Trophy } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Crown, Trophy } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -212,7 +212,7 @@ export default async function LiveTournamentPage({
     if (profileId) return profiles.get(profileId) ?? '?';
     if (guestId) {
       const name = guestNameMap.get(guestId) ?? '?';
-      return `${name} (invitado)`;
+      return name;
     }
     return '?';
   };
@@ -232,7 +232,7 @@ export default async function LiveTournamentPage({
     if (reg.player_id) return profiles.get(reg.player_id) ?? '?';
     if (reg.guest_player_id) {
       const name = guestNameMap.get(reg.guest_player_id) ?? '?';
-      return `${name} (invitado)`;
+      return name;
     }
     return 'Inscripción';
   };
@@ -298,8 +298,7 @@ export default async function LiveTournamentPage({
     // del map combinado (profiles + guests).
     const standingsLabel = (id: string): string => {
       if (profiles.has(id)) return profiles.get(id)!;
-      const g = guestNameMap.get(id);
-      return g ? `${g} (invitado)` : '?';
+      return guestNameMap.get(id) ?? '?';
     };
     const results = matches
       .filter((m) => m.status === 'completed' && m.score_one != null && m.score_two != null)
@@ -410,6 +409,14 @@ export default async function LiveTournamentPage({
       liveSections.push({ label: isElim ? bracketLabel(r, elimMax) : `RONDA ${r}`, matches: matchesByRound.get(r)! });
   }
 
+  // La primera seccion con partidos sin terminar es "la que se esta jugando".
+  const currentIdx = liveSections.findIndex((s) => s.matches.some((m) => m.status !== 'completed'));
+  const currentSection = currentIdx >= 0 ? liveSections[currentIdx]! : null;
+  const upcomingSections = currentIdx >= 0 ? liveSections.slice(currentIdx + 1) : [];
+  // renderMatch es una function declaration (hoisted) y TS no conserva ahi el narrowing de tournament.
+  const t: TournamentRow = tournament;
+  const doneSections = (currentIdx >= 0 ? liveSections.slice(0, currentIdx) : [...liveSections]).reverse();
+
   // Campeón (eliminación o playoff del híbrido): ganador de la final completada.
   const champRound = isGroups ? playoffMax : elimMax;
   const champPool = isGroups ? playoffMatches : matchesByRound.get(elimMax) ?? [];
@@ -444,7 +451,7 @@ export default async function LiveTournamentPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className={`mx-auto max-w-6xl px-6 py-10 ${user ? '' : 'pb-32'}`}>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             {tournament.status === 'in_progress' && (
@@ -467,6 +474,14 @@ export default async function LiveTournamentPage({
             {completedCount} / {totalCount} partidos jugados · {registrations.length} inscritos ·{' '}
             {tournament.courts} canchas
           </p>
+          {totalCount > 0 && (
+            <div className="bg-muted h-1.5 max-w-md overflow-hidden rounded-full">
+              <div
+                className="bg-crown h-full rounded-full transition-[width] duration-500"
+                style={{ width: `${Math.round((completedCount / totalCount) * 100)}%` }}
+              />
+            </div>
+          )}
           {isOwner && tournament.status === 'in_progress' && (
             <div className="pt-2">
               <FinishTournamentButton tournamentId={tournament.id} />
@@ -586,45 +601,111 @@ export default async function LiveTournamentPage({
                 </p>
               </section>
 
-              {/* Matches por ronda */}
-              <section>
-                <div className="mb-4 flex items-baseline justify-between">
-                  <h2 className="font-display text-2xl tracking-tight">PARTIDOS</h2>
-                  {inProgress.length > 0 && (
-                    <span className="text-live flex items-center gap-1.5 text-xs uppercase tracking-widest">
-                      <span className="bg-live size-1.5 animate-pulse rounded-full" />
-                      {inProgress.length} en cancha
-                    </span>
-                  )}
-                </div>
+              {/* Centro de partidos: la ronda en juego arriba en grande, luego
+                  las que faltan y al final los resultados (mas reciente primero,
+                  plegados). Antes era una lista plana de todas las rondas y el
+                  que abria el link tenia que bajar hasta encontrar lo que pasa. */}
+              <section className="space-y-8">
+                {currentSection ? (
+                  <div>
+                    <div className="mb-4 flex items-baseline justify-between">
+                      <h2 className="font-display text-2xl tracking-tight">
+                        {tournament.status === 'in_progress' ? 'AHORA' : 'PENDIENTE'}
+                        <span className="text-muted-foreground"> · {currentSection.label}</span>
+                      </h2>
+                      {inProgress.length > 0 && (
+                        <span className="text-live flex items-center gap-1.5 text-xs uppercase tracking-widest">
+                          <span className="bg-live size-1.5 animate-pulse rounded-full" />
+                          {inProgress.length} en cancha
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {currentSection.matches.map((m) => renderMatch(m, true))}
+                    </div>
+                  </div>
+                ) : (
+                  <h2 className="font-display text-2xl tracking-tight">RESULTADOS</h2>
+                )}
 
-                <div className="space-y-6">
-                  {liveSections.map((section) => {
-                    const roundMatches = section.matches;
-                    const done = roundMatches.filter((m) => m.status === 'completed').length;
-                    return (
+                {upcomingSections.length > 0 && (
+                  <div className="space-y-6">
+                    <h3 className="text-muted-foreground text-xs uppercase tracking-widest">Próximos</h3>
+                    {upcomingSections.map((section) => (
                       <div key={section.label}>
-                        <div className="text-muted-foreground mb-2 flex items-baseline justify-between text-[10px] uppercase tracking-widest">
-                          <span>{section.label}</span>
-                          <span>
-                            {done}/{roundMatches.length}
-                          </span>
+                        <div className="text-muted-foreground mb-2 text-[10px] uppercase tracking-widest">
+                          {section.label}
                         </div>
-                        <div className="space-y-2">
-                          {roundMatches.map((m) => {
+                        <div className="space-y-2">{section.matches.map((m) => renderMatch(m, false))}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {doneSections.length > 0 && (
+                  <div className="space-y-2">
+                    {currentSection && (
+                      <h3 className="text-muted-foreground text-xs uppercase tracking-widest">Resultados</h3>
+                    )}
+                    {doneSections.map((section, idx) => (
+                      <details
+                        key={section.label}
+                        open={idx === 0}
+                        className="group border-border/40 rounded-xl border"
+                      >
+                        <summary className="text-muted-foreground flex min-h-11 cursor-pointer list-none items-center justify-between px-4 text-[10px] uppercase tracking-widest [&::-webkit-details-marker]:hidden">
+                          <span>{section.label}</span>
+                          <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div className="space-y-2 px-2 pb-2">
+                          {section.matches.map((m) => renderMatch(m, false))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+      </main>
+
+      {/* Conversion: el live es lo que mas se comparte por WhatsApp y quien lo
+          abre sin cuenta no tenia ningun camino para jugar. */}
+      {!user && (
+        <div className="border-border/40 bg-background/80 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur-xl">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-6 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="min-w-0">
+              <div className="font-display truncate text-sm tracking-tight">¿TE VES AQUÍ?</div>
+              <div className="text-muted-foreground truncate text-xs">Inscríbete al próximo torneo y suma puntos.</div>
+            </div>
+            <Button variant="crown" className="h-11 shrink-0" asChild>
+              <Link href="/signup">Unirme gratis</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  function renderMatch(m: MatchRow, big: boolean) {
                             const isLive = m.status === 'in_progress';
                             const isDone = m.status === 'completed';
                             const oneWon = isDone && (m.score_one ?? 0) > (m.score_two ?? 0);
                             const twoWon = isDone && (m.score_two ?? 0) > (m.score_one ?? 0);
+                            const { mineOne: meOne, mineTwo: meTwo } = myParticipation(m);
+                            const isMine = meOne || meTwo;
                             return (
                               <Card
                                 key={m.id}
-                                className={`p-3 ${
+                                className={`${big ? 'p-4' : 'p-3'} ${
                                   isLive ? 'border-live/40 bg-live/[0.03]' : ''
-                                }`}
+                                } ${isMine ? 'ring-crown/60 ring-1' : ''}`}
                               >
                                 <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
-                                  <span>Cancha {m.court_number}</span>
+                                  <span className="flex items-center gap-2">
+                                    Cancha {m.court_number}
+                                    {isMine && <span className="text-crown">· Tu partido</span>}
+                                  </span>
                                   {isLive && (
                                     <span className="text-live flex items-center gap-1">
                                       <span className="bg-live size-1 animate-pulse rounded-full" />
@@ -632,13 +713,14 @@ export default async function LiveTournamentPage({
                                     </span>
                                   )}
                                 </div>
-                                <div className="space-y-1">
+                                <div className={big ? 'space-y-2' : 'space-y-1'}>
                                   <Row
                                     label={sideLabel(m, 'one')}
                                     score={m.score_one}
                                     detail={m.set_scores?.length ? m.set_scores.map((s) => s.one).join(' ') : null}
                                     winner={oneWon}
                                     dim={!isDone}
+                                    big={big}
                                   />
                                   <Row
                                     label={sideLabel(m, 'two')}
@@ -646,6 +728,7 @@ export default async function LiveTournamentPage({
                                     detail={m.set_scores?.length ? m.set_scores.map((s) => s.two).join(' ') : null}
                                     winner={twoWon}
                                     dim={!isDone}
+                                    big={big}
                                   />
                                 </div>
                                 {(() => {
@@ -661,10 +744,10 @@ export default async function LiveTournamentPage({
                                         scoreOne={m.score_one}
                                         scoreTwo={m.score_two}
                                         setScores={m.set_scores}
-                                        scoringMode={(tournament.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
-                                        numSets={tournament.num_sets}
-                                        gamesPerSet={tournament.games_per_set}
-                                        pointsPerMatch={tournament.points_per_match ?? undefined}
+                                        scoringMode={(t.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
+                                        numSets={t.num_sets}
+                                        gamesPerSet={t.games_per_set}
+                                        pointsPerMatch={t.points_per_match ?? undefined}
                                       />
                                     );
                                   }
@@ -679,27 +762,16 @@ export default async function LiveTournamentPage({
                                       scoreOne={m.score_one}
                                       scoreTwo={m.score_two}
                                       setScores={m.set_scores}
-                                      scoringMode={(tournament.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
-                                      numSets={tournament.num_sets}
-                                      gamesPerSet={tournament.games_per_set}
-                                      pointsPerMatch={tournament.points_per_match ?? undefined}
+                                      scoringMode={(t.scoring_mode as 'points' | 'games' | 'sets') ?? 'points'}
+                                      numSets={t.num_sets}
+                                      gamesPerSet={t.games_per_set}
+                                      pointsPerMatch={t.points_per_match ?? undefined}
                                     />
                                   );
                                 })()}
                               </Card>
                             );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
-          )}
-      </main>
-    </div>
-  );
+  }
 }
 
 function Row({
@@ -708,6 +780,7 @@ function Row({
   detail,
   winner = false,
   dim = false,
+  big = false,
 }: {
   label: string;
   score: number | null;
@@ -715,10 +788,12 @@ function Row({
   detail?: string | null;
   winner?: boolean;
   dim?: boolean;
+  /** Tarjeta de la ronda en juego: marcador grande tipo tablero. */
+  big?: boolean;
 }) {
   return (
     <div
-      className={`flex items-center justify-between text-sm ${
+      className={`flex items-center justify-between ${big ? 'text-base' : 'text-sm'} ${
         winner ? 'font-semibold' : ''
       } ${dim && !winner ? 'opacity-60' : ''}`}
     >
@@ -734,7 +809,7 @@ function Row({
           <span className="text-muted-foreground font-display text-xs tabular-nums">{detail}</span>
         )}
         <span
-          className={`font-display w-4 text-right tabular-nums ${
+          className={`font-display text-right tabular-nums ${big ? 'w-8 text-3xl' : 'w-4'} ${
             score == null ? 'text-muted-foreground/40' : winner ? 'text-crown' : 'text-foreground'
           }`}
         >
