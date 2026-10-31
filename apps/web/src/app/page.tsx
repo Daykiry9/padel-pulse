@@ -4,9 +4,20 @@ import { ArrowRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Countdown } from '@/components/ui/countdown';
+import { PriceTag } from '@/components/ui/price-tag';
 import { KingLogo } from '@/components/marketing/king-logo';
+import {
+  GiantWordmark,
+  HeroTicket,
+  MagneticLink,
+  Marquee,
+  Reveal,
+  RevealHeadline,
+  SmoothScroll,
+} from '@/components/marketing/landing-motion';
 import { LevelFinder, type LevelFinderTournament } from '@/components/marketing/level-finder';
 import { getOpenTournaments, OpenTournamentsRail, type OpenTournament } from '@/components/open-tournaments-rail';
+import { formatShort } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 export default async function HomePage() {
@@ -30,10 +41,18 @@ export default async function HomePage() {
 
   return (
     <main className="bg-background relative min-h-screen overflow-hidden">
+      <SmoothScroll />
       <SiteHeader />
       <Hero next={open.find((t) => t.taken < t.max_teams) ?? null} />
-      {open.length > 0 && <OpenNow tournaments={open} />}
-      <LevelFinder tournaments={tournaments} />
+      <Marquee items={['Inscríbete', 'Juega', 'Sube en el ranking', 'PadelKing', 'PadelQueens']} />
+      {open.length > 0 && (
+        <Reveal className="pt-16">
+          <OpenNow tournaments={open} />
+        </Reveal>
+      )}
+      <Reveal>
+        <LevelFinder tournaments={tournaments} />
+      </Reveal>
       <MinimalFooter />
     </main>
   );
@@ -65,6 +84,8 @@ function SiteHeader() {
   );
 }
 
+// Hero cinematografico: titular que se revela por palabras y, al lado, la
+// boleta 3D del proximo torneo real (antes era una pastilla de texto chiquita).
 function Hero({ next }: { next: OpenTournament | null }) {
   return (
     <section className="relative isolate overflow-hidden">
@@ -73,43 +94,66 @@ function Hero({ next }: { next: OpenTournament | null }) {
         className="absolute inset-x-0 top-0 -z-10 h-[800px] bg-[radial-gradient(ellipse_at_top,rgba(255,197,61,0.18),transparent_60%)]"
         aria-hidden
       />
-      <div className="mx-auto max-w-3xl px-6 pb-16 pt-12 text-center md:pb-20 md:pt-24">
-        {/* Ticker del proximo torneo real: prueba de que aca se juega, no un folleto. */}
-        {next && (
-          <Link
-            href={`/tournaments/${next.slug}`}
-            className="border-border/60 bg-card/60 hover:border-crown/60 mx-auto mb-8 inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border py-2 pl-3 pr-4 text-xs backdrop-blur transition-colors"
-          >
-            <span className="bg-live size-2 shrink-0 animate-pulse rounded-full" />
-            <span className="text-muted-foreground shrink-0 uppercase tracking-widest">Próximo</span>
-            <span className="min-w-0 truncate font-semibold">{next.name}</span>
-            <Countdown target={next.starts_at} size="sm" className="text-crown shrink-0" />
-            <ArrowRight className="text-muted-foreground size-3.5 shrink-0" />
-          </Link>
-        )}
+      <div
+        className={`mx-auto grid items-center gap-12 px-6 pb-16 pt-12 md:pb-24 md:pt-20 ${
+          next ? 'max-w-6xl lg:grid-cols-[1.15fr_0.85fr]' : 'max-w-3xl'
+        }`}
+      >
+        <div className={`min-w-0 text-center ${next ? 'lg:text-left' : ''}`}>
+          <RevealHeadline
+            className="font-display text-balance text-[2.5rem] leading-[0.95] tracking-tight sm:text-5xl md:text-7xl"
+            words={[
+              { text: 'PADELKING' },
+              { text: '—' },
+              { text: 'LA' },
+              { text: 'LIGA' },
+              { text: 'DEL' },
+              { text: 'PÁDEL', accent: true },
+              { text: 'COLOMBIANO.' },
+            ]}
+          />
 
-        <h1 className="font-display text-balance text-5xl leading-[0.95] tracking-tight md:text-7xl">
-          PADELKING — LA LIGA DEL{' '}
-          <span className="text-crown">PÁDEL</span>{' '}
-          COLOMBIANO.
-        </h1>
+          <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-500 duration-700">
+            <p
+              className={`text-muted-foreground mx-auto mt-6 max-w-xl text-pretty text-lg md:text-xl ${
+                next ? 'lg:mx-0' : ''
+              }`}
+            >
+              Comunidades, torneos y ranking para el pádel amateur. Crea tu equipo, juega y sube en la
+              tabla.
+            </p>
 
-        <p className="text-muted-foreground mx-auto mt-6 max-w-xl text-balance text-lg md:text-xl">
-          Comunidades, torneos y ranking para el pádel amateur. Crea tu equipo, juega y sube en la
-          tabla.
-        </p>
-
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Button variant="crown" size="xl" asChild>
-            <Link href="/signup">
-              Crear cuenta
-              <ArrowRight className="size-5" />
-            </Link>
-          </Button>
-          <Button variant="outline" size="xl" asChild>
-            <Link href="#nivel">¿Cuál es mi categoría?</Link>
-          </Button>
+            <div className={`mt-8 flex flex-wrap justify-center gap-3 ${next ? 'lg:justify-start' : ''}`}>
+              <Button variant="crown" size="xl" asChild>
+                <Link href="/signup">
+                  Crear cuenta
+                  <ArrowRight className="size-5" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="xl" asChild>
+                <Link href="#nivel">¿Cuál es mi categoría?</Link>
+              </Button>
+            </div>
+          </div>
         </div>
+
+        {next && (
+          <div className="mx-auto w-full max-w-md">
+            <HeroTicket
+              t={{
+                slug: next.slug,
+                name: next.name,
+                starts_at: next.starts_at,
+                max_teams: next.max_teams,
+                price_per_team: next.price_per_team,
+                taken: next.taken,
+              }}
+              countdown={<Countdown target={next.starts_at} size="sm" className="text-crown" />}
+              meta={`${next.clubs?.city ?? 'Colombia'} · ${formatShort(next.starts_at)}`}
+              price={<PriceTag value={next.price_per_team} />}
+            />
+          </div>
+        )}
       </div>
     </section>
   );
@@ -147,22 +191,43 @@ function OpenNow({ tournaments }: { tournaments: OpenTournament[] }) {
   );
 }
 
+// Cierre tipo "footer.design": CTA final magnetico + wordmark gigante que sube
+// con el scroll. Antes el landing terminaba en una linea de links.
 function MinimalFooter() {
   return (
-    <footer className="border-t border-border/40">
-      <div className="text-muted-foreground mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-xs md:flex-row">
-        <div className="flex items-center gap-2">
-          <KingLogo />
-          <span className="font-display tracking-tight">
-            PADEL<span className="text-crown">KING</span>
-          </span>
+    <footer className="border-border/40 relative isolate overflow-hidden border-t">
+      <div
+        className="absolute inset-x-0 bottom-0 -z-10 h-[500px] bg-[radial-gradient(ellipse_at_bottom,rgba(255,197,61,0.14),transparent_65%)]"
+        aria-hidden
+      />
+      <Reveal className="mx-auto max-w-3xl px-6 pt-20 text-center">
+        <p className="text-muted-foreground text-xs uppercase tracking-widest">Tu primer torneo está a un clic</p>
+        <h2 className="font-display mt-3 text-balance text-4xl tracking-tight md:text-6xl">
+          ¿TE LE <span className="text-crown">MIDES?</span>
+        </h2>
+        <div className="mt-8">
+          <MagneticLink
+            href="/signup"
+            className="bg-crown text-primary-foreground shadow-glow-crown press inline-flex min-h-14 items-center gap-2 rounded-full px-8 text-lg font-bold"
+          >
+            Unirme gratis
+            <ArrowRight className="size-5" />
+          </MagneticLink>
         </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 uppercase tracking-widest">
+      </Reveal>
+
+      <div className="text-muted-foreground mx-auto mt-16 flex max-w-6xl flex-col items-center justify-between gap-3 px-6 text-xs md:flex-row">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 uppercase tracking-widest">
+          <Link href="/tournaments" className="hover:text-foreground">Torneos</Link>
           <Link href="/privacy" className="hover:text-foreground">Privacidad</Link>
           <Link href="/terms" className="hover:text-foreground">Términos</Link>
           <Link href="mailto:hola@padelking.co" className="hover:text-foreground normal-case tracking-normal">hola@padelking.co</Link>
         </div>
         <div>© {new Date().getFullYear()} PadelKing</div>
+      </div>
+
+      <div className="mt-6">
+        <GiantWordmark />
       </div>
     </footer>
   );

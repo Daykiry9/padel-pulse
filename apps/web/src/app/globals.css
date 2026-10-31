@@ -318,3 +318,23 @@
     transform: translateY(0);
   }
 }
+
+/* Cinta infinita del landing */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@utility animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+
+/* Titular del hero: cada palabra sube desde su mascara */
+@keyframes word-up {
+  from { transform: translateY(105%) rotate(4deg); }
+  to { transform: translateY(0) rotate(0); }
+}
+
+@utility animate-word-up {
+  animation: word-up 900ms var(--ease-out) both;
+}
