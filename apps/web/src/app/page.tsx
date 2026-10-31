@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { KingLogo } from '@/components/marketing/king-logo';
-import { getSession } from '@/lib/supabase/server';
+import { LevelFinder, type LevelFinderTournament } from '@/components/marketing/level-finder';
+import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 
 export default async function HomePage() {
   const user = await getSession();
@@ -14,10 +15,30 @@ export default async function HomePage() {
     redirect('/app');
   }
 
+  // Torneos abiertos para recomendar al terminar el test de nivel.
+  const supabase = await getSupabaseServerClient();
+  const { data } = await supabase
+    .from('tournaments')
+    .select('slug, name, starts_at, category_kind, category')
+    .eq('status', 'open')
+    .in('category_kind', ['casual', 'estandar'])
+    .gte('starts_at', new Date().toISOString())
+    .order('starts_at')
+    .limit(20);
+  const tournaments: LevelFinderTournament[] = (
+    (data ?? []) as { slug: string; name: string; starts_at: string; category_kind: string; category: string | null }[]
+  ).map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    startsAt: t.starts_at,
+    category: t.category_kind === 'casual' ? null : t.category,
+  }));
+
   return (
     <main className="bg-background relative min-h-screen overflow-hidden">
       <SiteHeader />
       <Hero />
+      <LevelFinder tournaments={tournaments} />
       <WhatIsIt />
       <MinimalFooter />
     </main>
@@ -78,7 +99,7 @@ function Hero() {
             </Link>
           </Button>
           <Button variant="outline" size="xl" asChild>
-            <Link href="/login">Ya tengo cuenta</Link>
+            <Link href="#nivel">¿Cuál es mi categoría?</Link>
           </Button>
         </div>
       </div>
