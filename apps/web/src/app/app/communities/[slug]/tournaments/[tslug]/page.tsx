@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Calendar, Check, ChevronRight, Crown, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Crown, Trophy } from 'lucide-react';
 
-import { CATEGORY_LABELS } from '@padelking/domain';
-import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
+import type { Gender, TeamCategory } from '@padelking/domain';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,11 +13,10 @@ import { ShareInviteButton } from '@/components/share-invite-button';
 import { SharePodiumButton } from '@/components/share-podium-button';
 import { ShareStoryButton } from '@/components/share-story-button';
 import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
-import { formatDateTime } from '@/lib/format-date';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
 import { GenerateBracketButton } from '@/app/app/tournaments/[slug]/manage/generate-bracket-button';
-import { RegisterButton } from '@/app/tournaments/[slug]/register-button';
+import { TournamentRegistrationCard } from '@/components/tournament-registration-card';
 
 /**
  * Community hub — detalle de torneo dentro de una comunidad.
@@ -308,11 +306,7 @@ export default async function CommunityTournamentDetailPage({
     }));
   }
 
-  const isIndividual = tournament.competition_unit === 'player';
   const backHref = `/app/communities/${community.slug}?tab=tournaments`;
-  // Mismo criterio que el gate del server (registerToTournament): solo confirmed.
-  const isFull =
-    registrations.filter((r) => r.status === 'confirmed').length >= tournament.max_teams;
 
   return (
     <div className="space-y-8">
@@ -368,31 +362,17 @@ export default async function CommunityTournamentDetailPage({
         )}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <InfoCard
-          icon={Calendar}
-          label="Fecha"
-          value={formatDateTime(tournament.starts_at)}
-        />
-        <InfoCard
-          icon={Crown}
-          label="Categoría"
-          value={
-            tournament.category_kind === 'suma' ||
-            tournament.category_kind === 'mixto_suma' ||
-            tournament.category_kind === 'queens_suma'
-              ? `Suma ≥ ${tournament.min_sum}${tournament.max_player_category_value ? ` (tope ${tournament.max_player_category_value} por jugador)` : ''}`
-              : tournament.category
-                ? (CATEGORY_LABELS[tournament.category] ?? tournament.category)
-                : 'Casual'
-          }
-        />
-        <InfoCard
-          icon={Users}
-          label="Inscritos"
-          value={`${registrations?.length ?? 0} / ${tournament.max_teams} ${isIndividual ? 'jugadores' : 'equipos'}`}
-        />
-      </div>
+      {/* Misma tarjeta de inscripcion que el detalle publico: arriba, con
+          cupos, cuenta regresiva y "ESTAS DENTRO". Antes aca iban tres
+          tarjetas de info y la inscripcion quedaba al fondo, debajo del chat. */}
+      <TournamentRegistrationCard
+        tournament={tournament}
+        registrations={registrations}
+        user={user}
+        userIsParticipant={userIsParticipant}
+        myProfile={myProfile}
+        myTeams={myTeams}
+      />
 
       {tournament.description && (
         <Card className="p-6">
@@ -435,89 +415,6 @@ export default async function CommunityTournamentDetailPage({
         />
       )}
 
-      {/* Inscripción */}
-      <Card className="p-6">
-        <h2 className="font-display mb-4 text-2xl tracking-tight">INSCRIPCIÓN</h2>
-        {userIsParticipant ? (
-          <div className="border-success/30 bg-success/[0.04] flex items-center gap-2 rounded-lg border p-4 text-sm">
-            <Check className="text-success size-4 shrink-0" aria-hidden />
-            <span>Ya estás inscrito en este torneo.</span>
-          </div>
-        ) : isFull ? (
-          <div className="border-border/40 bg-muted/30 text-muted-foreground flex items-center gap-2 rounded-lg border p-4 text-sm">
-            Cupo completo: {tournament.max_teams} {isIndividual ? 'jugadores' : 'equipos'}.
-          </div>
-        ) : isIndividual ? (
-          <div className="space-y-3">
-            <p className="text-sm">
-              Este torneo es individual. Tu categoría:{' '}
-              <strong>{myProfile?.skillCategory ?? '—'}</strong>
-            </p>
-            {myProfile?.eligibility.ok ? (
-              <RegisterButton
-                tournamentId={tournament.id}
-                mode="individual"
-                label="Inscribirme como jugador"
-              />
-            ) : (
-              <p className="text-destructive text-sm">{myProfile?.eligibility.reason}</p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm">
-              Puedes inscribirte con un equipo registrado, o con un compañero solo para
-              este torneo (lo más común en pádel amateur).
-            </p>
-
-            {myTeams.filter((t) => t.eligibility.ok).length > 0 && (
-              <div className="space-y-3 rounded-lg bg-muted/30 p-4">
-                <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-                  Opción A · Equipo registrado
-                </div>
-                {myTeams.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between">
-                    <div>
-                      <div className="font-display text-sm">{t.name}</div>
-                      <div className="text-muted-foreground text-xs uppercase tracking-widest">
-                        {t.category ? CATEGORY_LABELS[t.category] : 'Mixto'}
-                      </div>
-                      {!t.eligibility.ok && (
-                        <div className="text-destructive mt-1 text-xs">
-                          {t.eligibility.reason}
-                        </div>
-                      )}
-                    </div>
-                    {!t.eligibility.ok && <Badge variant="muted">No elegible</Badge>}
-                  </div>
-                ))}
-                <RegisterButton
-                  tournamentId={tournament.id}
-                  mode="team"
-                  teams={myTeams
-                    .filter((t) => t.eligibility.ok)
-                    .map((t) => ({ id: t.id, name: t.name }))}
-                />
-              </div>
-            )}
-
-            <div className="space-y-3 rounded-lg bg-muted/30 p-4">
-              <div className="text-muted-foreground text-[10px] uppercase tracking-widest">
-                {myTeams.filter((t) => t.eligibility.ok).length > 0
-                  ? 'Opción B · Compañero solo para este torneo'
-                  : 'Inscríbete con un compañero'}
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Tu categoría:{' '}
-                <strong className="text-foreground">{myProfile?.skillCategory ?? '—'}</strong>.
-                La elegibilidad se valida cuando confirmes el compañero.
-              </p>
-              <RegisterButton tournamentId={tournament.id} mode="adhoc" />
-            </div>
-          </div>
-        )}
-      </Card>
-
       {/* Inscritos */}
       <div>
         <h2 className="font-display mb-3 text-2xl tracking-tight">INSCRITOS</h2>
@@ -554,25 +451,5 @@ export default async function CommunityTournamentDetailPage({
         </Button>
       )}
     </div>
-  );
-}
-
-function InfoCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-}) {
-  return (
-    <Card className="p-4">
-      <div className="text-muted-foreground flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
-        <Icon className="size-3.5" />
-        {label}
-      </div>
-      <div className="font-display mt-1.5 text-lg tracking-tight capitalize">{value}</div>
-    </Card>
   );
 }
