@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Crown, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarPlus, Check, Crown, Trophy } from 'lucide-react';
 
 import { CATEGORY_LABELS } from '@padelking/domain';
 import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
@@ -18,6 +18,7 @@ import { SharePodiumButton } from '@/components/share-podium-button';
 import { ShareStoryButton } from '@/components/share-story-button';
 import { TournamentChat, type ChatMessage } from '@/components/tournament-chat';
 import { formatShort } from '@/lib/format-date';
+import { isNativeApp } from '@/lib/native';
 import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { GenerateBracketButton } from '@/app/app/tournaments/[slug]/manage/generate-bracket-button';
 import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
@@ -348,6 +349,13 @@ export default async function TournamentDetailPage({
   const spotsLeft = tournament.max_teams - taken;
   const almostFull = spotsLeft > 0 && spotsLeft <= Math.max(2, Math.ceil(tournament.max_teams * 0.25));
   const msToStart = new Date(tournament.starts_at).getTime() - Date.now();
+  // Calendario: en la app nativa un .ics del mismo origen no se descarga en el
+  // WebView, asi que alla va el template de Google Calendar (abre afuera).
+  const native = await isNativeApp();
+  const calStamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const calStart = new Date(tournament.starts_at);
+  const calEnd = tournament.ends_at ? new Date(tournament.ends_at) : new Date(calStart.getTime() + 3 * 3_600_000);
+  const calDates = `${calStamp(calStart)}/${calStamp(calEnd)}`;
   const startsIn =
     tournament.status !== 'open' || msToStart <= 0
       ? null
@@ -528,9 +536,50 @@ export default async function TournamentDetailPage({
                 </p>
               </div>
             ) : userIsParticipant ? (
-              <div className="border-success/30 bg-success/[0.04] flex items-center gap-2 rounded-lg border p-4 text-sm">
-                <Check className="text-success size-4 shrink-0" aria-hidden />
-                <span>Ya estás inscrito en este torneo.</span>
+              // Momento de mas emocion del flujo: antes era una linea verde y
+              // ya. Ahora confirma en grande y empuja a traer al grupo (el link
+              // muestra el preview con cupos) y a agendarlo.
+              <div className="border-success/30 bg-success/[0.05] animate-in fade-in zoom-in-95 space-y-4 rounded-xl border p-5 duration-500">
+                <div className="flex items-start gap-3">
+                  <span className="bg-success/15 text-success flex size-10 shrink-0 items-center justify-center rounded-full">
+                    <Check className="size-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-display text-3xl leading-none tracking-tight">ESTÁS DENTRO.</div>
+                    <p className="text-muted-foreground mt-1.5 text-sm">
+                      {startsIn ? `Arranca en ${startsIn} · ` : ''}
+                      {formatShort(tournament.starts_at)}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      `Me inscribí a ${tournament.name} (${formatShort(tournament.starts_at)}).${
+                        spotsLeft > 0 ? ` Quedan ${spotsLeft} cupos, ¡métete!` : ''
+                      }\n\nhttps://padelking.co/tournaments/${tournament.slug}`,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 text-sm font-semibold uppercase tracking-wide text-black transition-[filter,transform] hover:brightness-110 active:scale-[0.98]"
+                  >
+                    Avísale a tu grupo
+                  </a>
+                  <Button variant="outline" className="min-h-12" asChild>
+                    <a
+                      href={
+                        native
+                          ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(tournament.name)}&dates=${calDates}&details=${encodeURIComponent(`https://padelking.co/tournaments/${tournament.slug}`)}`
+                          : `/api/calendar/${tournament.slug}`
+                      }
+                      target={native ? '_blank' : undefined}
+                      rel={native ? 'noopener noreferrer' : undefined}
+                    >
+                      <CalendarPlus className="size-4" />
+                      Agregar al calendario
+                    </a>
+                  </Button>
+                </div>
               </div>
             ) : isFull ? (
               <div className="border-border/40 bg-muted/30 text-muted-foreground flex items-center gap-2 rounded-lg border p-4 text-sm">
