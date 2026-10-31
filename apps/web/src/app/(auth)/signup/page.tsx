@@ -10,9 +10,10 @@ import { signUp } from '@/lib/auth-actions';
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ invite?: string }>;
+  searchParams: Promise<{ invite?: string; next?: string }>;
 }) {
-  const { invite } = await searchParams;
+  const { invite, next } = await searchParams;
+  const afterAuth = invite ? `/i/${invite}` : next ?? '/app';
 
   return (
     <div className="space-y-8">
@@ -21,7 +22,7 @@ export default async function SignupPage({
         <p className="text-muted-foreground mt-2 text-sm">
           ¿Ya tienes cuenta?{' '}
           <Link
-            href={invite ? `/login?next=/i/${invite}` : '/login'}
+            href={afterAuth !== '/app' ? `/login?next=${encodeURIComponent(afterAuth)}` : '/login'}
             className="text-crown underline"
           >
             Ingresa aquí
@@ -36,10 +37,11 @@ export default async function SignupPage({
         )}
       </div>
 
-      <OAuthButtons next={invite ? `/i/${invite}` : '/app'} />
+      <OAuthButtons next={afterAuth} />
 
       <ActionForm action={signUp}>
         {invite && <input type="hidden" name="invite" value={invite} />}
+        {next && <input type="hidden" name="next" value={next} />}
 
         <FormField label="Nombre" htmlFor="display_name" hint="Cómo te conocen tus amigos">
           <Input id="display_name" name="display_name" required placeholder="Juanes Rodríguez" />

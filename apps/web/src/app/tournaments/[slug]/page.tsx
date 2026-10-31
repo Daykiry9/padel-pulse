@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Check, Crown, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Crown, Trophy } from 'lucide-react';
 
 import { CATEGORY_LABELS } from '@padelking/domain';
 import type { CategoryKind, Gender, TeamCategory } from '@padelking/domain';
@@ -222,8 +222,7 @@ export default async function TournamentDetailPage({
   ): string => {
     if (profileId) return registrationNameMap.get(profileId) ?? '?';
     if (guestId) {
-      const name = guestNameMap.get(guestId) ?? '?';
-      return `${name} (invitado)`;
+      return guestNameMap.get(guestId) ?? '?';
     }
     return '?';
   };
@@ -242,8 +241,7 @@ export default async function TournamentDetailPage({
     }
     if (r.player_id) return registrationNameMap.get(r.player_id) ?? '?';
     if (r.guest_player_id) {
-      const name = guestNameMap.get(r.guest_player_id) ?? '?';
-      return `${name} (invitado)`;
+      return guestNameMap.get(r.guest_player_id) ?? '?';
     }
     return 'Inscripción';
   };
@@ -293,6 +291,21 @@ export default async function TournamentDetailPage({
   // Mismo criterio que el gate del server (registerToTournament): solo confirmed.
   const isFull =
     registrations.filter((r) => r.status === 'confirmed').length >= tournament.max_teams;
+
+  // Urgencia: cupos que quedan y cuanto falta para arrancar. "10 / 12" no
+  // le decia a nadie que quedaban dos cupos.
+  const taken = Math.min(registrations.length, tournament.max_teams);
+  const spotsLeft = tournament.max_teams - taken;
+  const almostFull = spotsLeft > 0 && spotsLeft <= Math.max(2, Math.ceil(tournament.max_teams * 0.25));
+  const msToStart = new Date(tournament.starts_at).getTime() - Date.now();
+  const startsIn =
+    tournament.status !== 'open' || msToStart <= 0
+      ? null
+      : msToStart < 3_600_000
+        ? `${Math.ceil(msToStart / 60_000)} min`
+        : msToStart < 86_400_000
+          ? `${Math.floor(msToStart / 3_600_000)} h ${Math.floor((msToStart % 3_600_000) / 60_000)} min`
+          : `${Math.floor(msToStart / 86_400_000)} d ${Math.floor((msToStart % 86_400_000) / 3_600_000)} h`;
 
   return (
     <div className="bg-background min-h-screen">
@@ -411,17 +424,58 @@ export default async function TournamentDetailPage({
               </div>
             </dl>
 
+            {tournament.status === 'open' && (
+              <div className="border-border/40 space-y-2 border-b px-6 py-4">
+                <div className="flex items-baseline justify-between gap-3 text-xs uppercase tracking-widest">
+                  <span className={almostFull ? 'text-live font-semibold' : isFull ? 'text-muted-foreground' : 'text-crown'}>
+                    {isFull
+                      ? 'Cupo completo'
+                      : spotsLeft === 1
+                        ? '¡Queda 1 cupo!'
+                        : almostFull
+                          ? `¡Quedan ${spotsLeft} cupos!`
+                          : `Quedan ${spotsLeft} cupos`}
+                  </span>
+                  {startsIn && <span className="text-muted-foreground tabular-nums">Arranca en {startsIn}</span>}
+                </div>
+                <div className="flex gap-1" aria-hidden>
+                  {Array.from({ length: tournament.max_teams }, (_, i) => (
+                    <span
+                      key={i}
+                      className={`h-2 flex-1 rounded-full ${
+                        i < taken ? (almostFull ? 'bg-live' : 'bg-crown') : 'bg-muted'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="p-6">
               <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="font-display text-2xl tracking-tight">INSCRIPCIÓN</h2>
                 <PriceTag value={tournament.price_per_team} size="lg" />
               </div>
               {!user ? (
-              <div className="flex items-center justify-between">
-                <p className="text-muted-foreground text-sm">Inicia sesión para inscribirte.</p>
-                <Button variant="crown" asChild>
-                  <Link href={`/login?next=/tournaments/${tournament.slug}`}>Ingresar</Link>
+              // El que llega por un link de torneo casi siempre es nuevo: el CTA
+              // principal crea la cuenta y lo devuelve aca a inscribirse.
+              <div className="space-y-3">
+                <Button variant="crown" size="xl" className="w-full" disabled={isFull} asChild={!isFull}>
+                  {isFull ? (
+                    <span>Cupo completo</span>
+                  ) : (
+                    <Link href={`/signup?next=/tournaments/${tournament.slug}`}>
+                      Inscribirme
+                      <ArrowRight className="size-5" />
+                    </Link>
+                  )}
                 </Button>
+                <p className="text-muted-foreground text-center text-xs">
+                  ¿Ya tienes cuenta?{' '}
+                  <Link href={`/login?next=/tournaments/${tournament.slug}`} className="text-crown underline">
+                    Ingresa
+                  </Link>
+                </p>
               </div>
             ) : userIsParticipant ? (
               <div className="border-success/30 bg-success/[0.04] flex items-center gap-2 rounded-lg border p-4 text-sm">
@@ -546,21 +600,39 @@ export default async function TournamentDetailPage({
 
           {/* Inscritos */}
           <div>
-            <h2 className="font-display mb-3 text-2xl tracking-tight">INSCRITOS</h2>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-display text-2xl tracking-tight">INSCRITOS</h2>
+              <span className="text-muted-foreground text-xs uppercase tracking-widest tabular-nums">
+                {registrations.length} / {tournament.max_teams}
+              </span>
+            </div>
             {(registrations ?? []).length === 0 ? (
               <Card className="p-6 text-center text-sm text-muted-foreground">
                 Aún no hay inscripciones. Sé el primero.
               </Card>
             ) : (
-              <Card className="divide-border/30 divide-y">
+              <Card className="divide-border/30 grid divide-y p-0 md:grid-cols-2 md:divide-y-0">
                 {registrations!.map((r) => {
                   const label = registrationLabel(r);
+                  const names = label.split(' / ');
                   return (
                     <div
                       key={r.id}
-                      className="flex items-center justify-between px-4 py-3 text-sm"
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
                     >
-                      <span>{label}</span>
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span className="flex shrink-0 -space-x-2" aria-hidden>
+                          {names.map((n, i) => (
+                            <span
+                              key={i}
+                              className="bg-crown/15 text-crown border-card font-display flex size-8 items-center justify-center rounded-full border-2 text-xs"
+                            >
+                              {n.trim().charAt(0).toUpperCase()}
+                            </span>
+                          ))}
+                        </span>
+                        <span className="min-w-0 truncate">{label}</span>
+                      </span>
                       {isOrganizer && (
                         <RemoveRegistrationButton registrationId={r.id} label={label} />
                       )}

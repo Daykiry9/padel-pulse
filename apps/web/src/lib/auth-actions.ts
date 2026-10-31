@@ -52,7 +52,8 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
   }
 
   const invite = String(formData.get('invite') ?? '').trim();
-  const nextPath = invite ? `/i/${invite}` : '/app';
+  // `next`: quien llega desde un torneo vuelve a ese torneo a inscribirse.
+  const nextPath = invite ? `/i/${invite}` : sanitizeNext(String(formData.get('next') ?? '/app'));
 
   // emailRedirectTo: si Supabase tiene email confirmation enabled, el link del
   // mail debe caer en /auth/callback (PKCE) en vez de /, sino el code se pierde
@@ -77,7 +78,7 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
   // Caso: email confirmation enabled. Sin sesión activa, el usuario tiene que
   // confirmar antes de continuar. Mandamos a /login con flag para mostrar mensaje.
   if (!data.session) {
-    const next = invite ? `&next=/i/${invite}` : '';
+    const next = nextPath !== '/app' ? `&next=${encodeURIComponent(nextPath)}` : '';
     return { ok: true, redirectTo: `/login?verify=1${next}` };
   }
 
