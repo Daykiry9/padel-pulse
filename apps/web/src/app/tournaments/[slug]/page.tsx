@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, Crown, Trophy } from 'lucide-react';
@@ -21,6 +22,55 @@ import { getSession, getSupabaseServerClient } from '@/lib/supabase/server';
 import { GenerateBracketButton } from '@/app/app/tournaments/[slug]/manage/generate-bracket-button';
 import { TOURNAMENT_STATUS } from '@/lib/tournament-status';
 import { RegisterButton } from './register-button';
+
+// Titulo y descripcion del preview al compartir el link (la imagen sale de
+// opengraph-image.tsx). Antes todos los torneos heredaban el texto del home.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await getSupabaseServerClient();
+  const { data } = await supabase
+    .from('tournaments')
+    .select('id, name, status, starts_at, max_teams, price_per_team')
+    .eq('slug', slug)
+    .single();
+  const t = data as {
+    id: string;
+    name: string;
+    status: string;
+    starts_at: string;
+    max_teams: number;
+    price_per_team: number;
+  } | null;
+  if (!t) return {};
+  const { count } = await supabase
+    .from('tournament_registrations')
+    .select('id', { count: 'exact', head: true })
+    .eq('tournament_id', t.id);
+  const left = Math.max(0, t.max_teams - (count ?? 0));
+  const description = [
+    formatShort(t.starts_at),
+    t.status === 'in_progress'
+      ? 'En vivo ahora'
+      : t.status === 'finished'
+        ? 'Finalizado'
+        : left === 0
+          ? 'Cupo completo'
+          : left === 1
+            ? '¡Queda 1 cupo!'
+            : `Quedan ${left} cupos`,
+    t.price_per_team > 0 ? `$${t.price_per_team.toLocaleString('es-CO')} COP` : 'Gratis',
+  ].join(' · ');
+  return {
+    title: t.name,
+    description,
+    openGraph: { title: t.name, description, type: 'website' },
+    twitter: { card: 'summary_large_image', title: t.name, description },
+  };
+}
 
 export default async function TournamentDetailPage({
   params,

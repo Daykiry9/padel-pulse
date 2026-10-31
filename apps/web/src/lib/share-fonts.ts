@@ -17,26 +17,26 @@ const FONT_SPECS: FontSpec[] = [
   // Manrope (sans body) — 400, 700, 800
   {
     name: 'Manrope',
-    url: 'https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggexSg.woff',
+    url: 'https://fonts.gstatic.com/s/manrope/v23/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk79FO_F.ttf',
     weight: 400,
     style: 'normal',
   },
   {
     name: 'Manrope',
-    url: 'https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggOxSg.woff',
+    url: 'https://fonts.gstatic.com/s/manrope/v23/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk4aE-_F.ttf',
     weight: 700,
     style: 'normal',
   },
   {
     name: 'Manrope',
-    url: 'https://fonts.gstatic.com/s/manrope/v15/xn7gYHE41ni1AdIRggGxSg.woff',
+    url: 'https://fonts.gstatic.com/s/manrope/v23/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk59E-_F.ttf',
     weight: 800,
     style: 'normal',
   },
   // Archivo Black (display, only 400 exists upstream)
   {
     name: 'ArchivoBlack',
-    url: 'https://fonts.gstatic.com/s/archivoblack/v23/HTxqL289NzCGg4MzN6KJ7eW6CYyF_g.woff',
+    url: 'https://fonts.gstatic.com/s/archivoblack/v23/HTxqL289NzCGg4MzN6KJ7eW6OYs.ttf',
     weight: 400,
     style: 'normal',
   },
@@ -61,7 +61,11 @@ export async function loadShareFonts() {
         }
       }),
     );
-    return buffers.filter((x): x is NonNullable<typeof x> => x !== null);
+    const loaded = buffers.filter((x): x is NonNullable<typeof x> => x !== null);
+    // Sin ninguna fuente Satori revienta ("No fonts are loaded"); no dejamos
+    // ese fallo cacheado para siempre en el proceso, el siguiente request reintenta.
+    if (!loaded.length) cached = null;
+    return loaded;
   })();
   return cached;
 }
