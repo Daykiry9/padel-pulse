@@ -188,6 +188,27 @@ export async function deleteMyAccount(formData: FormData): Promise<void> {
     redirect('/app/profile?delete_error=server');
   }
 
+  // El perfil no se borra (inscripciones, equipos y resultados lo referencian):
+  // se anonimiza y queda como "Jugador eliminado".
+  const { error: anonError } = await admin
+    .from('profiles')
+    .update({
+      display_name: 'Jugador eliminado',
+      avatar_url: null,
+      city: null,
+      phone: null,
+      birthdate: null,
+      instagram_handle: null,
+      dominant_hand: null,
+      favorite_position: null,
+      playing_since_year: null,
+      marketing_opt_in: false,
+      is_super_admin: false,
+      active_community_id: null,
+    })
+    .eq('id', user.id);
+  if (anonError) console.error('[deleteMyAccount] anonymize error:', anonError);
+
   await supabase.auth.signOut();
   redirect('/?account_deleted=1');
 }
