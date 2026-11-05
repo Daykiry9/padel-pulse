@@ -92,3 +92,6 @@ apps/web/android/app/keystore.properties
 
 # Impeccable critique snapshots (tooling local)
 .impeccable/
+
+# Respaldos con datos personales (no subir)
+backups/
